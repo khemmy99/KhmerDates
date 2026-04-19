@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ប្រតិទិនខ្មែរ">
+  <meta name="description" content="Khmer Lunar Calendar - ប្រតិទិនខ្មែរ">
+  <title>ប្រតិទិនខ្មែរ - Khmer Calendar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="167x167" href="icons/icon-167.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="icons/icon-120.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <!-- iOS Splash Screens -->
+  <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1170x2532.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1284x2778.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1290x2796.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1179x2556.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash/splash-750x1334.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1242x2688.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash/splash-828x1792.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" href="icons/splash/splash-1125x2436.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash/splash-1668x2388.png">
+  <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" href="icons/splash/splash-2048x2732.png">
+  <link rel="stylesheet" href="css/khmer-calendar.css">
+</head>
+<body>
+  <div class="cal-app">
+    <!-- Top bar: today's Khmer date -->
+    <header class="cal-topbar">
+      <div class="cal-topbar-row">
+        <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="36" height="36">
+        <div class="cal-topbar-text">
+          <div class="cal-today-khmer" id="cal-today-khmer"></div>
+          <div class="cal-today-greg" id="cal-today-greg"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings overlay -->
+    <div class="cal-settings-overlay" id="cal-settings-overlay">
+      <div class="cal-settings-panel" id="cal-settings-panel">
+        <div class="settings-header">
+          <span class="settings-title" data-i18n="settings">ការកំណត់</span>
+          <button class="settings-close" id="settings-close">&times;</button>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label" data-i18n="theme">រូបរាង</div>
+          <div class="settings-toggle-group" id="theme-toggle">
+            <button class="settings-toggle active" data-theme="dark" data-i18n="dark">ងងឹត</button>
+            <button class="settings-toggle" data-theme="light" data-i18n="light">ភ្លឺ</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label" data-i18n="language">ភាសា</div>
+          <div class="settings-toggle-group" id="lang-toggle">
+            <button class="settings-toggle active" data-lang="km">ខ្មែរ</button>
+            <button class="settings-toggle" data-lang="en">English</button>
+            <button class="settings-toggle" data-lang="zh">中文</button>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-label" data-i18n="startDay">ថ្ងៃចាប់ផ្តើមសប្តាហ៍</div>
+          <div class="settings-toggle-group" id="startday-toggle">
+            <button class="settings-toggle" data-start="sun" data-i18n="sunday">អាទិត្យ</button>
+            <button class="settings-toggle active" data-start="mon" data-i18n="monday">ចន្ទ</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Month navigation -->
+    <div class="cal-month-bar">
+      <button class="cal-nav-btn" id="cal-prev" aria-label="Previous month">&#9664;</button>
+      <div class="cal-month-title" id="cal-month-title"></div>
+      <button class="cal-nav-btn" id="cal-next" aria-label="Next month">&#9654;</button>
+    </div>
+
+    <!-- Lunar info line -->
+    <div class="cal-lunar-info" id="cal-lunar-info"></div>
+
+    <!-- Month/Year picker overlay -->
+    <div class="cal-picker-overlay" id="cal-picker-overlay">
+      <div class="cal-picker-panel" id="cal-picker-panel"></div>
+    </div>
+
+    <!-- Weekday headers -->
+    <div class="cal-weekdays" id="cal-weekdays"></div>
+
+    <!-- Calendar grid -->
+    <div class="cal-grid" id="cal-grid"></div>
+
+    <!-- Today button -->
+    <button class="cal-today-btn" id="cal-today-btn">ថ្ងៃនេះ</button>
+
+    <!-- Footer bar -->
+    <nav class="cal-footer" id="cal-footer">
+      <button class="cal-footer-btn" id="cal-today-footer" aria-label="Today">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span data-i18n="today">ថ្ងៃនេះ</span>
+      </button>
+      <button class="cal-footer-btn" id="cal-settings-btn" aria-label="Settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <span data-i18n="settings">ការកំណត់</span>
+      </button>
+    </nav>
+
+    <!-- Day detail bottom sheet -->
+    <div class="cal-detail" id="cal-detail">
+      <div class="cal-detail-handle"></div>
+      <div class="cal-detail-content" id="cal-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Install PWA banner -->
+  <div id="install-banner" class="install-banner" style="display:none">
+    <span>📲 Install ប្រតិទិនខ្មែរ</span>
+    <button id="install-btn" class="install-btn">Install</button>
+    <button id="install-dismiss" class="install-dismiss">&times;</button>
+  </div>
+
+  <script src="js/khmer-calendar.js"></script>
+  <script src="js/chinese-calendar.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/khmer-calendar-ui.js"></script>
+  <script>
+    // Configure Capacitor status bar
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+        const StatusBar = window.Capacitor.Plugins.StatusBar;
+        StatusBar.setOverlaysWebView({ overlay: false });
+        StatusBar.setBackgroundColor({ color: '#0a0c14' });
+        StatusBar.setStyle({ style: 'DARK' });
+      }
+    });
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js');
+    }
+    let _deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      _deferredPrompt = e;
+      const banner = document.getElementById('install-banner');
+      if (banner) banner.style.display = 'flex';
+    });
+    document.addEventListener('click', (e) => {
+      if (e.target.id === 'install-btn' && _deferredPrompt) {
+        _deferredPrompt.prompt();
+        _deferredPrompt.userChoice.then(() => { _deferredPrompt = null; });
+        document.getElementById('install-banner').style.display = 'none';
+      }
+      if (e.target.id === 'install-dismiss') {
+        document.getElementById('install-banner').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
