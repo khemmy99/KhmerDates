@@ -21,8 +21,12 @@ const KhCal = (() => {
     if (!HL) return '';
     const list = HL.getByDate(dt);
     if (!list || !list.length) return '';
+    // Use the same red/gold split as the cell markers: a block is red only
+    // when at least one matching entry is a public holiday; otherwise gold.
+    const kind  = HL.classifyDate(dt) || 'public';
+    const modCls = kind === 'observance' ? ' detail-holiday--observance' : '';
     const items = list.map(h => `<div class="detail-holiday-item">${escapeHtml(HL.nameFor(h, lang))}</div>`).join('');
-    return `<div class="detail-holiday">${items}</div>`;
+    return `<div class="detail-holiday${modCls}">${items}</div>`;
   }
 
   function _renderHealthBlock(dt, lang) {
@@ -231,7 +235,10 @@ const KhCal = (() => {
       const cn = CC.fromDate(dt);
       const cnText = cn ? cn.cellText : '';
       const cnFirst = cn && cn.day === 1 ? ' cn-first' : '';
-      const holidayClass = (HL && HL.getByDate(dt)) ? ' holiday' : '';
+      const holidayKind  = HL ? HL.classifyDate(dt) : null;
+      const holidayClass = holidayKind === 'public'     ? ' holiday'
+                         : holidayKind === 'observance' ? ' observance'
+                         : '';
       const healthClass = _healthClassFor(dt);
       return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
         <span class="cal-gday">${d}</span>
@@ -274,7 +281,10 @@ const KhCal = (() => {
       const cn = CC.fromDate(dt);
       const cnText = cn ? cn.cellText : '';
       const cnFirst = cn && cn.day === 1 ? ' cn-first' : '';
-      const holidayClass = (HL && HL.getByDate(dt)) ? ' holiday' : '';
+      const holidayKind  = HL ? HL.classifyDate(dt) : null;
+      const holidayClass = holidayKind === 'public'     ? ' holiday'
+                         : holidayKind === 'observance' ? ' observance'
+                         : '';
       const healthClass = _healthClassFor(dt);
       html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}" data-y="${year}" data-m="${month}" data-d="${d}">
         <span class="cal-gday">${d}</span>

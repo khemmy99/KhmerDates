@@ -243,7 +243,8 @@ body {
 /* Outside month */
 .cal-cell.outside { opacity: 0.22; }
 
-/* Holidays — red dot in top-right corner + red Gregorian number */
+/* Holidays — red dot in top-right corner + red Gregorian number
+   Used for official public holidays (fixed dates + Pchum Ben days 14/15/16). */
 .cal-cell.holiday .cal-gday { color: var(--kh-red); }
 .cal-cell.holiday::after {
   content: '';
@@ -257,6 +258,23 @@ body {
   box-shadow: 0 0 4px rgba(248,113,113,0.5);
 }
 .cal-cell.holiday.outside::after { opacity: 0.4; }
+
+/* Cultural observance days — gold/saffron (NOT red), distinct from public
+   holidays. Used for Pchum Ben preliminary days 1-13 (កាន់បិណ្ឌ) and any
+   future lunar festival days that are observed but not rest days. */
+.cal-cell.observance .cal-gday { color: #e8b25c; }      /* saffron-gold */
+.cal-cell.observance::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #e8b25c;
+  box-shadow: 0 0 4px rgba(232,178,92,0.5);
+}
+.cal-cell.observance.outside::after { opacity: 0.4; }
 
 /* Today */
 .cal-cell.today {
@@ -614,6 +632,21 @@ body {
 [data-theme="light"] .detail-holiday {
   background: rgba(217,68,68,0.07);
   border-color: rgba(217,68,68,0.3);
+}
+
+/* Observance variant — gold/saffron, used for Pchum Ben days 1-13
+   and other cultural festival days that are not official rest days. */
+.detail-holiday--observance {
+  background: rgba(232,178,92,0.10);
+  border-color: rgba(232,178,92,0.30);
+}
+.detail-holiday--observance .detail-holiday-item { color: #e8b25c; }
+[data-theme="light"] .detail-holiday--observance {
+  background: rgba(180,130,40,0.08);
+  border-color: rgba(180,130,40,0.30);
+}
+[data-theme="light"] .detail-holiday--observance .detail-holiday-item {
+  color: #b48228;
 }
 
 /* ===== Toast ===== */

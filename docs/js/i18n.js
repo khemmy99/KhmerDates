@@ -298,6 +298,11 @@ const I18n = (() => {
   function setStartDay(val) {
     _startDay = val;
     localStorage.setItem('kh-cal-startday', val);
+    // Also persist to Capacitor Preferences so the native Android widget can
+    // read the user's preference from SharedPreferences (key: kh-cal-startday).
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+      window.Capacitor.Plugins.Preferences.set({ key: 'kh-cal-startday', value: val }).catch(() => {});
+    }
   }
 
   function setLang(lang) {
