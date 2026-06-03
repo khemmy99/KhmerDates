@@ -61,83 +61,142 @@ body {
   position: relative;
 }
 
-/* ===== Top Bar ===== */
+/* ===== Top Bar — modern, layered, with subtle accent glow ===== */
 .cal-topbar {
-  padding: 44px 14px 10px;
-  text-align: center;
+  position: relative;
+  padding: 48px 16px 18px;
   flex-shrink: 0;
-  background: linear-gradient(180deg, rgba(91,156,246,0.06) 0%, transparent 100%);
-  border-radius: 0 0 var(--kh-radius) var(--kh-radius);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(91,156,246,0.14) 0%, rgba(91,156,246,0.04) 35%, transparent 70%),
+    linear-gradient(180deg, rgba(91,156,246,0.06) 0%, transparent 100%);
+  border-radius: 0 0 22px 22px;
   margin: 0 -14px;
+  overflow: hidden;
 }
+.cal-topbar-glow {
+  pointer-events: none;
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(closest-side, rgba(91,156,246,0.22), transparent 70%);
+  filter: blur(6px);
+  z-index: 0;
+}
+.cal-topbar-row {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: left;
+}
+.cal-topbar-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(91,156,246,0.25), 0 0 0 1px rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+.cal-topbar-text { display: flex; flex-direction: column; }
 .cal-today-khmer {
-  font-size: 14px;
-  color: var(--kh-primary);
-  font-weight: 600;
-  line-height: 1.6;
+  font-size: 14.5px;
+  color: var(--kh-text);
+  font-weight: 700;
+  line-height: 1.45;
   letter-spacing: 0.2px;
 }
 .cal-today-greg {
   font-size: 11px;
   color: var(--kh-text-muted);
-  line-height: 1.4;
-  font-weight: 400;
-  letter-spacing: 0.3px;
+  line-height: 1.35;
+  font-weight: 500;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
+  margin-top: 2px;
 }
 
-/* ===== Month Navigation ===== */
+/* ===== Month Navigation — title only (swipe grid for prev/next) ===== */
 .cal-month-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 0 6px;
+  justify-content: center;
+  padding: 14px 0 4px;
   flex-shrink: 0;
 }
 .cal-month-title {
-  text-align: center;
-  line-height: 1.35;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  padding: 4px 16px;
-  border-radius: var(--kh-radius);
-  transition: background .2s var(--kh-transition);
-}
-.cal-month-title:active {
-  background: var(--kh-primary-glow);
-}
-.cal-month-khmer {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--kh-text);
-  display: block;
-}
-.cal-month-greg {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  font-weight: 400;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  display: block;
-  margin-top: 1px;
-}
-.cal-nav-btn {
-  background: var(--kh-card-bg);
+  padding: 8px 36px 8px 22px;          /* extra right padding for chevron */
   border: 1px solid var(--kh-border);
-  color: var(--kh-text-secondary);
+  background: linear-gradient(180deg, rgba(91,156,246,0.10) 0%, rgba(91,156,246,0.02) 100%);
+  border-radius: 999px;
+  color: inherit;
+  font-family: inherit;
+  transition: transform .12s var(--kh-transition), background .2s var(--kh-transition), border-color .2s var(--kh-transition);
+}
+.cal-month-title::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 6px; height: 6px;
+  border-right: 1.6px solid var(--kh-text-secondary);
+  border-bottom: 1.6px solid var(--kh-text-secondary);
+  transform: translateY(-65%) rotate(45deg);
+  opacity: 0.7;
+}
+.cal-month-title:hover,
+.cal-month-title:active {
+  background: linear-gradient(180deg, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.05) 100%);
+  border-color: rgba(91,156,246,0.3);
+  transform: scale(0.985);
+}
+
+/* Four-column tri-language + year layout */
+.cal-month-col {
   font-size: 14px;
-  cursor: pointer;
-  padding: 10px 16px;
-  border-radius: var(--kh-radius);
-  transition: all .2s var(--kh-transition);
-  -webkit-tap-highlight-color: transparent;
+  font-weight: 500;
+  color: var(--kh-text-muted);
+  opacity: 0.55;
+  line-height: 1.2;
+  white-space: nowrap;
+  padding: 0 12px;
+  transition: opacity 0.2s, color 0.2s;
 }
-.cal-nav-btn:hover, .cal-nav-btn:active {
-  background: var(--kh-primary-glow);
-  border-color: rgba(91,156,246,0.2);
-  color: var(--kh-primary);
-  transform: scale(0.96);
+.cal-month-col + .cal-month-col {
+  border-left: 1px solid var(--kh-border);
 }
+.cal-month-col.is-active {
+  color: var(--kh-text);
+  opacity: 1;
+  font-weight: 700;
+  font-size: 16px;
+}
+.cal-month-en.is-active { color: var(--kh-primary); }
+.cal-month-year {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: var(--kh-text);
+  opacity: 0.85;
+}
+
+/* Tighten gap on the pill since we now have internal dividers */
+.cal-month-title {
+  gap: 0;
+  padding: 8px 32px 8px 14px;
+}
+
+/* Legacy classes still referenced by older code paths — keep as no-op */
+.cal-month-khmer, .cal-month-greg, .cal-month-side, .cal-month-center { display: none; }
 
 /* ===== Lunar Info ===== */
 .cal-lunar-info {
@@ -758,6 +817,153 @@ body {
 [data-theme="light"] .health-reset-btn {
   background: rgba(240,78,122,0.06);
 }
+
+/* Events overlay — full-year holiday list grouped by month */
+.cal-events-panel .settings-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.events-year {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+  color: var(--kh-text-secondary);
+  margin-left: 4px;
+}
+.events-year-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 4px 0 12px;
+}
+.events-year-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--kh-border);
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+.events-year-btn:hover { background: rgba(91,156,246,0.1); color: var(--kh-primary); border-color: var(--kh-primary); }
+.events-year-label {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--kh-primary);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  min-width: 64px;
+  text-align: center;
+}
+.events-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.events-month {
+  margin-bottom: 14px;
+}
+.events-month:last-child { margin-bottom: 0; }
+.events-month-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--kh-primary);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--kh-border);
+  margin-bottom: 6px;
+}
+.events-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--kh-text);
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+.events-row--observance .events-name { color: #e8b25c; }
+
+/* Today — highlighted row with primary tint + a pulsing halo on the dot.
+   The halo is a positioned ::before pseudo-element so the animation uses
+   GPU-friendly opacity+transform instead of paint-heavy box-shadow. */
+.events-row--today {
+  background: linear-gradient(90deg, rgba(91,156,246,0.15) 0%, rgba(91,156,246,0.05) 100%);
+  border-left: 3px solid var(--kh-primary);
+  padding-left: 9px;
+}
+.events-row--today .events-dot { position: relative; }
+.events-row--today .events-dot::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--kh-primary);
+  opacity: 0.35;
+  z-index: -1;
+  animation: events-today-pulse 2s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+@keyframes events-today-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1.0); }
+  50%      { opacity: 0.55; transform: scale(1.5); }
+}
+.events-today-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--kh-primary);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+/* Past — dimmed */
+.events-row--past { opacity: 0.5; }
+.events-row--past .events-dot { box-shadow: none; }
+.events-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.events-dot--public      { background: #f04e7a; box-shadow: 0 0 4px rgba(240,78,122,0.5); }
+.events-dot--observance  { background: #e8b25c; box-shadow: 0 0 4px rgba(232,178,92,0.5); }
+.events-date {
+  flex-shrink: 0;
+  min-width: 60px;
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--kh-text-secondary);
+}
+.events-name { flex: 1; }
+.events-days-badge {
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(91,156,246,0.12);
+  color: var(--kh-primary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.events-row--observance .events-days-badge {
+  background: rgba(232,178,92,0.12);
+  color: #e8b25c;
+}
+[data-theme="light"] .events-row--observance .events-days-badge { color: #b48228; }
+.events-empty {
+  text-align: center;
+  padding: 24px 0;
+  color: var(--kh-text-secondary);
+  font-style: italic;
+}
+[data-theme="light"] .events-row--observance .events-name { color: #b48228; }
 
 /* Footer button: health (pink accent on hover/active state) */
 .cal-footer-btn--health:active,

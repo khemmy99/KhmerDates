@@ -20,13 +20,16 @@ const KhmerHolidays = (() => {
     { m: 3,  d: 8,  km: 'ទិវានារីអន្តរជាតិ',
                     en: "International Women's Day",
                     zh: '国际妇女节' },
-    { m: 4,  d: 14, km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
+    { m: 4,  d: 14, id: 'khmer-new-year', dayOfFestival: 1, totalDays: 3,
+                    km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
                     en: 'Khmer New Year',
                     zh: '柬埔寨新年' },
-    { m: 4,  d: 15, km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
+    { m: 4,  d: 15, id: 'khmer-new-year', dayOfFestival: 2, totalDays: 3,
+                    km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
                     en: 'Khmer New Year',
                     zh: '柬埔寨新年' },
-    { m: 4,  d: 16, km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
+    { m: 4,  d: 16, id: 'khmer-new-year', dayOfFestival: 3, totalDays: 3,
+                    km: 'បុណ្យចូលឆ្នាំប្រពៃណីខ្មែរ',
                     en: 'Khmer New Year',
                     zh: '柬埔寨新年' },
     { m: 5,  d: 1,  km: 'ទិវាពលកម្មអន្តរជាតិ',
@@ -340,23 +343,31 @@ const KhmerHolidays = (() => {
     return all.length ? all : null;
   }
 
+  function _toKhmerDigits(n) {
+    if (typeof KhmerCalendar !== 'undefined' && KhmerCalendar.khmerNumber) {
+      return KhmerCalendar.khmerNumber(n);
+    }
+    const KD = ['០','១','២','៣','៤','៥','៦','៧','៨','៩'];
+    return String(n).split('').map(c => (c >= '0' && c <= '9') ? KD[+c] : c).join('');
+  }
+
   function nameFor(h, lang) {
     if (!h) return '';
     const base = h[lang] || h.km || '';
-    if (!h.isLunar || !h.dayOfFestival || !h.totalDays) return base;
 
-    // Skip the "Day N/Total" prefix for single-day festivals — it reads awkward.
+    // Show "ថ្ងៃទី N / total" for ANY multi-day festival (fixed OR lunar) —
+    // Khmer New Year 14/15/16, Bon Om Touk, Pchum Ben, CNY 3-day, etc.
     let body = base;
-    if (h.totalDays > 1) {
-      const dayPart = lang === 'km'
-        ? `ថ្ងៃទី ${h.dayOfFestival}/${h.totalDays}`
-        : lang === 'zh'
-          ? `第${h.dayOfFestival}/${h.totalDays}天`
-          : `Day ${h.dayOfFestival}/${h.totalDays}`;
+    if (h.dayOfFestival && h.totalDays && h.totalDays > 1) {
+      const dStr = (lang === 'km') ? _toKhmerDigits(h.dayOfFestival) : String(h.dayOfFestival);
+      const tStr = (lang === 'km') ? _toKhmerDigits(h.totalDays)     : String(h.totalDays);
+      const dayPart = lang === 'km' ? `ថ្ងៃទី ${dStr}/${tStr}`
+                    : lang === 'zh' ? `第${dStr}/${tStr}天`
+                    :                  `Day ${dStr}/${tStr}`;
       body = `${base} (${dayPart})`;
     }
 
-    // For the official public-holiday days, append a "ឈប់សម្រាក" / "Public holiday" badge
+    // For the official public-holiday days, append "ឈប់សម្រាក" / "Public holiday"
     if (h.isPublicHoliday) {
       const badge = lang === 'km' ? ' • ឈប់សម្រាក'
                   : lang === 'zh' ? ' • 公众假日'

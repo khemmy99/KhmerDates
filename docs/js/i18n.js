@@ -28,10 +28,13 @@ const I18n = (() => {
         '\u179F\u17C5\u179A\u17CD'
       ],
       gregMonths: [
-        'January','February','March','April','May','June',
-        'July','August','September','October','November','December'
+        'មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា',
+        'កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'
       ],
-      gregMonthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      gregMonthsShort: [
+        'មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា',
+        'កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'
+      ],
       lunarPrefix: 'ខែ',
       bePrefix: 'ព.ស.',
       waxing: 'កើត',
@@ -55,6 +58,9 @@ const I18n = (() => {
       facebook: 'ហ្វេសប៊ុក',
       projectSupporter: 'អ្នកគាំទ្រគម្រោង',
       supporters: 'អ្នកគាំទ្រ',
+      events: 'ព្រឹត្តិការណ៍',
+      eventsFooter: 'ព្រឹត្តិការណ៍',
+      noEvents: 'មិនមានព្រឹត្តិការណ៍',
       contact: 'ទាក់ទង',
       privacy: 'គោលនយោបាយឯកជន',
       dailyBlock: 'ការរំលឹកប្រចាំថ្ងៃ',
@@ -146,6 +152,9 @@ const I18n = (() => {
       facebook: 'Facebook',
       projectSupporter: 'Project supporter',
       supporters: 'Supporters',
+      events: 'Events',
+      eventsFooter: 'Events',
+      noEvents: 'No events',
       contact: 'Contact',
       privacy: 'Privacy Policy',
       dailyBlock: 'Daily Block',
@@ -237,6 +246,9 @@ const I18n = (() => {
       facebook: 'Facebook',
       projectSupporter: '项目支持者',
       supporters: '支持者',
+      events: '事件',
+      eventsFooter: '事件',
+      noEvents: '暂无事件',
       contact: '联系',
       privacy: '隐私政策',
       dailyBlock: '每日提醒',

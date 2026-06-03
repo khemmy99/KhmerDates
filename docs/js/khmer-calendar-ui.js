@@ -17,6 +17,143 @@ const KhCal = (() => {
     return d.innerHTML;
   }
 
+  /**
+   * Build a year-long list of unique holiday occurrences, grouped by month.
+   * Consecutive days of the same holiday are collapsed into a date range.
+   */
+  function _collectYearEvents(year) {
+    if (!HL) return [];
+    const byMonth = {};
+    for (let m = 0; m < 12; m++) byMonth[m] = [];
+
+    // Walk every day of the year and capture each holiday entry per day
+    const rows = [];
+    for (let m = 0; m < 12; m++) {
+      const lastDay = new Date(year, m + 1, 0).getDate();
+      for (let d = 1; d <= lastDay; d++) {
+        const dt = new Date(year, m, d);
+        const list = HL.getByDate(dt);
+        if (!list) continue;
+        for (const h of list) {
+          rows.push({
+            month: m,
+            day: d,
+            ymd: year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'),
+            id: h.id || (h.km + '|' + h.en),  // synthetic id for fixed entries
+            entry: h,
+            isPublic: !h.observance
+          });
+        }
+      }
+    }
+
+    // Collapse consecutive same-id rows into spans
+    const collapsed = [];
+    for (const r of rows) {
+      const prev = collapsed[collapsed.length - 1];
+      if (prev && prev.id === r.id && r.month === prev.endMonth) {
+        // check day continuity (within same month)
+        const prevDate = new Date(year, prev.endMonth, prev.endDay);
+        const thisDate = new Date(year, r.month, r.day);
+        const oneDay = (thisDate - prevDate) / 86400000;
+        if (oneDay === 1) { prev.endDay = r.day; prev.endMonth = r.month; continue; }
+      }
+      // Or continuity across month boundary (e.g. Pchum Ben spans Sep→Oct)
+      if (prev && prev.id === r.id) {
+        const prevEnd = new Date(year, prev.endMonth, prev.endDay);
+        const thisStart = new Date(year, r.month, r.day);
+        if ((thisStart - prevEnd) / 86400000 === 1) {
+          prev.endDay = r.day; prev.endMonth = r.month; continue;
+        }
+      }
+      collapsed.push({
+        id: r.id,
+        startMonth: r.month, startDay: r.day,
+        endMonth: r.month,   endDay: r.day,
+        entry: r.entry,
+        isPublic: r.isPublic
+      });
+    }
+
+    // Group by START month for the section headers
+    for (const c of collapsed) byMonth[c.startMonth].push(c);
+    return byMonth;
+  }
+
+  function _renderEventsList() {
+    if (!HL) return;
+    const lang = I18n.getLang();
+    const yearEl = document.getElementById('events-year');
+    const yearLabelEl = document.getElementById('events-year-label');
+    const listEl = document.getElementById('events-list');
+    if (!listEl) return;
+
+    if (yearEl)      yearEl.textContent      = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
+    if (yearLabelEl) yearLabelEl.textContent = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
+
+    // Time-relative classification — used to highlight "today" and dim "past".
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayLabel = I18n.t('today') || 'Today';
+    const daysLabel = I18n.t('days') || 'days';
+
+    const byMonth = _collectYearEvents(_eventsYear);
+    const sections = [];
+    for (let m = 0; m < 12; m++) {
+      const events = byMonth[m];
+      if (!events.length) continue;
+      const rows = events.map(ev => {
+        const baseName = ev.entry[lang] || ev.entry.km || '';
+        const dotCls = ev.isPublic ? 'events-dot--public' : 'events-dot--observance';
+        let dateStr;
+        let spanDays = 1;
+        if (ev.startDay === ev.endDay && ev.startMonth === ev.endMonth) {
+          dateStr = String(ev.startDay);
+        } else if (ev.startMonth === ev.endMonth) {
+          dateStr = ev.startDay + '–' + ev.endDay;
+          spanDays = ev.endDay - ev.startDay + 1;
+        } else {
+          const startDt = new Date(_eventsYear, ev.startMonth, ev.startDay);
+          const endDt   = new Date(_eventsYear, ev.endMonth,   ev.endDay);
+          spanDays = Math.round((endDt - startDt) / 86400000) + 1;
+          dateStr = ev.startDay + ' ' + I18n.gregMonthShort(ev.startMonth) +
+                  ' – ' + ev.endDay + ' ' + I18n.gregMonthShort(ev.endMonth);
+        }
+        const daysBadge = spanDays > 1
+          ? `<span class="events-days-badge">${escapeHtml((lang === 'km' ? KC.khmerNumber(spanDays) : spanDays) + ' ' + daysLabel)}</span>`
+          : '';
+
+        // Time classification relative to today
+        const evStart = new Date(_eventsYear, ev.startMonth, ev.startDay).getTime();
+        const evEnd   = new Date(_eventsYear, ev.endMonth,   ev.endDay  ).getTime();
+        let timeCls = '';
+        let todayBadge = '';
+        if (todayMidnight >= evStart && todayMidnight <= evEnd) {
+          timeCls = ' events-row--today';
+          todayBadge = `<span class="events-today-badge">${escapeHtml(todayLabel)}</span>`;
+        } else if (todayMidnight > evEnd) {
+          timeCls = ' events-row--past';
+        }
+
+        return `<div class="events-row${ev.isPublic ? '' : ' events-row--observance'}${timeCls}">
+          <span class="events-dot ${dotCls}"></span>
+          <span class="events-date">${escapeHtml(dateStr)}</span>
+          <span class="events-name">${escapeHtml(baseName)}</span>
+          ${todayBadge}
+          ${daysBadge}
+        </div>`;
+      }).join('');
+      sections.push(`<div class="events-month">
+        <div class="events-month-label">${escapeHtml(I18n.gregMonth(m))}</div>
+        ${rows}
+      </div>`);
+    }
+
+    listEl.innerHTML = sections.length
+      ? sections.join('')
+      : `<div class="events-empty">${escapeHtml(I18n.t('noEvents') || 'No events')}</div>`;
+  }
+
   function _renderHolidayBlock(dt, lang) {
     if (!HL) return '';
     const list = HL.getByDate(dt);
@@ -118,6 +255,7 @@ const KhCal = (() => {
   let _pickerView = 'closed'; // 'closed' | 'months' | 'years'
   let _pickerYear = new Date().getFullYear(); // year shown in picker
   let _yearPageBase = 0; // base year for year grid
+  let _eventsYear = new Date().getFullYear(); // year shown in events panel
 
   // === Number display: Khmer digits for km, normal for en/zh ===
   function _num(n) {
@@ -172,16 +310,23 @@ const KhCal = (() => {
     const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
     const lang = I18n.getLang();
 
-    // Month title (tappable to open picker)
+    // Month title — show FOUR columns side-by-side, each with its own divider:
+    //   Khmer (មិថុនា)  |  English (June)  |  Chinese (六月)  |  Year (2026)
+    // The active language column is highlighted; the others are dimmed.
+    // Year uses Khmer digits when the active language is km.
     const titleEl = document.getElementById('cal-month-title');
     if (titleEl) {
-      if (lang === 'km') {
-        titleEl.innerHTML = `<span class="cal-month-khmer">${KC.ADM12[month]} ${KC.khmerNumber(year)} &#9662;</span><br>` +
-          `<span class="cal-month-greg">${I18n.gregMonth(month)} ${year}</span>`;
-      } else {
-        titleEl.innerHTML = `<span class="cal-month-khmer">${I18n.monthName(month)} ${year} &#9662;</span><br>` +
-          `<span class="cal-month-greg">${KC.ADM12[month]} ${KC.khmerNumber(year)}</span>`;
-      }
+      const T = I18n.translations || {};
+      const km = (T.km && T.km.gregMonths && T.km.gregMonths[month])           || '';
+      const en = (T.en && T.en.gregMonths && T.en.gregMonths[month])           || '';
+      const zh = (T.zh && T.zh.gregMonthsShort && T.zh.gregMonthsShort[month]) || '';
+      const yearStr = (lang === 'km') ? KC.khmerNumber(year) : year;
+
+      titleEl.innerHTML =
+        `<span class="cal-month-col cal-month-km${lang==='km'?' is-active':''}">${escapeHtml(km)}</span>` +
+        `<span class="cal-month-col cal-month-en${lang==='en'?' is-active':''}">${escapeHtml(en)}</span>` +
+        `<span class="cal-month-col cal-month-zh${lang==='zh'?' is-active':''}">${escapeHtml(zh)}</span>` +
+        `<span class="cal-month-col cal-month-year">${escapeHtml(String(yearStr))}</span>`;
     }
 
     // Lunar info — track the selected day (or today if visible, else mid-month).
@@ -588,6 +733,30 @@ const KhCal = (() => {
       });
     }
 
+    // Events overlay
+    const eventsBtn     = document.getElementById('cal-events-btn');
+    const eventsOverlay = document.getElementById('cal-events-overlay');
+    const eventsClose   = document.getElementById('events-overlay-close');
+    const eventsPrev    = document.getElementById('events-year-prev');
+    const eventsNext    = document.getElementById('events-year-next');
+    if (eventsBtn && eventsOverlay) {
+      eventsBtn.addEventListener('click', () => {
+        _eventsYear = new Date().getFullYear();
+        _renderEventsList();
+        eventsOverlay.classList.add('open');
+      });
+    }
+    if (eventsClose && eventsOverlay) {
+      eventsClose.addEventListener('click', () => eventsOverlay.classList.remove('open'));
+    }
+    if (eventsOverlay) {
+      eventsOverlay.addEventListener('click', (e) => {
+        if (e.target === eventsOverlay) eventsOverlay.classList.remove('open');
+      });
+    }
+    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); });
+    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); });
+
     // Theme toggle
     const themeGroup = document.getElementById('theme-toggle');
     if (themeGroup) {
@@ -981,13 +1150,10 @@ const KhCal = (() => {
     _initSettings();
     _initHealth();
 
-    const prevBtn = document.getElementById('cal-prev');
-    const nextBtn = document.getElementById('cal-next');
-    if (prevBtn) prevBtn.addEventListener('click', () => _nav(-1));
-    if (nextBtn) nextBtn.addEventListener('click', () => _nav(1));
-
     const titleEl = document.getElementById('cal-month-title');
     if (titleEl) titleEl.addEventListener('click', _openPicker);
+    // (Horizontal swipe to change month is already wired below via
+    //  _onTouchStart / _onTouchEnd on the calendar grid.)
 
     const pickerOverlay = document.getElementById('cal-picker-overlay');
     if (pickerOverlay) {
