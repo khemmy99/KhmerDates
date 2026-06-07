@@ -10,7 +10,7 @@ const KhCal = (() => {
   const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
-  const APP_VERSION = '1.4.5';
+  const APP_VERSION = '1.4.6';
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -863,48 +863,44 @@ const KhCal = (() => {
 
   // === Settings Panel ===
   function _initSettings() {
-    const settingsBtn = document.getElementById('cal-settings-btn');
-    const overlay = document.getElementById('cal-settings-overlay');
-    const closeBtn = document.getElementById('settings-close');
+    const settingsBtn  = document.getElementById('cal-settings-btn');
+    const menuOverlay  = document.getElementById('cal-settings-menu-overlay');
+    const overlay      = document.getElementById('cal-settings-overlay');
+    const aboutOverlay = document.getElementById('cal-about-overlay');
 
     // Stamp the current app version into the About panel
     const versionEl = document.getElementById('settings-app-version');
     if (versionEl) versionEl.textContent = APP_VERSION;
 
-    if (settingsBtn) settingsBtn.addEventListener('click', () => {
-      if (overlay) overlay.classList.add('open');
-    });
+    // Helper: close every settings-style overlay, then open one
+    const _openOnly = (el) => {
+      [menuOverlay, overlay, aboutOverlay].forEach(o => o && o.classList.remove('open'));
+      if (el) el.classList.add('open');
+    };
 
-    if (closeBtn) closeBtn.addEventListener('click', () => {
-      if (overlay) overlay.classList.remove('open');
-    });
+    // Footer gear opens the chooser menu (Settings / About)
+    if (settingsBtn) settingsBtn.addEventListener('click', () => _openOnly(menuOverlay));
 
-    if (overlay) overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) overlay.classList.remove('open');
-    });
+    // Menu entries open their own popup panel
+    const openSettings = document.getElementById('open-settings-popup');
+    const openAbout    = document.getElementById('open-about-popup');
+    if (openSettings) openSettings.addEventListener('click', () => _openOnly(overlay));
+    if (openAbout)    openAbout.addEventListener('click', () => _openOnly(aboutOverlay));
 
-    // Tab switching inside Settings overlay (Settings | About)
-    const tabs   = document.querySelectorAll('#cal-settings-panel .settings-tab');
-    const panels = document.querySelectorAll('#cal-settings-panel .settings-tab-panel');
-    tabs.forEach(t => {
-      t.addEventListener('click', () => {
-        const which = t.dataset.tab;
-        tabs.forEach(x => {
-          const on = x.dataset.tab === which;
-          x.classList.toggle('is-active', on);
-          x.setAttribute('aria-selected', on ? 'true' : 'false');
-        });
-        panels.forEach(p => {
-          const on = p.dataset.tabPanel === which;
-          p.classList.toggle('is-active', on);
-          p.hidden = !on;
-        });
+    // Close buttons + backdrop taps for each overlay.
+    // Closing Settings or About steps back to the chooser menu; closing the
+    // menu itself dismisses everything (back to the calendar).
+    [
+      ['settings-menu-close', menuOverlay, null],
+      ['settings-close',      overlay,      menuOverlay],
+      ['about-close',         aboutOverlay, menuOverlay],
+    ].forEach(([closeId, ov, back]) => {
+      const close = () => { if (back) _openOnly(back); else ov.classList.remove('open'); };
+      const btn = document.getElementById(closeId);
+      if (btn && ov) btn.addEventListener('click', close);
+      if (ov) ov.addEventListener('click', (e) => {
+        if (e.target === ov) close();
       });
-    });
-    // Reset to "Settings" tab whenever the overlay re-opens
-    if (settingsBtn) settingsBtn.addEventListener('click', () => {
-      const first = document.querySelector('#cal-settings-panel .settings-tab[data-tab="settings"]');
-      if (first) first.click();
     });
 
     // Events overlay

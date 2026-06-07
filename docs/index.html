@@ -33,10 +33,10 @@
 </head>
 <body>
   <div class="cal-app">
-    <!-- Slim brand bar — logo on the left, month/year selector on the right.
+    <!-- Slim brand bar — logo + month/year select centered together on one row.
          The today's full Khmer + Gregorian dates moved to #cal-today-popup,
-         which slides down when the user taps the Today footer button. -->
-    <header class="cal-topbar cal-topbar--slim">
+         which slides down when the Today footer is tapped. -->
+    <header class="cal-topbar cal-topbar--slim cal-topbar--center">
       <div class="cal-topbar-glow"></div>
       <div class="cal-topbar-row">
         <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="34" height="34">
@@ -131,7 +131,34 @@
       </div>
     </div>
 
-    <!-- Settings overlay (tabbed: Settings / About) -->
+    <!-- Settings/About chooser menu — opened from the footer gear. Two stacked
+         entries; each opens its own popup panel below. -->
+    <div class="cal-settings-overlay" id="cal-settings-menu-overlay">
+      <div class="cal-settings-panel cal-menu-panel">
+        <div class="settings-header">
+          <span class="settings-title" data-i18n="more">ច្រើនទៀត</span>
+          <button class="settings-close" id="settings-menu-close">&times;</button>
+        </div>
+        <div class="settings-menu-list">
+          <button type="button" class="settings-menu-item" id="open-settings-popup">
+            <span class="settings-menu-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </span>
+            <span class="settings-menu-label" data-i18n="settings">ការកំណត់</span>
+            <span class="settings-menu-arrow" aria-hidden="true"></span>
+          </button>
+          <button type="button" class="settings-menu-item" id="open-about-popup">
+            <span class="settings-menu-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </span>
+            <span class="settings-menu-label" data-i18n="about">អំពី</span>
+            <span class="settings-menu-arrow" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings popup — opened from the chooser menu -->
     <div class="cal-settings-overlay" id="cal-settings-overlay">
       <div class="cal-settings-panel" id="cal-settings-panel">
         <div class="settings-header">
@@ -139,19 +166,7 @@
           <button class="settings-close" id="settings-close">&times;</button>
         </div>
 
-        <!-- Tab switcher -->
-        <div class="settings-tabs" role="tablist">
-          <button type="button" class="settings-tab is-active" data-tab="settings" role="tab" aria-selected="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            <span data-i18n="settings">ការកំណត់</span>
-          </button>
-          <button type="button" class="settings-tab" data-tab="about" role="tab" aria-selected="false">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-            <span data-i18n="about">អំពី</span>
-          </button>
-        </div>
-
-        <!-- TAB 1: Settings -->
+        <!-- Settings content -->
         <div class="settings-tab-panel is-active" data-tab-panel="settings" role="tabpanel">
           <div class="settings-section">
             <div class="settings-label" data-i18n="theme">រូបរាង</div>
@@ -178,9 +193,19 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
 
-        <!-- TAB 2: About -->
-        <div class="settings-tab-panel" data-tab-panel="about" role="tabpanel" hidden>
+    <!-- About popup — opened from the chooser menu -->
+    <div class="cal-settings-overlay" id="cal-about-overlay">
+      <div class="cal-settings-panel" id="cal-about-panel">
+        <div class="settings-header">
+          <span class="settings-title" data-i18n="about">អំពី</span>
+          <button class="settings-close" id="about-close">&times;</button>
+        </div>
+
+        <!-- About content -->
+        <div class="settings-tab-panel is-active" data-tab-panel="about" role="tabpanel">
 
           <!-- Hero card: icon + name + version + tagline -->
           <div class="about-hero">
@@ -191,7 +216,7 @@
             <div class="about-hero-tagline" data-i18n="aboutTagline">ប្រតិទិនច័ន្ទគតិខ្មែរ ដំណើរការដោយគ្មានអ៊ីនធឺណេត</div>
             <div class="about-hero-version">
               <span class="about-version-label" data-i18n="version">កំណែ</span>
-              <span class="about-version-num" id="settings-app-version">1.4.5</span>
+              <span class="about-version-num" id="settings-app-version">1.4.6</span>
               <a id="about-update" class="about-update-pill"
                  href="https://play.google.com/store/apps/details?id=com.khmercalendar.app"
                  target="_blank" rel="noopener">
@@ -537,7 +562,7 @@
     // Esc closes any open overlay
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      ['cal-settings-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-events-overlay', 'cal-weather-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
+      ['cal-settings-menu-overlay', 'cal-settings-overlay', 'cal-about-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-events-overlay', 'cal-weather-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
         const el = document.getElementById(id);
         if (el && el.classList.contains('open')) el.classList.remove('open');
       });
