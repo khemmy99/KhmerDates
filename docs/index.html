@@ -33,17 +33,31 @@
 </head>
 <body>
   <div class="cal-app">
-    <!-- Top bar: today's Khmer date -->
-    <header class="cal-topbar">
+    <!-- Slim brand bar — logo on the left, month/year selector on the right.
+         The today's full Khmer + Gregorian dates moved to #cal-today-popup,
+         which slides down when the user taps the Today footer button. -->
+    <header class="cal-topbar cal-topbar--slim">
       <div class="cal-topbar-glow"></div>
       <div class="cal-topbar-row">
-        <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="40" height="40">
-        <div class="cal-topbar-text">
-          <div class="cal-today-khmer" id="cal-today-khmer"></div>
-          <div class="cal-today-greg" id="cal-today-greg"></div>
-        </div>
+        <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="34" height="34">
+        <button type="button" class="cal-month-title" id="cal-month-title" aria-label="Choose month and year"></button>
       </div>
     </header>
+
+    <!-- Today popup — opens when the Today footer button is tapped.
+         Shows the full Khmer + Gregorian date for today. Tap anywhere to
+         dismiss; also auto-dismisses after 5 seconds. -->
+    <div class="cal-today-popup" id="cal-today-popup" aria-hidden="true">
+      <div class="cal-today-popup-card">
+        <div class="cal-today-popup-row">
+          <div class="cal-today-popup-text">
+            <div class="cal-today-khmer" id="cal-today-khmer"></div>
+            <div class="cal-today-greg" id="cal-today-greg"></div>
+          </div>
+          <button type="button" class="cal-today-popup-close" id="cal-today-popup-close" aria-label="Close">&times;</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Period / Women's health overlay (opened from footer) -->
     <div class="cal-settings-overlay" id="cal-health-overlay">
@@ -117,7 +131,7 @@
       </div>
     </div>
 
-    <!-- Settings overlay -->
+    <!-- Settings overlay (tabbed: Settings / About) -->
     <div class="cal-settings-overlay" id="cal-settings-overlay">
       <div class="cal-settings-panel" id="cal-settings-panel">
         <div class="settings-header">
@@ -125,92 +139,147 @@
           <button class="settings-close" id="settings-close">&times;</button>
         </div>
 
-        <div class="settings-section">
-          <div class="settings-label" data-i18n="theme">រូបរាង</div>
-          <div class="settings-toggle-group" id="theme-toggle">
-            <button class="settings-toggle active" data-theme="dark" data-i18n="dark">ងងឹត</button>
-            <button class="settings-toggle" data-theme="light" data-i18n="light">ភ្លឺ</button>
-          </div>
+        <!-- Tab switcher -->
+        <div class="settings-tabs" role="tablist">
+          <button type="button" class="settings-tab is-active" data-tab="settings" role="tab" aria-selected="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span data-i18n="settings">ការកំណត់</span>
+          </button>
+          <button type="button" class="settings-tab" data-tab="about" role="tab" aria-selected="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span data-i18n="about">អំពី</span>
+          </button>
         </div>
 
-        <div class="settings-section">
-          <div class="settings-label" data-i18n="language">ភាសា</div>
-          <div class="settings-toggle-group" id="lang-toggle">
-            <button class="settings-toggle active" data-lang="km">ខ្មែរ</button>
-            <button class="settings-toggle" data-lang="en">English</button>
-            <button class="settings-toggle" data-lang="zh">中文</button>
-          </div>
-        </div>
-
-        <div class="settings-section">
-          <div class="settings-label" data-i18n="startDay">ថ្ងៃចាប់ផ្តើមសប្តាហ៍</div>
-          <div class="settings-toggle-group" id="startday-toggle">
-            <button class="settings-toggle" data-start="sun" data-i18n="sunday">អាទិត្យ</button>
-            <button class="settings-toggle active" data-start="mon" data-i18n="monday">ចន្ទ</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- About overlay (opened from footer) -->
-    <div class="cal-settings-overlay" id="cal-about-overlay">
-      <div class="cal-settings-panel cal-about-panel">
-        <div class="settings-header">
-          <span class="settings-title" data-i18n="about">អំពី</span>
-          <button type="button" class="settings-close" id="about-overlay-close">&times;</button>
-        </div>
-        <div class="settings-about-block">
-          <div class="settings-about-name">ប្រតិទិនខ្មែរ</div>
-          <div class="settings-about-version">
-            <span data-i18n="version">កំណែ</span>
-            <span id="settings-app-version">1.3.6</span>
-            <a id="about-update" class="settings-update-btn"
-               href="https://play.google.com/store/apps/details?id=com.khmercalendar.app"
-               target="_blank" rel="noopener">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 22v-6h6"/><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 2v6h-6"/></svg>
-              <span data-i18n="checkUpdate">ពិនិត្យកំណែថ្មី</span>
-            </a>
-          </div>
-          <div class="settings-about-tagline" data-i18n="aboutTagline">ប្រតិទិនច័ន្ទគតិខ្មែរ ដំណើរការដោយគ្មានអ៊ីនធឺណេត</div>
-          <dl class="settings-about-meta">
-            <dt data-i18n="developer">អ្នកអភិវឌ្ឍ</dt>
-            <dd>Khem My</dd>
-            <dt data-i18n="telegram">Telegram</dt>
-            <dd><a class="settings-meta-link" href="https://t.me/khemmy99" target="_blank" rel="noopener">@khemmy99</a></dd>
-            <dt data-i18n="phone">ទូរស័ព្ទ</dt>
-            <dd><a class="settings-meta-link" href="tel:+85587905678">+855 87 90 5678</a></dd>
-            <dt data-i18n="website">គេហទំព័រ</dt>
-            <dd><a class="settings-meta-link" href="https://kmsoftstore.com" target="_blank" rel="noopener">kmsoftstore.com</a></dd>
-            <dt data-i18n="facebook">Facebook</dt>
-            <dd><a class="settings-meta-link" href="https://www.facebook.com/KMLOL" target="_blank" rel="noopener">facebook.com/KMLOL</a></dd>
-          </dl>
-          <div class="settings-credits">
-            <div class="settings-credits-row">
-              <span class="settings-credits-label" data-i18n="projectSupporter">អ្នកគាំទ្រគម្រោង</span>
-              <span class="settings-credits-name">Yuth Khemara</span>
-            </div>
-            <div class="settings-credits-row">
-              <span class="settings-credits-label" data-i18n="supporters">អ្នកគាំទ្រ</span>
-              <ul class="settings-credits-list">
-                <li>Sao Sanath</li>
-                <li>Yuth Nimorl</li>
-                <li>Khem Channy</li>
-                <li>Chhoeurn Maneth</li>
-              </ul>
+        <!-- TAB 1: Settings -->
+        <div class="settings-tab-panel is-active" data-tab-panel="settings" role="tabpanel">
+          <div class="settings-section">
+            <div class="settings-label" data-i18n="theme">រូបរាង</div>
+            <div class="settings-toggle-group" id="theme-toggle">
+              <button class="settings-toggle active" data-theme="dark" data-i18n="dark">ងងឹត</button>
+              <button class="settings-toggle" data-theme="light" data-i18n="light">ភ្លឺ</button>
             </div>
           </div>
-          <div class="settings-about-links">
-            <a class="settings-link" id="about-contact" href="mailto:my.khem.mathst@gmail.com">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+
+          <div class="settings-section">
+            <div class="settings-label" data-i18n="language">ភាសា</div>
+            <div class="settings-toggle-group" id="lang-toggle">
+              <button class="settings-toggle active" data-lang="km">ខ្មែរ</button>
+              <button class="settings-toggle" data-lang="en">English</button>
+              <button class="settings-toggle" data-lang="zh">中文</button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-label" data-i18n="startDay">ថ្ងៃចាប់ផ្តើមសប្តាហ៍</div>
+            <div class="settings-toggle-group" id="startday-toggle">
+              <button class="settings-toggle" data-start="sun" data-i18n="sunday">អាទិត្យ</button>
+              <button class="settings-toggle active" data-start="mon" data-i18n="monday">ចន្ទ</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: About -->
+        <div class="settings-tab-panel" data-tab-panel="about" role="tabpanel" hidden>
+
+          <!-- Hero card: icon + name + version + tagline -->
+          <div class="about-hero">
+            <div class="about-hero-icon-wrap">
+              <img class="about-hero-icon" src="icons/icon-192.png" alt="" width="64" height="64">
+            </div>
+            <div class="about-hero-name">ប្រតិទិនខ្មែរ</div>
+            <div class="about-hero-tagline" data-i18n="aboutTagline">ប្រតិទិនច័ន្ទគតិខ្មែរ ដំណើរការដោយគ្មានអ៊ីនធឺណេត</div>
+            <div class="about-hero-version">
+              <span class="about-version-label" data-i18n="version">កំណែ</span>
+              <span class="about-version-num" id="settings-app-version">1.4.5</span>
+              <a id="about-update" class="about-update-pill"
+                 href="https://play.google.com/store/apps/details?id=com.khmercalendar.app"
+                 target="_blank" rel="noopener">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 22v-6h6"/><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 2v6h-6"/></svg>
+                <span data-i18n="checkUpdate">ពិនិត្យកំណែថ្មី</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Developer section -->
+          <div class="about-section">
+            <div class="about-section-label" data-i18n="developer">អ្នកអភិវឌ្ឍ</div>
+            <div class="about-card">
+              <div class="about-person">
+                <div class="about-avatar">KM</div>
+                <div class="about-person-info">
+                  <div class="about-person-name">Khem My</div>
+                  <div class="about-person-role" data-i18n="developer">អ្នកអភិវឌ្ឍ</div>
+                </div>
+              </div>
+              <div class="about-contacts">
+                <a class="about-contact-row" href="https://t.me/khemmy99" target="_blank" rel="noopener">
+                  <span class="about-contact-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19l-9.5 6 -4.11-1.3c-.88-.25-.89-.86.2-1.3l16.13-6.22c.74-.27 1.43.18 1.15 1.31l-2.75 12.95c-.19.91-.74 1.13-1.5.71l-4.15-3.07-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+                  </span>
+                  <span class="about-contact-label" data-i18n="telegram">Telegram</span>
+                  <span class="about-contact-value">@khemmy99</span>
+                </a>
+                <a class="about-contact-row" href="tel:+85587905678">
+                  <span class="about-contact-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </span>
+                  <span class="about-contact-label" data-i18n="phone">ទូរស័ព្ទ</span>
+                  <span class="about-contact-value">+855 87 90 5678</span>
+                </a>
+                <a class="about-contact-row" href="https://kmsoftstore.com" target="_blank" rel="noopener">
+                  <span class="about-contact-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                  </span>
+                  <span class="about-contact-label" data-i18n="website">គេហទំព័រ</span>
+                  <span class="about-contact-value">kmsoftstore.com</span>
+                </a>
+                <a class="about-contact-row" href="https://www.facebook.com/KMLOL" target="_blank" rel="noopener">
+                  <span class="about-contact-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9v-2.89h2.54V9.85c0-2.51 1.49-3.89 3.78-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.33v6.99A10 10 0 0 0 22 12z"/></svg>
+                  </span>
+                  <span class="about-contact-label" data-i18n="facebook">Facebook</span>
+                  <span class="about-contact-value">facebook.com/KMLOL</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Project team section -->
+          <div class="about-section">
+            <div class="about-section-label" data-i18n="projectTeam">ក្រុមការងារគម្រោង</div>
+            <div class="about-card about-team-card">
+              <div class="about-team-row">
+                <span class="about-team-role" data-i18n="projectSupporter">អ្នកគ្រប់គ្រងគម្រោង</span>
+                <span class="about-team-name">Yuth Khemara</span>
+              </div>
+              <div class="about-team-divider"></div>
+              <div class="about-team-row about-team-row--list">
+                <span class="about-team-role" data-i18n="supporters">អ្នកគាំទ្រ</span>
+                <ul class="about-team-list">
+                  <li>Sao Sanath</li>
+                  <li>Yuth Nimorl</li>
+                  <li>Khem Channy</li>
+                  <li>Chhoeurn Maneth</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="about-actions">
+            <a class="about-action-btn" id="about-contact" href="mailto:my.khem.mathst@gmail.com">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
               <span data-i18n="contact">ទាក់ទង</span>
             </a>
-            <a class="settings-link" id="about-privacy" href="https://khemmy99.github.io/KhmerDates/privacy.html" target="_blank" rel="noopener">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <a class="about-action-btn" id="about-privacy" href="https://khemmy99.github.io/KhmerDates/privacy.html" target="_blank" rel="noopener">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               <span data-i18n="privacy">គោលនយោបាយឯកជន</span>
             </a>
           </div>
+
         </div>
+
       </div>
     </div>
 
@@ -234,10 +303,47 @@
       </div>
     </div>
 
-    <!-- Month navigation — swipe left/right on the grid to change month -->
-    <div class="cal-month-bar">
-      <button type="button" class="cal-month-title" id="cal-month-title" aria-label="Choose month and year"></button>
+    <!-- Weather overlay — opened from footer -->
+    <div class="cal-settings-overlay" id="cal-weather-overlay">
+      <div class="cal-settings-panel cal-weather-panel">
+        <div class="settings-header">
+          <span class="settings-title">
+            <span class="weather-title-icon">☀️</span>
+            <span data-i18n="weather">អាកាសធាតុ</span>
+          </span>
+          <button type="button" class="settings-close" id="weather-overlay-close">&times;</button>
+        </div>
+
+        <!-- City picker + use-my-location button -->
+        <div class="weather-location-bar">
+          <select id="weather-city-select" class="weather-city-select" aria-label="City"></select>
+          <button type="button" id="weather-gps-btn" class="weather-gps-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+            <span data-i18n="useMyLocation">ប្រើទីតាំងរបស់ខ្ញុំ</span>
+          </button>
+        </div>
+
+        <!-- Current conditions card -->
+        <div class="weather-current" id="weather-current">
+          <div class="weather-loading"><span class="weather-spinner"></span> <span data-i18n="loading">កំពុងផ្ទុក...</span></div>
+        </div>
+
+        <!-- Hourly strip + 7-day list -->
+        <div class="weather-section">
+          <div class="weather-section-label" data-i18n="hourly">ម៉ោងបន្ទាប់</div>
+          <div class="weather-hourly" id="weather-hourly"></div>
+        </div>
+        <div class="weather-section">
+          <div class="weather-section-label" data-i18n="daily">៧ ថ្ងៃខាងមុខ</div>
+          <div class="weather-daily" id="weather-daily"></div>
+        </div>
+
+        <div class="weather-credit" data-i18n="weatherCredit">ទិន្នន័យដោយ Open-Meteo</div>
+      </div>
     </div>
+
+    <!-- Month picker moved into the topbar (next to the logo). The grid still
+         supports swipe left/right to change month. -->
 
     <!-- Lunar info line -->
     <div class="cal-lunar-info" id="cal-lunar-info"></div>
@@ -308,9 +414,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         <span data-i18n="eventsFooter">ព្រឹត្តិការណ៍</span>
       </button>
-      <button class="cal-footer-btn" id="cal-about-btn" aria-label="About">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        <span data-i18n="about">អំពី</span>
+      <button class="cal-footer-btn cal-footer-btn--weather" id="cal-weather-btn" aria-label="Weather">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 16.9"/><line x1="8" y1="19" x2="8" y2="19"/><line x1="12" y1="21" x2="12" y2="21"/><line x1="16" y1="19" x2="16" y2="19"/></svg>
+        <span data-i18n="weatherFooter">អាកាសធាតុ</span>
       </button>
       <button class="cal-footer-btn" id="cal-settings-btn" aria-label="Settings">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -340,6 +446,7 @@
   <script src="js/holidays.js"></script>
   <script src="js/daily-block.js"></script>
   <script src="js/health-tracker.js"></script>
+  <script src="js/weather.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/khmer-calendar-ui.js"></script>
   <script>
@@ -430,10 +537,16 @@
     // Esc closes any open overlay
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      ['cal-settings-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-about-overlay', 'cal-events-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
+      ['cal-settings-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-events-overlay', 'cal-weather-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
         const el = document.getElementById(id);
         if (el && el.classList.contains('open')) el.classList.remove('open');
       });
+      // Esc also closes the today popup
+      const todayPopup = document.getElementById('cal-today-popup');
+      if (todayPopup && todayPopup.classList.contains('is-open')) {
+        todayPopup.classList.remove('is-open');
+        todayPopup.setAttribute('aria-hidden', 'true');
+      }
       const detail = document.getElementById('cal-detail');
       if (detail && detail.classList.contains('open')) detail.classList.remove('open');
     });

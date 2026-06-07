@@ -61,10 +61,10 @@ body {
   position: relative;
 }
 
-/* ===== Top Bar — modern, layered, with subtle accent glow ===== */
+/* ===== Slim Top Bar — logo on left, month/year pill on right ===== */
 .cal-topbar {
   position: relative;
-  padding: 48px 16px 18px;
+  padding: 38px 14px 10px;
   flex-shrink: 0;
   background:
     radial-gradient(120% 100% at 50% 0%, rgba(91,156,246,0.14) 0%, rgba(91,156,246,0.04) 35%, transparent 70%),
@@ -72,6 +72,132 @@ body {
   border-radius: 0 0 22px 22px;
   margin: 0 -14px;
   overflow: hidden;
+}
+.cal-topbar--slim .cal-topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;   /* logo left, month-title right */
+  gap: 10px;
+  width: 100%;
+}
+.cal-topbar--slim .cal-topbar-icon {
+  flex-shrink: 0;
+}
+.cal-topbar--slim .cal-month-title {
+  /* Override the centered pill — now sits inline on the right of the topbar.
+     Tighter padding/typography since vertical space is limited. */
+  margin: 0;
+  padding: 6px 26px 6px 10px;
+}
+.cal-topbar--slim .cal-month-title::after {
+  right: 10px;                  /* chevron closer to the right edge */
+}
+.cal-topbar--slim .cal-month-col {
+  padding: 0 8px;
+  font-size: 12px;
+}
+.cal-topbar--slim .cal-month-col.is-active {
+  font-size: 14px;
+}
+.cal-topbar--slim .cal-month-year {
+  font-size: 12px;
+}
+/* Legacy: brand text element is no longer rendered — keep CSS harmless
+   in case any cached HTML still includes it. */
+.cal-topbar-brand { display: none; }
+
+/* ===== Today popup — slides down from the top when Today is tapped ===== */
+.cal-today-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) 14px 0;
+}
+.cal-today-popup.is-open { pointer-events: auto; }
+.cal-today-popup.is-open .cal-today-popup-card {
+  transform: translateY(0);
+  opacity: 1;
+}
+.cal-today-popup-card {
+  width: 100%;
+  max-width: 520px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: var(--kh-card-elevated, rgba(20, 24, 40, 0.95));
+  border: 1px solid var(--kh-border-strong, rgba(91,156,246,0.3));
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.45), 0 2px 0 rgba(91,156,246,0.08) inset;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translateY(-120%);
+  opacity: 0;
+  transition: transform 0.32s var(--kh-transition, cubic-bezier(0.4, 0, 0.2, 1)),
+              opacity 0.25s ease-out;
+}
+.cal-today-popup-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cal-today-popup-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(91,156,246,0.25);
+}
+.cal-today-popup-text {
+  flex: 1;
+  min-width: 0;
+}
+.cal-today-popup-text .cal-today-khmer {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1.4;
+  letter-spacing: 0.2px;
+}
+.cal-today-popup-text .cal-today-greg {
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  line-height: 1.3;
+  margin-top: 3px;
+}
+.cal-today-popup-close {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--kh-border);
+  background: transparent;
+  color: var(--kh-text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cal-today-popup-close:hover,
+.cal-today-popup-close:active {
+  background: rgba(91,156,246,0.12);
+  border-color: rgba(91,156,246,0.3);
+  color: var(--kh-text);
+}
+[data-theme="light"] .cal-today-popup-card {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
 }
 .cal-topbar-glow {
   pointer-events: none;
@@ -818,6 +944,212 @@ body {
   background: rgba(240,78,122,0.06);
 }
 
+/* ===== Weather overlay ===== */
+.cal-weather-panel .settings-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-title-icon { font-size: 18px; }
+
+.weather-location-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 4px;
+  align-items: center;
+}
+.weather-city-select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-card-bg);
+  color: var(--kh-text);
+  border-radius: var(--kh-radius);
+  font-family: inherit;
+  font-size: 13px;
+}
+.weather-gps-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: 1px solid var(--kh-border);
+  background: rgba(91,156,246,0.08);
+  color: var(--kh-primary);
+  border-radius: var(--kh-radius);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.weather-gps-btn:hover { background: rgba(91,156,246,0.15); }
+
+/* Current conditions card */
+.weather-current {
+  margin: 8px 16px 4px;
+  padding: 16px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.02) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(91,156,246,0.08) 0%, rgba(91,156,246,0.02) 100%);
+  border: 1px solid rgba(91,156,246,0.22);
+  border-radius: 18px;
+  min-height: 110px;
+}
+.weather-current-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.weather-current-icon { font-size: 52px; line-height: 1; }
+.weather-current-info { flex: 1; min-width: 120px; }
+.weather-current-temp {
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1;
+}
+.weather-current-cond {
+  font-size: 14px;
+  color: var(--kh-primary);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.weather-current-loc {
+  font-size: 12px;
+  color: var(--kh-text-secondary);
+  margin-top: 4px;
+}
+.weather-current-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--kh-text);
+  margin-left: auto;
+  text-align: right;
+}
+.weather-extra-label {
+  color: var(--kh-text-muted);
+  font-weight: 500;
+  margin-right: 3px;
+}
+
+/* Loading + error states */
+.weather-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--kh-text-secondary);
+  font-size: 13px;
+}
+.weather-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(91,156,246,0.2);
+  border-top-color: var(--kh-primary);
+  border-radius: 50%;
+  animation: wx-spin 0.9s linear infinite;
+  display: inline-block;
+}
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+.weather-error {
+  color: var(--kh-red, #f87171);
+  font-size: 13px;
+  text-align: center;
+  padding: 14px;
+}
+
+/* Hourly strip — horizontally scrollable */
+.weather-section {
+  padding: 8px 16px 4px;
+}
+.weather-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--kh-primary);
+  margin-bottom: 8px;
+}
+.weather-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.weather-hourly::-webkit-scrollbar { height: 4px; }
+.weather-hourly::-webkit-scrollbar-thumb { background: var(--kh-border); border-radius: 2px; }
+.weather-hour {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 8px 0;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(91,156,246,0.04);
+  border: 1px solid var(--kh-border);
+}
+.weather-hour.is-now {
+  background: rgba(91,156,246,0.16);
+  border-color: rgba(91,156,246,0.4);
+}
+.weather-hour-time {
+  font-size: 10.5px;
+  color: var(--kh-text-secondary);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.weather-hour-icon { font-size: 22px; line-height: 1; margin: 3px 0; }
+.weather-hour-temp {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kh-text);
+}
+
+/* 7-day forecast list */
+.weather-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.weather-day {
+  display: grid;
+  grid-template-columns: 60px 30px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(91,156,246,0.03);
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius);
+  font-size: 13px;
+}
+.weather-day-name {
+  font-weight: 600;
+  color: var(--kh-text);
+}
+.weather-day-icon { font-size: 18px; line-height: 1; text-align: center; }
+.weather-day-cond { color: var(--kh-text-secondary); font-size: 12px; }
+.weather-day-range { white-space: nowrap; }
+.weather-day-max { color: var(--kh-red, #f87171); font-weight: 600; }
+.weather-day-sep { color: var(--kh-text-muted); margin: 0 4px; }
+.weather-day-min { color: var(--kh-primary); font-weight: 600; }
+
+.weather-credit {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--kh-text-muted);
+  padding: 14px 0 4px;
+  font-style: italic;
+}
+
+[data-theme="light"] .weather-hour { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .weather-day  { background: rgba(0,0,0,0.02); }
+
+/* Footer button: weather (orange/amber accent) */
+.cal-footer-btn--weather:active,
+.cal-footer-btn--weather:hover { color: #f5b860; }
+
 /* Events overlay — full-year holiday list grouped by month */
 .cal-events-panel .settings-title {
   display: inline-flex;
@@ -1540,6 +1872,319 @@ body {
   padding: 18px 22px 14px;
   border-bottom: 1px solid var(--kh-border);
 }
+
+/* ===== About tab — professional redesign ===== */
+.about-hero {
+  position: relative;
+  margin: 14px 18px 4px;
+  padding: 24px 18px 18px;
+  text-align: center;
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.04) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(91,156,246,0.06) 0%, transparent 100%);
+  border: 1px solid rgba(91,156,246,0.22);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.about-hero-icon-wrap {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(91,156,246,0.12);
+  box-shadow: 0 6px 20px rgba(91,156,246,0.20), 0 0 0 1px rgba(255,255,255,0.06);
+  margin-bottom: 12px;
+}
+.about-hero-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: block;
+}
+.about-hero-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--kh-text);
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+.about-hero-tagline {
+  font-size: 12px;
+  color: var(--kh-text-secondary);
+  margin-top: 6px;
+  line-height: 1.5;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.about-hero-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 6px 6px 6px 14px;
+  background: var(--kh-card-bg, rgba(0,0,0,0.2));
+  border: 1px solid var(--kh-border);
+  border-radius: 999px;
+}
+.about-version-label {
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  font-weight: 500;
+}
+.about-version-num {
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kh-primary);
+}
+.about-update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--kh-primary, #5B9CF6);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.about-update-pill:hover { opacity: 0.92; }
+.about-update-pill:active { transform: scale(0.96); }
+
+/* Section wrapper — consistent labeled blocks */
+.about-section {
+  margin: 18px 18px 0;
+}
+.about-section-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--kh-primary);
+  margin: 0 4px 8px;
+}
+.about-card {
+  background: var(--kh-card-bg, rgba(0,0,0,0.2));
+  border: 1px solid var(--kh-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* Developer person row inside the card */
+.about-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--kh-border);
+}
+.about-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b9cf6 0%, #8a5bf6 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+.about-person-info { flex: 1; min-width: 0; }
+.about-person-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1.2;
+}
+.about-person-role {
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  margin-top: 2px;
+  letter-spacing: 0.2px;
+}
+
+/* Contact rows inside developer card */
+.about-contacts { display: flex; flex-direction: column; }
+.about-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  color: var(--kh-text);
+  text-decoration: none;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--kh-border);
+  transition: background 0.12s;
+}
+.about-contact-row:last-child { border-bottom: none; }
+.about-contact-row:hover { background: rgba(91,156,246,0.05); }
+.about-contact-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: rgba(91,156,246,0.12);
+  color: var(--kh-primary);
+  flex-shrink: 0;
+}
+.about-contact-label {
+  color: var(--kh-text-muted);
+  font-weight: 500;
+  min-width: 70px;
+  font-size: 11.5px;
+}
+.about-contact-value {
+  color: var(--kh-primary);
+  font-weight: 600;
+  font-size: 12.5px;
+  margin-left: auto;
+  text-align: right;
+}
+
+/* Project team card */
+.about-team-card { padding: 12px 16px; }
+.about-team-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+.about-team-row--list { align-items: flex-start; }
+.about-team-role {
+  font-size: 11.5px;
+  color: var(--kh-text-muted);
+  font-weight: 600;
+  min-width: 110px;
+  letter-spacing: 0.2px;
+}
+.about-team-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--kh-text);
+}
+.about-team-divider {
+  height: 1px;
+  background: var(--kh-border);
+  margin: 4px 0;
+}
+.about-team-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.about-team-list li {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--kh-text);
+  position: relative;
+  padding-left: 14px;
+}
+.about-team-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5b9cf6, #8a5bf6);
+}
+
+/* Action buttons */
+.about-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 18px 18px 18px;
+}
+.about-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--kh-border);
+  border-radius: 12px;
+  background: var(--kh-card-bg, rgba(0,0,0,0.2));
+  color: var(--kh-text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s, color 0.15s;
+}
+.about-action-btn:hover {
+  background: rgba(91,156,246,0.08);
+  border-color: rgba(91,156,246,0.3);
+  color: var(--kh-primary);
+}
+.about-action-btn:active { transform: scale(0.97); }
+.about-action-btn svg { flex-shrink: 0; }
+
+/* Light-theme tweaks for the redesigned About */
+[data-theme="light"] .about-hero { background:
+  radial-gradient(120% 80% at 50% 0%, rgba(59,125,230,0.12) 0%, rgba(59,125,230,0.02) 50%, transparent 80%),
+  linear-gradient(180deg, rgba(59,125,230,0.04) 0%, transparent 100%);
+}
+[data-theme="light"] .about-card,
+[data-theme="light"] .about-action-btn { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .about-contact-row:hover { background: rgba(59,125,230,0.05); }
+
+/* Polish Settings tab spacing */
+.settings-tab-panel[data-tab-panel="settings"] .settings-section {
+  padding: 14px 18px;
+}
+.settings-tab-panel[data-tab-panel="settings"] .settings-section + .settings-section {
+  border-top: 1px solid var(--kh-border);
+}
+
+/* Settings tab switcher — Settings | About */
+.settings-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--kh-border);
+  background: rgba(91,156,246,0.02);
+}
+.settings-tab {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--kh-text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.settings-tab:hover { color: var(--kh-text); background: rgba(91,156,246,0.05); }
+.settings-tab.is-active {
+  color: var(--kh-primary);
+  border-bottom-color: var(--kh-primary);
+}
+.settings-tab svg { flex-shrink: 0; }
+
+/* Tab panels — only the active one is visible */
+.settings-tab-panel { display: none; }
+.settings-tab-panel.is-active { display: block; }
 
 .settings-title {
   font-size: 17px;

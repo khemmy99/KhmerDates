@@ -73,6 +73,11 @@
     device. This is never transmitted, never sent to any server, never shared with
     any third party. Disabling the feature and removing the data is available at
     any time from Settings.</li>
+  <li><strong>Optional, opt-in only:</strong> Weather location preference — if you
+    use the Weather feature, the app stores either (a) your selected city name and
+    its coordinates, or (b) the most recent location you allowed via GPS, on your
+    device only. This is used to fetch weather forecasts. See section 4 for what is
+    sent over the network.</li>
 </ul>
 <p>
   These are saved using your device's standard local storage and never leave your device.
@@ -81,11 +86,24 @@
 
 <h2>4. Network use</h2>
 <p>
-  The app works <strong>fully offline</strong>. The only network request the app may make is
-  to fetch the embedded Khmer typeface (Noto Sans Khmer) from Google Fonts the first time the
-  app launches, after which it is cached. No personal data is sent in this request — only your
-  device's IP address and the standard User-Agent header that any browser sends. If you prefer
-  not to make this request, you can use the app offline after first launch.
+  The app works <strong>offline by default</strong>. There are exactly two network endpoints
+  the app may contact:
+</p>
+<ul>
+  <li><strong>Google Fonts</strong> (fonts.googleapis.com, fonts.gstatic.com) — fetches the
+    Khmer typeface (Noto Sans Khmer) on first launch only, then caches it. Sends only your
+    IP address and standard User-Agent.</li>
+  <li><strong>Open-Meteo</strong> (api.open-meteo.com) — <em>only when you use the Weather
+    feature</em>. The app sends the latitude and longitude of either (a) the city you picked,
+    or (b) your device's GPS location if you granted permission. It sends only the
+    coordinates, a timezone identifier, and the standard User-Agent — no name, no device
+    identifier, no account information. Open-Meteo is a free public weather service that does
+    not require an API key. See <a href="https://open-meteo.com/en/terms" target="_blank" rel="noopener noreferrer">
+    Open-Meteo's terms</a> for their data handling.</li>
+</ul>
+<p>
+  If you do not use the Weather feature, no weather requests are made. If you deny location
+  permission and do not pick a city, no weather requests are made.
 </p>
 
 <h2>5. Permissions</h2>
@@ -147,9 +165,14 @@
 
 <h2>ការប្រើប្រាស់បណ្តាញ</h2>
 <p>
-  កម្មវិធីដំណើរការដោយគ្មានអ៊ីនធឺណេត។ ការតភ្ជាប់តែមួយគត់ដែលអាចមាន គឺការទាញយកអក្សរ Noto Sans
-  Khmer ពី Google Fonts នៅពេលដំណើរការលើកដំបូង។
+  កម្មវិធីដំណើរការដោយគ្មានអ៊ីនធឺណេតតាមលំនាំដើម។ មានតែការតភ្ជាប់ពីរប៉ុណ្ណោះដែលអាចមាន៖
 </p>
+<ul>
+  <li><strong>Google Fonts</strong> — ដើម្បីទាញយកអក្សរ Noto Sans Khmer នៅពេលបើកលើកដំបូង។</li>
+  <li><strong>Open-Meteo</strong> (api.open-meteo.com) — <em>តែពេលអ្នកប្រើមុខងារអាកាសធាតុ</em>។
+    កម្មវិធីបញ្ជូនតែ latitude, longitude និង timezone ប៉ុណ្ណោះ — មិនមានឈ្មោះ មិនមាន
+    អត្តសញ្ញាណឧបករណ៍។ បើអ្នកមិនប្រើមុខងារអាកាសធាតុ ឬមិនអនុញ្ញាតទីតាំង កម្មវិធីមិនតភ្ជាប់ទេ។</li>
+</ul>
 
 <h2>ការទាក់ទង</h2>
 <p>សួរសំណួរ៖ <a href="mailto:my.khem.mathst@gmail.com">my.khem.mathst@gmail.com</a></p>
