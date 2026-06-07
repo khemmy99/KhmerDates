@@ -27,21 +27,106 @@ const I18n = (() => {
         '\u179F\u17BB\u1780\u17D2\u179A',
         '\u179F\u17C5\u179A\u17CD'
       ],
+      weekdaysShort: ['\u17A2\u17B6','\u1785','\u17A2\u1784','\u1796\u17BB','\u1796\u17D2\u179A','\u179F\u17BB','\u179F\u17C5'],
       gregMonths: [
-        'January','February','March','April','May','June',
-        'July','August','September','October','November','December'
+        'មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា',
+        'កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'
       ],
-      gregMonthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      gregMonthsShort: [
+        'មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា',
+        'កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'
+      ],
       lunarPrefix: 'ខែ',
       bePrefix: 'ព.ស.',
       waxing: 'កើត',
       waning: 'រោច',
+      waxingShort: 'កើត',
+      waningShort: 'រោច',
       dayPrefix: 'ថ្ងៃទី',
       monthPrefix: 'ខែ',
       yearPrefix: 'ឆ្នាំ',
       startDay: 'ថ្ងៃចាប់ផ្តើមសប្តាហ៍',
       sunday: 'អាទិត្យ',
-      monday: 'ចន្ទ'
+      monday: 'ចន្ទ',
+      about: 'អំពី',
+      more: 'ច្រើនទៀត',
+      version: 'កំណែ',
+      checkUpdate: 'ពិនិត្យកំណែថ្មី',
+      aboutTagline: 'ប្រតិទិនច័ន្ទគតិខ្មែរ ដំណើរការដោយគ្មានអ៊ីនធឺណេត',
+      developer: 'អ្នកអភិវឌ្ឍ',
+      telegram: 'តេលេក្រាម',
+      phone: 'ទូរស័ព្ទ',
+      website: 'គេហទំព័រ',
+      facebook: 'ហ្វេសប៊ុក',
+      projectSupporter: 'អ្នកគ្រប់គ្រងគម្រោង',
+      supporters: 'អ្នកគាំទ្រ',
+      projectTeam: 'ក្រុមការងារគម្រោង',
+      events: 'ព្រឹត្តិការណ៍',
+      eventsFooter: 'ព្រឹត្តិការណ៍',
+      noEvents: 'មិនមានព្រឹត្តិការណ៍',
+      weather: 'អាកាសធាតុ',
+      weatherFooter: 'អាកាសធាតុ',
+      useMyLocation: 'ប្រើទីតាំងរបស់ខ្ញុំ',
+      myLocation: 'ទីតាំងរបស់ខ្ញុំ',
+      loading: 'កំពុងផ្ទុក…',
+      gpsRequesting: 'កំពុងស្នើទីតាំង…',
+      gpsDenied: 'មិនអាចទទួលទីតាំង។ សូមជ្រើសរើសទីក្រុង។',
+      weatherError: 'មិនអាចទាញយកទិន្នន័យអាកាសធាតុ។ សូមពិនិត្យការតភ្ជាប់។',
+      hourly: 'ម៉ោងបន្ទាប់',
+      daily: '៧ ថ្ងៃខាងមុខ',
+      wxNow: 'ឥឡូវ',
+      wxToday: 'ថ្ងៃនេះ',
+      wxFeels: 'មានអារម្មណ៍',
+      wxHumidity: 'សំណើម',
+      wxWind: 'ខ្យល់',
+      weatherCredit: 'ទិន្នន័យដោយ Open-Meteo',
+      contact: 'ទាក់ទង',
+      privacy: 'គោលនយោបាយឯកជន',
+      dailyBlock: 'ការរំលឹកប្រចាំថ្ងៃ',
+      astrology: 'ហោរាសាស្ត្រ',
+      salary: 'ប្រាក់ខែ',
+      bills: 'វិក្កយបត្រ',
+      school: 'សាលា',
+      // Women's health
+      healthTracking: 'ការតាមដានសុខភាពស្ត្រី',
+      enableHealthTracking: 'បើកការតាមដាន',
+      periodFooter: 'រដូវ',
+      activeProfile: 'ប្រវត្តិសកម្ម',
+      logPeriod: 'កត់ត្រារដូវ',
+      manageProfiles: 'គ្រប់គ្រងប្រវត្តិ',
+      startDate: 'ថ្ងៃចាប់ផ្តើម',
+      endDate: 'ថ្ងៃបញ្ចប់ (ស្រេចចិត្ត)',
+      cancel: 'បោះបង់',
+      save: 'រក្សាទុក',
+      addProfile: 'បន្ថែមប្រវត្តិ',
+      rename: 'ប្តូរឈ្មោះ',
+      delete: 'លុប',
+      myProfile: 'ខ្ញុំ',
+      noProfiles: '— មិនមានប្រវត្តិ —',
+      noProfilesYet: 'មិនទាន់មានប្រវត្តិ — សូមបន្ថែមមួយខាងក្រោម។',
+      createProfileFirst: 'សូមបង្កើតប្រវត្តិមួយជាមុនសិន',
+      renameProfilePrompt: 'ឈ្មោះថ្មី៖',
+      newProfilePrompt: 'ឈ្មោះប្រវត្តិ៖',
+      confirmDeleteProfile: 'លុបប្រវត្តិនេះ និងទិន្នន័យទាំងអស់របស់វា?',
+      periodHistory: 'ប្រវត្តិរដូវ',
+      noPeriodsLogged: 'មិនទាន់មានកំណត់ត្រា',
+      edit: 'កែ',
+      confirmDeletePeriod: 'លុបកំណត់ត្រារដូវនេះ?',
+      resetAllData: 'លុបទិន្នន័យទាំងអស់',
+      confirmResetAll: 'លុបទិន្នន័យសុខភាពស្ត្រីទាំងអស់ (ប្រវត្តិ + កំណត់ត្រា)? មិនអាចស្តារឡើងវិញបានទេ។',
+      cycleLength: 'រយៈពេលវដ្ត',
+      periodLength: 'រយៈពេលរដូវ',
+      lastPeriod: 'រដូវចុងក្រោយ',
+      days: 'ថ្ងៃ',
+      healthPrivacyNote: 'ទិន្នន័យរក្សាទុកនៅលើឧបករណ៍របស់អ្នកប៉ុណ្ណោះ មិនបញ្ជូនទៅណាមួយឡើយ។',
+      // Detail panel labels
+      healthPeriod: 'រដូវ',
+      healthPredictedPeriod: 'រដូវដែលរំពឹង',
+      healthOvulation: 'ការបញ្ចេញពងពេលត្រូវ',
+      healthFertile: 'រយៈពេលអាចមានកូន',
+      healthDayN: 'ថ្ងៃទី {n}',
+      healthCycleDayN: 'ថ្ងៃវដ្តទី {n}',
+      healthDaysToNext: '~{n} ថ្ងៃទៀតដល់រដូវបន្ទាប់'
     },
     en: {
       settings: 'Settings',
@@ -58,6 +143,7 @@ const I18n = (() => {
       ],
       monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
       weekdays: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+      weekdaysShort: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
       gregMonths: [
         'January','February','March','April','May','June',
         'July','August','September','October','November','December'
@@ -67,12 +153,93 @@ const I18n = (() => {
       bePrefix: 'B.E.',
       waxing: 'Waxing',
       waning: 'Waning',
+      waxingShort: '↑',
+      waningShort: '↓',
       dayPrefix: '',
       monthPrefix: '',
       yearPrefix: '',
       startDay: 'Week starts on',
       sunday: 'Sunday',
-      monday: 'Monday'
+      monday: 'Monday',
+      about: 'About',
+      more: 'More',
+      version: 'Version',
+      checkUpdate: 'Check for updates',
+      aboutTagline: 'Khmer lunar calendar — works fully offline',
+      developer: 'Developer',
+      telegram: 'Telegram',
+      phone: 'Phone',
+      website: 'Website',
+      facebook: 'Facebook',
+      projectSupporter: 'Project Manager',
+      supporters: 'Supporters',
+      projectTeam: 'Project Team',
+      events: 'Events',
+      eventsFooter: 'Events',
+      noEvents: 'No events',
+      weather: 'Weather',
+      weatherFooter: 'Weather',
+      useMyLocation: 'Use my location',
+      myLocation: 'My location',
+      loading: 'Loading…',
+      gpsRequesting: 'Requesting location…',
+      gpsDenied: 'Location unavailable. Pick a city above.',
+      weatherError: 'Could not load weather. Check your connection.',
+      hourly: 'Hourly',
+      daily: '7-day forecast',
+      wxNow: 'Now',
+      wxToday: 'Today',
+      wxFeels: 'Feels',
+      wxHumidity: 'Humidity',
+      wxWind: 'Wind',
+      weatherCredit: 'Data by Open-Meteo',
+      contact: 'Contact',
+      privacy: 'Privacy Policy',
+      dailyBlock: 'Daily Block',
+      astrology: 'Astrology',
+      salary: 'Salary',
+      bills: 'Bills',
+      school: 'School',
+      // Women's health
+      healthTracking: "Women's health",
+      enableHealthTracking: 'Enable tracking',
+      periodFooter: 'Period',
+      activeProfile: 'Active profile',
+      logPeriod: 'Log period',
+      manageProfiles: 'Manage profiles',
+      startDate: 'Start date',
+      endDate: 'End date (optional)',
+      cancel: 'Cancel',
+      save: 'Save',
+      addProfile: 'Add profile',
+      rename: 'Rename',
+      delete: 'Delete',
+      myProfile: 'Me',
+      noProfiles: '— no profiles —',
+      noProfilesYet: 'No profiles yet — add one below.',
+      createProfileFirst: 'Create a profile first',
+      renameProfilePrompt: 'New name:',
+      newProfilePrompt: 'Profile name:',
+      confirmDeleteProfile: 'Delete this profile and all its data?',
+      periodHistory: 'Period history',
+      noPeriodsLogged: 'No periods logged yet.',
+      edit: 'Edit',
+      confirmDeletePeriod: 'Delete this period entry?',
+      resetAllData: 'Reset all data',
+      confirmResetAll: "Reset ALL women's health data (profiles + logs)? This cannot be undone.",
+      cycleLength: 'Cycle',
+      periodLength: 'Period',
+      lastPeriod: 'Last period',
+      days: 'days',
+      healthPrivacyNote: 'Data stays on your device only — never sent anywhere.',
+      // Detail panel labels
+      healthPeriod: 'Period',
+      healthPredictedPeriod: 'Predicted period',
+      healthOvulation: 'Ovulation',
+      healthFertile: 'Fertile window',
+      healthDayN: 'Day {n}',
+      healthCycleDayN: 'Cycle day {n}',
+      healthDaysToNext: '~{n} days to next period'
     },
     zh: {
       settings: '设置',
@@ -89,6 +256,7 @@ const I18n = (() => {
       ],
       monthsShort: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
       weekdays: ['日','一','二','三','四','五','六'],
+      weekdaysShort: ['周日','周一','周二','周三','周四','周五','周六'],
       gregMonths: [
         '一月','二月','三月','四月','五月','六月',
         '七月','八月','九月','十月','十一月','十二月'
@@ -98,12 +266,93 @@ const I18n = (() => {
       bePrefix: '佛历',
       waxing: '上弦',
       waning: '下弦',
+      waxingShort: '上',
+      waningShort: '下',
       dayPrefix: '',
       monthPrefix: '',
       yearPrefix: '',
       startDay: '每周开始于',
       sunday: '星期日',
-      monday: '星期一'
+      monday: '星期一',
+      about: '关于',
+      more: '更多',
+      version: '版本',
+      checkUpdate: '检查更新',
+      aboutTagline: '高棉农历日历 — 完全离线使用',
+      developer: '开发者',
+      telegram: 'Telegram',
+      phone: '电话',
+      website: '网站',
+      facebook: 'Facebook',
+      projectSupporter: '项目经理',
+      supporters: '支持者',
+      projectTeam: '项目团队',
+      events: '事件',
+      eventsFooter: '事件',
+      noEvents: '暂无事件',
+      weather: '天气',
+      weatherFooter: '天气',
+      useMyLocation: '使用我的位置',
+      myLocation: '我的位置',
+      loading: '加载中…',
+      gpsRequesting: '正在获取位置…',
+      gpsDenied: '无法获取位置，请选择城市。',
+      weatherError: '无法加载天气，请检查网络。',
+      hourly: '逐小时',
+      daily: '未来7天',
+      wxNow: '现在',
+      wxToday: '今天',
+      wxFeels: '体感',
+      wxHumidity: '湿度',
+      wxWind: '风速',
+      weatherCredit: '数据来自 Open-Meteo',
+      contact: '联系',
+      privacy: '隐私政策',
+      dailyBlock: '每日提醒',
+      astrology: '宜忌',
+      salary: '工资',
+      bills: '账单',
+      school: '学校',
+      // Women's health
+      healthTracking: '女性健康',
+      enableHealthTracking: '启用追踪',
+      periodFooter: '经期',
+      activeProfile: '当前用户',
+      logPeriod: '记录经期',
+      manageProfiles: '管理用户',
+      startDate: '开始日期',
+      endDate: '结束日期（可选）',
+      cancel: '取消',
+      save: '保存',
+      addProfile: '添加用户',
+      rename: '重命名',
+      delete: '删除',
+      myProfile: '我',
+      noProfiles: '— 暂无用户 —',
+      noProfilesYet: '暂无用户 — 请在下方添加。',
+      createProfileFirst: '请先创建用户',
+      renameProfilePrompt: '新名称：',
+      newProfilePrompt: '用户名称：',
+      confirmDeleteProfile: '删除此用户及其所有数据？',
+      periodHistory: '经期记录',
+      noPeriodsLogged: '尚未记录任何经期。',
+      edit: '编辑',
+      confirmDeletePeriod: '删除此条经期记录？',
+      resetAllData: '重置所有数据',
+      confirmResetAll: '重置所有女性健康数据（用户 + 记录）？此操作无法撤消。',
+      cycleLength: '周期',
+      periodLength: '经期',
+      lastPeriod: '上次经期',
+      days: '天',
+      healthPrivacyNote: '数据仅保存在您的设备上，绝不上传。',
+      // Detail panel labels
+      healthPeriod: '经期',
+      healthPredictedPeriod: '预测经期',
+      healthOvulation: '排卵日',
+      healthFertile: '易孕期',
+      healthDayN: '第{n}天',
+      healthCycleDayN: '周期第{n}天',
+      healthDaysToNext: '距下次经期~{n}天'
     }
   };
 
@@ -118,20 +367,30 @@ const I18n = (() => {
   function setStartDay(val) {
     _startDay = val;
     localStorage.setItem('kh-cal-startday', val);
+    // Also persist to Capacitor Preferences so the native Android widget can
+    // read the user's preference from SharedPreferences (key: kh-cal-startday).
+    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+      window.Capacitor.Plugins.Preferences.set({ key: 'kh-cal-startday', value: val }).catch(() => {});
+    }
   }
 
   function setLang(lang) {
     if (!translations[lang]) return;
     _lang = lang;
     localStorage.setItem('kh-cal-lang', lang);
+    document.documentElement.setAttribute('lang', lang);
+  }
+
+  function _applyThemeColorMeta(theme) {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = theme === 'light' ? '#f0f2f8' : '#0a0c14';
   }
 
   function setTheme(theme) {
     _theme = theme;
     localStorage.setItem('kh-cal-theme', theme);
     document.documentElement.setAttribute('data-theme', theme);
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'light' ? '#f0f2f8' : '#0a0c14';
+    _applyThemeColorMeta(theme);
   }
 
   function t(key) {
@@ -164,9 +423,11 @@ const I18n = (() => {
     return dict.gregMonthsShort[idx];
   }
 
-  // Apply saved theme on load
+  // Apply saved theme + lang on load
   function initTheme() {
     document.documentElement.setAttribute('data-theme', _theme);
+    document.documentElement.setAttribute('lang', _lang);
+    _applyThemeColorMeta(_theme);
   }
 
   // Update data-i18n elements

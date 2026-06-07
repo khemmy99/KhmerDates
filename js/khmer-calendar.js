@@ -37,7 +37,7 @@ const KhmerCalendar = (() => {
     '\u1798\u1798\u17B8',                                             // មមី
     '\u1798\u1798\u17C2',                                             // មមែ
     '\u179C\u1780',                                                   // វក
-    '\u179A\u1780\u17B6\u179A',                                       // រកា​រ
+    '\u179A\u1780\u17B6'        ,                                       // រកា​រ
     '\u1785',                                                         // ច
     '\u1780\u17BB\u179A'                                              // កុរ
   ];
@@ -140,25 +140,21 @@ const KhmerCalendar = (() => {
     return KHM14[idx];
   }
 
+  // Animal & Sak transition on the civil Khmer New Year (Maha Sangkran, Apr 14),
+  // NOT on the lunar Pisakh boundary used by the BE year. So the cyclic year
+  // identifiers (animal/Sak) can be a few weeks "ahead" of the BE number
+  // between Apr 14 and the lunar Pisakh transition.
+  function _zodiacBE(adYear, adMonth, adDay) {
+    if (adMonth > 4 || (adMonth === 4 && adDay >= 14)) return adYear + 544;
+    return adYear + 543;
+  }
+
   function khmerYearAnimalFromBE(adYear, adMonth, adDay) {
-    const mDate = new Date(adYear, adMonth - 1, adDay);
-    const newYearBoundary = new Date(adYear, 3, 14); // April 14
-    const BE = mDate >= newYearBoundary ? adYear + 544 : adYear + 543;
-    let idx = (BE + 5) % 12;
-    if (idx === 0) idx = 12;
-    return KHY12[idx - 1]; // convert 1-based to 0-based
+    return animalFromBE(_zodiacBE(adYear, adMonth, adDay));
   }
 
   function sakNameFromAD(adYear, adMonth, adDay) {
-    let BE;
-    if (adMonth < 4 || (adMonth === 4 && adDay < 14)) {
-      BE = adYear + 543;
-    } else {
-      BE = adYear + 544;
-    }
-    let idx = (BE - 2) % 10;
-    if (idx === 0) idx = 10;
-    return Sak10[idx - 1]; // convert 1-based to 0-based
+    return sakFromBE(_zodiacBE(adYear, adMonth, adDay));
   }
 
   function animalFromBE(be) {
@@ -271,6 +267,11 @@ const KhmerCalendar = (() => {
     return km === 1 ? 12 : km - 1;
   }
 
+  // Buddhist Era year based on the lunar Khmer New Year boundary:
+  //   the day AFTER the Pisakh full moon — i.e. lunar km = 6, kd = 16
+  //   ("ថ្ងៃ ១ រោច ខែពិសាខ" / Visakha Bochea).
+  // The Gregorian "month > 9" branch carries the post-transition year through
+  // Oct-Dec (after May's lunar transition, before the next Jan-Apr window).
   function computeBEYear(adYear, adMonth, km, kd) {
     if (adMonth > 9 || km > 6 || (km === 6 && kd > 15)) {
       return adYear + 544;
@@ -356,6 +357,7 @@ const KhmerCalendar = (() => {
     }
 
     const kMonthName = khmerMonthNameFromKm(km);
+    // Animal & Sak use Apr 14 (civil) boundary, independent of BE (lunar boundary)
     const animal = khmerYearAnimalFromBE(adYear, adMonth, adDay);
     const sak = sakNameFromAD(adYear, adMonth, adDay);
 
