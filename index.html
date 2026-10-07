@@ -457,14 +457,12 @@
           <button type="button" class="cal-modal-close" id="health-log-close">&times;</button>
         </div>
         <div class="cal-modal-body">
-          <label class="cal-modal-field">
-            <span data-i18n="startDate">ថ្ងៃចាប់ផ្តើម</span>
-            <input type="date" id="health-log-start">
-          </label>
-          <label class="cal-modal-field">
-            <span data-i18n="endDate">ថ្ងៃបញ្ចប់ (ស្រេចចិត្ត)</span>
-            <input type="date" id="health-log-end">
-          </label>
+          <!-- Tap the first day, then the last; the hidden fields carry the
+               picked YYYY-MM-DD values to _saveLogPeriod -->
+          <div class="hl-cal" id="health-log-cal"></div>
+          <div class="hl-summary" id="health-log-summary"></div>
+          <input type="hidden" id="health-log-start">
+          <input type="hidden" id="health-log-end">
           <div class="cal-modal-actions">
             <button type="button" class="cal-modal-btn" id="health-log-cancel" data-i18n="cancel">បោះបង់</button>
             <button type="button" class="cal-modal-btn cal-modal-btn--primary" id="health-log-save" data-i18n="save">រក្សាទុក</button>

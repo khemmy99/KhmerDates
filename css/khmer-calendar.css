@@ -651,9 +651,9 @@ body {
 }
 .health-period-dates {
   flex: 1;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.6;
   color: var(--kh-text);
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
 }
 .health-period-action {
   width: 28px;
@@ -3432,3 +3432,101 @@ html { background-color: #0a0c14; }
   box-shadow: 0 0 0 1px var(--kh-primary), 0 2px 8px rgba(59,125,230,0.22);
 }
 .cal-cell.today.selected { box-shadow: 0 0 0 2px var(--kh-primary); }
+
+
+/* =========================================================
+   PERIOD RANGE PICKER — a month calendar in the log modal:
+   tap the first day, then the last; the range shows as a pink
+   band. Replaces two native mm/dd/yyyy date inputs.
+   ========================================================= */
+.hl-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.hl-cal-title { font-size: 15px; font-weight: 700; color: var(--kh-text); }
+.hl-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--kh-border-strong);
+  background: transparent;
+  color: var(--kh-text);
+  cursor: pointer;
+}
+.hl-nav:disabled { opacity: 0.3; cursor: default; }
+.hl-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 4px;
+}
+.hl-wd {
+  text-align: center;
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  padding: 2px 0 4px;
+}
+.hl-day {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--kh-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hl-day span {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.hl-day--today span { box-shadow: inset 0 0 0 1.5px var(--kh-primary); }
+.hl-day--disabled { opacity: 0.3; cursor: default; }
+.hl-day--logged span::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f04e7a;
+}
+/* Range: a band across the row, solid circles at both ends */
+.hl-day--in,
+.hl-day--start,
+.hl-day--end { background: rgba(240,78,122,0.14); }
+.hl-day--start { border-radius: 19px 0 0 19px; }
+.hl-day--end   { border-radius: 0 19px 19px 0; }
+.hl-day--single { border-radius: 19px; background: transparent; }
+.hl-day--start span,
+.hl-day--end span { background: #f04e7a; color: #fff; font-weight: 700; box-shadow: none; }
+
+.hl-summary { margin-top: 10px; min-height: 40px; }
+.hl-range { font-size: 14px; font-weight: 700; color: var(--kh-text); }
+.hl-hint { font-size: 12.5px; color: var(--kh-text-muted); margin-top: 2px; }
+
+/* Period history: readable dates and a length badge */
+.health-period-len {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(240,78,122,0.12);
+  color: #f04e7a;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+

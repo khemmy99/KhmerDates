@@ -1566,6 +1566,7 @@ const KhCal = (() => {
     document.getElementById('health-log-close').addEventListener('click', _closeLogPeriodModal);
     document.getElementById('health-log-cancel').addEventListener('click', _closeLogPeriodModal);
     document.getElementById('health-log-save').addEventListener('click', _saveLogPeriod);
+    document.getElementById('health-log-cal').addEventListener('click', _onLogCalClick);
     document.getElementById('health-profiles-close').addEventListener('click', _closeProfilesModal);
     document.getElementById('health-add-profile-btn').addEventListener('click', _addProfilePrompt);
     const resetBtn = document.getElementById('health-reset-all-btn');
@@ -1605,18 +1606,23 @@ const KhCal = (() => {
     const period = HT.getEffectivePeriodLength(profile);
     const periods = profile.periods || [];
     const last = periods.length ? periods[periods.length - 1].start : null;
+    const next = last ? HT.predictNextPeriods(profile.id, 1)[0] : null;
     el.innerHTML = `
       <div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('cycleLength') || 'Cycle')}</span>
-        <span class="health-summary-val">~${cycle} ${escapeHtml(I18n.t('days') || 'days')}</span>
+        <span class="health-summary-val">~${_num(cycle)} ${escapeHtml(I18n.t('days') || 'days')}</span>
       </div>
       <div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('periodLength') || 'Period')}</span>
-        <span class="health-summary-val">~${period} ${escapeHtml(I18n.t('days') || 'days')}</span>
+        <span class="health-summary-val">~${_num(period)} ${escapeHtml(I18n.t('days') || 'days')}</span>
       </div>
       ${last ? `<div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('lastPeriod') || 'Last period')}</span>
-        <span class="health-summary-val">${escapeHtml(last)}</span>
+        <span class="health-summary-val">${escapeHtml(_fmtYmd(last, true))}</span>
+      </div>` : ''}
+      ${next ? `<div class="health-summary-row">
+        <span class="health-summary-label">${escapeHtml(I18n.t('nextPeriod'))}</span>
+        <span class="health-summary-val">${escapeHtml(_fmtYmd(next, true))}</span>
       </div>` : ''}
     `;
   }
@@ -1634,18 +1640,118 @@ const KhCal = (() => {
       return;
     }
     _editingPeriodStart = existing ? existing.start : null;
-    const startEl = document.getElementById('health-log-start');
-    const endEl   = document.getElementById('health-log-end');
-    if (existing) {
-      if (startEl) startEl.value = existing.start;
-      if (endEl)   endEl.value   = existing.end || '';
-    } else {
-      const today = new Date();
-      if (startEl) startEl.value = HT._ymd(today);
-      if (endEl)   endEl.value   = '';
-    }
+    const start = existing ? existing.start : HT._ymd(new Date());
+    const [vy, vm] = start.split('-').map(Number);
+    _logPick = { start, end: existing ? (existing.end || null) : null, viewY: vy, viewM: vm - 1 };
+    _renderLogCal();
     const overlay = document.getElementById('health-log-overlay');
     if (overlay) overlay.classList.add('open');
+  }
+
+  // ----- Period range picker (inside the log modal) -----
+  let _logPick = null; // { start, end, viewY, viewM } — dates as YYYY-MM-DD
+
+  /** "៧ តុលា" (or "៧ តុលា ២០២៦" with withYear) in the UI language. */
+  function _fmtYmd(ymd, withYear) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const lang = I18n.getLang();
+    if (lang === 'zh') return (withYear ? y + '年' : '') + (m) + '月' + d + '日';
+    const month = lang === 'km' ? I18n.gregMonth(m - 1) : I18n.gregMonthShort(m - 1);
+    return `${_num(d)} ${month}${withYear ? ' ' + _num(y) : ''}`;
+  }
+
+  function _daysBetween(a, b) {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad)) / 86400000);
+  }
+
+  function _renderLogCal() {
+    const calEl = document.getElementById('health-log-cal');
+    const sumEl = document.getElementById('health-log-summary');
+    if (!calEl || !_logPick) return;
+    const { start, end, viewY, viewM } = _logPick;
+    const startEl = document.getElementById('health-log-start');
+    const endEl   = document.getElementById('health-log-end');
+    if (startEl) startEl.value = start || '';
+    if (endEl)   endEl.value   = end || '';
+
+    const todayYmd = HT._ymd(new Date());
+    const lang = I18n.getLang();
+    const T = I18n.translations[lang] || I18n.translations.km;
+    const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+
+    // Other logged periods, shown as a small dot for context
+    const profile = HT.getActiveProfile();
+    const others = ((profile && profile.periods) || []).filter(p => p.start !== _editingPeriodStart);
+    const inOther = ymd => others.some(p => ymd >= p.start && ymd <= (p.end || p.start));
+
+    const first = new Date(viewY, viewM, 1);
+    const lead = (first.getDay() - order[0] + 7) % 7;
+    const days = new Date(viewY, viewM + 1, 0).getDate();
+    let cells = order.map(dw => `<div class="hl-wd">${escapeHtml(T.weekdaysShort[dw])}</div>`).join('');
+    for (let i = 0; i < lead; i++) cells += '<div></div>';
+    for (let d = 1; d <= days; d++) {
+      const ymd = HT._ymd(new Date(viewY, viewM, d));
+      const cls = ['hl-day'];
+      if (ymd > todayYmd) cls.push('hl-day--disabled');
+      if (ymd === todayYmd) cls.push('hl-day--today');
+      if (inOther(ymd)) cls.push('hl-day--logged');
+      if (start && ymd === start) cls.push('hl-day--start');
+      if (end && ymd === end) cls.push('hl-day--end');
+      if (start && end && ymd > start && ymd < end) cls.push('hl-day--in');
+      if (start && ymd === start && (!end || end === start)) cls.push('hl-day--single');
+      cells += `<button type="button" class="${cls.join(' ')}" data-ymd="${ymd}"><span>${_num(d)}</span></button>`;
+    }
+    const canNext = new Date(viewY, viewM + 1, 1) <= new Date();
+    calEl.innerHTML = `
+      <div class="hl-cal-head">
+        <button type="button" class="hl-nav" data-nav="-1" aria-label="Previous month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="hl-cal-title">${escapeHtml(I18n.gregMonth(viewM))} ${_num(viewY)}</span>
+        <button type="button" class="hl-nav" data-nav="1" aria-label="Next month"${canNext ? '' : ' disabled'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="hl-grid">${cells}</div>`;
+
+    if (sumEl) {
+      let range = '', hint;
+      if (!start) {
+        hint = I18n.t('pickStartHint');
+      } else if (!end) {
+        range = `${_fmtYmd(start)} → …`;
+        hint = I18n.t('pickEndHint');
+      } else {
+        range = `${_fmtYmd(start)} → ${_fmtYmd(end)} · ${_num(_daysBetween(start, end) + 1)} ${I18n.t('days')}`;
+        hint = '';
+      }
+      sumEl.innerHTML = (range ? `<div class="hl-range">${escapeHtml(range)}</div>` : '') +
+                        (hint ? `<div class="hl-hint">${escapeHtml(hint)}</div>` : '');
+    }
+  }
+
+  function _onLogCalClick(e) {
+    if (!_logPick) return;
+    const nav = e.target.closest('[data-nav]');
+    if (nav) {
+      const d = new Date(_logPick.viewY, _logPick.viewM + Number(nav.dataset.nav), 1);
+      _logPick.viewY = d.getFullYear();
+      _logPick.viewM = d.getMonth();
+      _renderLogCal();
+      return;
+    }
+    const day = e.target.closest('.hl-day');
+    if (!day || day.classList.contains('hl-day--disabled')) return;
+    const ymd = day.dataset.ymd;
+    const p = _logPick;
+    // First tap (or a tap after a full range) starts over; a later day ends
+    // the range; an earlier day moves the start.
+    if (!p.start || p.end) { p.start = ymd; p.end = null; }
+    else if (ymd < p.start) { p.start = ymd; }
+    else if (ymd > p.start) { p.end = ymd; }
+    _renderLogCal();
   }
 
   function _closeLogPeriodModal() {
@@ -1689,7 +1795,7 @@ const KhCal = (() => {
     el.innerHTML = periods.slice(0, 12).map(p => `
       <div class="health-period-row" data-start="${escapeHtml(p.start)}" data-end="${escapeHtml(p.end || '')}">
         <span class="health-period-dot"></span>
-        <span class="health-period-dates">${escapeHtml(p.start)}${p.end ? '  →  ' + escapeHtml(p.end) : ''}</span>
+        <span class="health-period-dates">${escapeHtml(_fmtYmd(p.start, true))} → ${escapeHtml(p.end ? _fmtYmd(p.end) : I18n.t('ongoing'))}${p.end ? `<span class="health-period-len">${escapeHtml(_num(_daysBetween(p.start, p.end) + 1) + ' ' + I18n.t('days'))}</span>` : ''}</span>
         <button type="button" class="health-period-action" data-action="edit"   aria-label="${escapeHtml(editLabel)}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
