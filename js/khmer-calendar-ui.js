@@ -10,7 +10,7 @@ const KhCal = (() => {
   const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
-  const APP_VERSION = '1.5.4';
+  const APP_VERSION = '1.5.5';
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -316,16 +316,20 @@ const KhCal = (() => {
     _toast(ok ? I18n.t('copied') : I18n.t('copyFailed'));
   }
 
-  /** One selectable date line in the detail sheet plus its copy button. */
-  function _copyRow(text, extraCls) {
+  const _ICON_COPY  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const _ICON_SHARE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>';
+
+  /** One labelled, selectable date line in the detail sheet plus its copy button. */
+  function _copyRow(label, text, extraCls) {
     const safe = escapeHtml(text);
-    const label = escapeHtml(I18n.t('copy'));
+    const copyLabel = escapeHtml(I18n.t('copy'));
     return `<div class="detail-full-row">
-      <div class="detail-full detail-selectable${extraCls ? ' ' + extraCls : ''}">${safe}</div>
+      <div class="dinfo-main">
+        <div class="dinfo-label">${escapeHtml(label)}</div>
+        <div class="dinfo-text detail-selectable${extraCls ? ' ' + extraCls : ''}">${safe}</div>
+      </div>
       <button type="button" class="detail-copy-btn" data-copy="${safe}"
-              aria-label="${label}" title="${label}">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-      </button>
+              aria-label="${copyLabel}" title="${copyLabel}">${_ICON_COPY}</button>
     </div>`;
   }
 
@@ -468,77 +472,141 @@ const KhCal = (() => {
       : `<div class="events-empty">${escapeHtml(I18n.t('noEvents') || 'No events')}</div>`;
   }
 
-  function _renderHolidayBlock(dt, lang) {
-    if (!HL) return '';
-    const list = HL.getByDate(dt);
-    if (!list || !list.length) return '';
-    // Use the same red/gold split as the cell markers: a block is red only
-    // when at least one matching entry is a public holiday; otherwise gold.
-    const kind  = HL.classifyDate(dt) || 'public';
-    const modCls = kind === 'observance' ? ' detail-holiday--observance' : '';
-    const items = list.map(h => `<div class="detail-holiday-item">${escapeHtml(HL.nameFor(h, lang))}</div>`).join('');
-    return `<div class="detail-holiday${modCls}">${items}</div>`;
+  // ----- Day sheet sections -----
+  const _ICON_FLAG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></svg>';
+  const _ICON_SIL  = '<span class="detail-sil-icon" aria-hidden="true"></span>';
+
+  /** Titled card; the title sits between two rules above the card. */
+  function _sheetSection(title, body, extraCls) {
+    return `<section class="dsec${extraCls ? ' ' + extraCls : ''}">
+      <h3 class="dsec-title"><span>${escapeHtml(title)}</span></h3>
+      <div class="dsec-card">${body}</div>
+    </section>`;
   }
 
-  // ថ្ងៃសីល row for the day sheet. Named after which moon the day falls on,
-  // which is how the observance is actually referred to.
-  function _renderSilBlock(dt) {
-    if (!I18n.getSilDays()) return '';
-    const sil = KC.silDayFromGregorian(dt);
-    if (!sil) return '';
+  /** One row inside a section: tone bar, icon, text (HTML), optional note. */
+  function _sheetRow(tone, icon, textHtml, noteHtml) {
+    return `<div class="dsec-row dsec-row--${tone}">
+      <span class="dsec-bar"></span>
+      <span class="dsec-icon">${icon}</span>
+      <span class="dsec-text">${textHtml}</span>
+      ${noteHtml ? `<span class="dsec-note">${noteHtml}</span>` : ''}
+    </div>`;
+  }
+
+  function _silLabel(sil) {
     const phaseKey = sil.kind === 'full' ? 'silFull' : sil.kind === 'new' ? 'silNew' : 'silQuarter';
-    const label = I18n.t('silDay') + ' · ' + I18n.t(phaseKey);
-    return `<div class="detail-sil"><span class="detail-sil-icon" aria-hidden="true"></span>`
-         + `<span>${escapeHtml(label)}</span></div>`;
+    return I18n.t('silDay') + ' · ' + I18n.t(phaseKey);
   }
 
-  function _renderHealthBlock(dt, lang) {
+  function _healthRow(dt) {
     if (!HT || !HT.isEnabled()) return '';
     const info = HT.getDayInfo(dt);
     if (!info || info.kind === 'none') return '';
 
     const profile = HT.getActiveProfile();
     const profileName = profile ? profile.name : '';
+    const fill = (key, fallback, n) => (I18n.t(key) || fallback).replace('{n}', _num(n));
 
     let icon = '', kindLabel = '', detail = '';
     switch (info.kind) {
       case 'period':
         icon = '🔴';
         kindLabel = I18n.t('healthPeriod') || 'Period';
-        detail = (I18n.t('healthDayN') || 'Day {n}').replace('{n}', info.dayInPeriod);
+        detail = fill('healthDayN', 'Day {n}', info.dayInPeriod);
         break;
       case 'predicted-period':
         icon = '🩸';
         kindLabel = I18n.t('healthPredictedPeriod') || 'Predicted period';
-        detail = (I18n.t('healthDayN') || 'Day {n}').replace('{n}', info.dayInPeriod);
+        detail = fill('healthDayN', 'Day {n}', info.dayInPeriod);
         break;
       case 'ovulation':
         icon = '🥚';
         kindLabel = I18n.t('healthOvulation') || 'Ovulation';
-        detail = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        detail = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         break;
       case 'fertile':
         icon = '🌱';
         kindLabel = I18n.t('healthFertile') || 'Fertile window';
-        detail = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        detail = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         break;
       case 'normal':
         icon = '🌸';
-        kindLabel = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        kindLabel = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         if (info.daysToNextPeriod > 0) {
-          detail = (I18n.t('healthDaysToNext') || '~{n} days to next period').replace('{n}', info.daysToNextPeriod);
+          detail = fill('healthDaysToNext', '~{n} days to next period', info.daysToNextPeriod);
         }
         break;
     }
 
-    return `<div class="detail-health detail-health--${info.kind}">
-      <div class="detail-health-row">
-        <span class="detail-health-icon">${icon}</span>
-        <span class="detail-health-kind">${escapeHtml(kindLabel)}</span>
-        ${detail ? `<span class="detail-health-detail">${escapeHtml(detail)}</span>` : ''}
-      </div>
-      ${profileName ? `<div class="detail-health-profile">${escapeHtml(profileName)}</div>` : ''}
-    </div>`;
+    const text = `<b class="dsec-health-kind">${escapeHtml(kindLabel)}</b>`
+               + (detail ? `<span class="dsec-sub">${escapeHtml(detail)}</span>` : '');
+    return _sheetRow('health dsec-row--' + info.kind, icon, text,
+                     profileName ? escapeHtml(profileName) : '');
+  }
+
+  // ព្រឹត្តិការណ៍ — holidays, ថ្ងៃសីល and the cycle tracker for this day.
+  // Red bar = public holiday, gold = observance (same split as the grid dots).
+  function _renderDayEvents(dt, lang) {
+    const rows = [];
+    const list = HL ? HL.getByDate(dt) : null;
+    (list || []).forEach(h => {
+      rows.push(_sheetRow(h.observance === true ? 'gold' : 'red', _ICON_FLAG, escapeHtml(HL.nameFor(h, lang))));
+    });
+    if (I18n.getSilDays()) {
+      const sil = KC.silDayFromGregorian(dt);
+      if (sil) rows.push(_sheetRow('gold', _ICON_SIL, escapeHtml(_silLabel(sil))));
+    }
+    const health = _healthRow(dt);
+    if (health) rows.push(health);
+    return rows.length ? _sheetSection(I18n.t('eventsFooter'), rows.join('')) : '';
+  }
+
+  function _countdown(n) {
+    return n === 1 ? I18n.t('tomorrow') : I18n.t('inNDays').replace('{n}', _num(n));
+  }
+
+  // បន្ទាប់ — the next ថ្ងៃសីល and the next couple of holidays after `dt`.
+  // A holiday counts from the day it starts; a festival already running on
+  // `dt` is skipped until it changes phase (e.g. Pchum Ben observance days
+  // rolling into its public-holiday days).
+  const UPCOMING_SCAN_DAYS = 90;
+  const UPCOMING_MAX_HOLIDAYS = 2;
+
+  function _renderUpcoming(dt, lang) {
+    const keyOf = h => (h.id || h.km) + (h.observance === true ? ':o' : ':p');
+    const keysOn = day => new Set(((HL && HL.getByDate(day)) || []).map(keyOf));
+
+    const found = [];
+    const seenHolidays = new Set();
+    let needSil = I18n.getSilDays();
+    let holidays = 0;
+    let prevKeys = keysOn(dt);
+
+    for (let i = 1; i <= UPCOMING_SCAN_DAYS && (needSil || holidays < UPCOMING_MAX_HOLIDAYS); i++) {
+      const day = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + i);
+      const lun = KC.getKhmerDayMonthFromGregorian(day);
+
+      if (needSil && KC.silDayFromKhmer(lun.km, lun.kd, day.getFullYear())) {
+        found.push(_sheetRow('gold', _ICON_SIL, escapeHtml(I18n.t('silDay')), escapeHtml(_countdown(i))));
+        needSil = false;
+      }
+
+      const list = (HL && HL.getByDate(day)) || [];
+      const keys = new Set();
+      for (const h of list) {
+        const key = keyOf(h);
+        keys.add(key);
+        const base = h.id || h.km;
+        if (holidays >= UPCOMING_MAX_HOLIDAYS || prevKeys.has(key) || seenHolidays.has(base)) continue;
+        seenHolidays.add(base);
+        holidays++;
+        found.push(_sheetRow(h.observance === true ? 'gold' : 'red', _ICON_FLAG,
+                             escapeHtml(h[lang] || h.km || ''), escapeHtml(_countdown(i))));
+      }
+      prevKeys = keys;
+    }
+    return found.length ? _sheetSection(I18n.t('upNext'), found.join('')) : '';
   }
 
   function _renderDailyBlock(dt, lang) {
@@ -862,43 +930,69 @@ const KhCal = (() => {
     const cn = CC.fromDate(dt);
     const cnLine = cn ? `农历${cn.monthName}${cn.dayName} | ${cn.stemBranch}年【${cn.animal}】` : '';
 
-    let waxLabel, weekday, yearLine, gregLine, bigNum, smallNum;
+    const T = I18n.translations;
+    const enWeekday = dt.toLocaleDateString('en-US', { weekday: 'long' });
+    const kmWeekday = 'ថ្ងៃ' + KC.KD7[dow];
+    const waxLabel = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
+    const isToday = new Date().toDateString() === dt.toDateString();
 
+    // Title weekday in the UI language; the small line under the big number
+    // repeats it in a second language, as on a printed tear-off calendar.
+    let weekday, weekdayAlt, yearStrip, monthStrip;
     if (lang === 'km') {
-      waxLabel = lun.kd <= 15 ? KC.RK[0] : KC.RK[1];
-      weekday = KC.KD7[dow];
-      bigNum = KC.khmerNumber(kdDisp);
-      smallNum = String(d);
-      yearLine = `${animal} ${sak} ព.ស.${KC.khmerNumber(be)}`;
-      gregLine = `${d} ${I18n.gregMonth(m)} ${y}`;
+      weekday = kmWeekday;
+      weekdayAlt = enWeekday;
+      yearStrip = `ឆ្នាំ${animal} ${sak} ព.ស. ${KC.khmerNumber(be)}`;
+      monthStrip = `${T.en.gregMonths[m]} ${y}`;
     } else {
-      waxLabel = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
-      weekday = I18n.weekday(dow);
-      bigNum = String(kdDisp);
-      smallNum = KC.khmerNumber(kdDisp);
-      yearLine = `${animal} ${sak} ${I18n.t('bePrefix')} ${be}`;
-      gregLine = `${d} ${I18n.gregMonth(m)} ${y}`;
+      weekday = lang === 'zh' ? '星期' + I18n.weekday(dow) : enWeekday;
+      weekdayAlt = kmWeekday;
+      yearStrip = `${animal} ${sak} · ${I18n.t('bePrefix')} ${be}`;
+      monthStrip = `${T.km.gregMonths[m]} ${KC.khmerNumber(y)}`;
     }
 
+    const place = _getPlace().trim();
+    const shareText = [khDate, cnLine, grDate].filter(Boolean).join('\n');
+    const canShare = typeof navigator.share === 'function';
+
     content.innerHTML = `
-      <div class="detail-main">
-        <div class="detail-left">
-          <div class="detail-kday-big">${bigNum}</div>
-          <div class="detail-gday">${smallNum}</div>
+      <div class="dhead-strip">
+        <span>${escapeHtml(yearStrip)}</span>
+        <span class="dhead-strip-month">${escapeHtml(monthStrip)}</span>
+      </div>
+      <div class="dhead">
+        <div class="dhead-col">
+          <div class="dhead-label">${escapeHtml(I18n.t('lunarCal'))}</div>
+          <div class="dhead-month dhead-month--lunar">${escapeHtml(kMonthName)}</div>
+          <div class="dhead-num">${_num(kdDisp)}</div>
+          <div class="dhead-sub">${escapeHtml(waxLabel)}</div>
         </div>
-        <div class="detail-info">
-          <div class="detail-khmer-date">${waxLabel} ${lang === 'km' ? 'ខែ' : ''}${kMonthName} | ${weekday}</div>
-          <div class="detail-year">${yearLine}</div>
-          <div class="detail-weekday">${gregLine}</div>
+        <div class="dhead-col dhead-mid">
+          ${isToday ? `<div class="dhead-today">${escapeHtml(I18n.t('today'))}</div>` : ''}
+          <div class="dhead-weekday">${escapeHtml(weekday)}</div>
+          <div class="dhead-big">${d}</div>
+          <div class="dhead-weekday-alt${lang === 'km' ? ' dhead-weekday-alt--latin' : ''}">${escapeHtml(weekdayAlt)}</div>
+        </div>
+        <div class="dhead-col">
+          <div class="dhead-label">${escapeHtml(I18n.t('solarCal'))}</div>
+          <div class="dhead-month">${escapeHtml(I18n.gregMonth(m))}</div>
+          <div class="dhead-num">${_num(d)}</div>
+          <div class="dhead-sub">${_num(y)}</div>
         </div>
       </div>
-      ${_renderHolidayBlock(dt, lang)}
-      ${_renderSilBlock(dt)}
-      ${_renderHealthBlock(dt, lang)}
-      ${_copyRow(khDate)}
-      ${cnLine ? _copyRow(cnLine, 'detail-chinese') : ''}
-      ${_copyRow(grDate, 'detail-greg')}
-      ${(() => { const p = _getPlace().trim(); return p ? _copyRow(p + ', ' + grDate, 'detail-place') : ''; })()}
+      ${_renderDayEvents(dt, lang)}
+      ${_sheetSection(I18n.t('dayInfo'), `
+        ${_copyRow(I18n.t('lunarCal'), khDate)}
+        ${cnLine ? _copyRow(I18n.t('chineseCal'), cnLine, 'detail-chinese') : ''}
+        ${_copyRow(I18n.t('solarCal'), grDate)}
+        ${place ? _copyRow(I18n.t('place'), place + ', ' + grDate, 'detail-place') : ''}
+        <div class="dinfo-actions">
+          <button type="button" class="detail-copy-btn dinfo-action" data-copy="${escapeHtml(shareText)}"
+                  aria-label="${escapeHtml(I18n.t('copy'))}" title="${escapeHtml(I18n.t('copy'))}">${_ICON_COPY}</button>
+          ${canShare ? `<button type="button" class="detail-share-btn dinfo-action" data-share="${escapeHtml(shareText)}"
+                  aria-label="${escapeHtml(I18n.t('share'))}" title="${escapeHtml(I18n.t('share'))}">${_ICON_SHARE}</button>` : ''}
+        </div>`)}
+      ${_renderUpcoming(dt, lang)}
       ${_renderDailyBlock(dt, lang)}
     `;
 
@@ -1084,7 +1178,8 @@ const KhCal = (() => {
   function _attachDetailSwipe(panel) {
     let startY = 0, currentY = 0, tracking = false;
     panel.addEventListener('touchstart', (e) => {
-      if (!panel.classList.contains('open')) return;
+      // The sheet scrolls now; only a pull-down from the very top closes it.
+      if (!panel.classList.contains('open') || panel.scrollTop > 0) return;
       startY = e.touches[0].clientY;
       currentY = startY;
       tracking = true;
@@ -1685,6 +1780,12 @@ const KhCal = (() => {
     const detailContent = document.getElementById('cal-detail-content');
     if (detailContent) {
       detailContent.addEventListener('click', (e) => {
+        const shareBtn = e.target.closest('.detail-share-btn');
+        if (shareBtn) {
+          e.stopPropagation();
+          navigator.share({ text: shareBtn.dataset.share || '' }).catch(() => {});
+          return;
+        }
         const btn = e.target.closest('.detail-copy-btn');
         if (!btn) return;
         e.stopPropagation();

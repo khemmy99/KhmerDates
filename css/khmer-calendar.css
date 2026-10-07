@@ -727,74 +727,7 @@ body {
   background: rgba(0,0,0,0.18);
 }
 
-.detail-main {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 14px;
-}
-.detail-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 60px;
-}
-.detail-kday-big {
-  font-size: 44px;
-  font-weight: 800;
-  color: var(--kh-primary);
-  line-height: 1;
-  min-width: 60px;
-  text-align: center;
-  text-shadow: 0 2px 12px rgba(91,156,246,0.2);
-}
-.detail-gday {
-  font-size: 13px;
-  color: var(--kh-text-muted);
-  line-height: 1;
-  min-width: 60px;
-  text-align: center;
-  margin-top: 4px;
-}
-.detail-info { flex: 1; }
-.detail-khmer-date {
-  font-size: 15px;
-  color: var(--kh-green);
-  font-weight: 600;
-  margin-bottom: 3px;
-  line-height: 1.4;
-}
-.detail-year {
-  font-size: 12px;
-  color: var(--kh-text-secondary);
-  margin-top: 2px;
-  line-height: 1.4;
-}
-.detail-weekday {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  margin-top: 4px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-.detail-full {
-  font-size: 13px;
-  color: var(--kh-text);
-  line-height: 1.7;
-  padding: 8px 0;
-  border-top: 1px solid var(--kh-border);
-}
-.detail-greg {
-  color: var(--kh-text-muted);
-  font-size: 12px;
-  border-top: none;
-  padding-top: 0;
-}
-.detail-chinese {
-  color: var(--kh-gold);
-  font-size: 13px;
-}
+.detail-chinese { color: var(--kh-gold); }
 
 /* ----- Daily Block (astrology + reminders) in the detail panel ----- */
 .detail-daily {
@@ -900,56 +833,6 @@ body {
   border-color: rgba(59,125,230,0.2);
 }
 
-/* Public-holiday block inside the day detail */
-.detail-holiday {
-  background: rgba(248,113,113,0.08);
-  border: 1px solid rgba(248,113,113,0.25);
-  border-radius: var(--kh-radius);
-  padding: 10px 12px;
-  margin: 6px 0 10px;
-}
-.detail-holiday-item {
-  color: var(--kh-red);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
-}
-.detail-holiday-item + .detail-holiday-item { margin-top: 4px; }
-[data-theme="light"] .detail-holiday {
-  background: rgba(217,68,68,0.07);
-  border-color: rgba(217,68,68,0.3);
-}
-
-/* Observance variant — gold/saffron, used for Pchum Ben days 1-13
-   and other cultural festival days that are not official rest days. */
-.detail-holiday--observance {
-  background: rgba(232,178,92,0.10);
-  border-color: rgba(232,178,92,0.30);
-}
-.detail-holiday--observance .detail-holiday-item { color: #e8b25c; }
-[data-theme="light"] .detail-holiday--observance {
-  background: rgba(180,130,40,0.08);
-  border-color: rgba(180,130,40,0.30);
-}
-[data-theme="light"] .detail-holiday--observance .detail-holiday-item {
-  color: #b48228;
-}
-
-/* ថ្ងៃសីល row — same card shape as .detail-holiday, gold rather than red
-   because it marks an observance, not a day off. */
-.detail-sil {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(212,168,74,0.09);
-  border: 1px solid rgba(212,168,74,0.24);
-  border-radius: var(--kh-radius);
-  padding: 9px 12px;
-  margin: 6px 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--kh-gold);
-}
 .detail-sil-icon {
   flex: none;
   width: 18px;
@@ -957,10 +840,6 @@ body {
   background-color: var(--kh-gold);
   -webkit-mask: var(--kh-sil-icon) center / contain no-repeat;
   mask: var(--kh-sil-icon) center / contain no-repeat;
-}
-[data-theme="light"] .detail-sil {
-  background: rgba(184,137,46,0.08);
-  border-color: rgba(184,137,46,0.30);
 }
 
 /* ===== Toast ===== */
@@ -1783,34 +1662,6 @@ body {
 }
 
 /* Detail panel health block */
-.detail-health {
-  background: rgba(255,107,157,0.08);
-  border: 1px solid rgba(255,107,157,0.22);
-  border-radius: var(--kh-radius);
-  padding: 10px 12px;
-  margin: 6px 0 10px;
-}
-.detail-health--ovulation { background: rgba(255,165,0,0.08); border-color: rgba(255,165,0,0.25); }
-.detail-health--fertile   { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.22); }
-.detail-health-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--kh-text);
-}
-.detail-health-icon { font-size: 14px; }
-.detail-health-kind { font-weight: 600; color: #f04e7a; }
-.detail-health--ovulation .detail-health-kind { color: #ffa500; }
-.detail-health--fertile   .detail-health-kind { color: #4ade80; }
-.detail-health-detail { color: var(--kh-text-secondary); }
-.detail-health-profile {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  margin-top: 2px;
-}
-
 /* ===== PWA Install Banner (sits above the footer nav) ===== */
 .install-banner.is-hidden { display: none; }
 .install-banner {
@@ -3313,7 +3164,6 @@ body {
   align-items: center;
   gap: 10px;
 }
-.detail-full-row .detail-full { flex: 1; min-width: 0; }
 
 .detail-copy-btn {
   flex-shrink: 0;
@@ -3612,3 +3462,228 @@ body {
   border-color: var(--kh-primary);
 }
 .detail-place { font-weight: 600; }
+
+
+/* =========================================================
+   DAY SHEET — tear-off calendar layout.
+   Strip (year | month) → three columns (lunar | weekday + big
+   day | solar) → titled section cards. The sheet scrolls when
+   the sections outgrow the screen.
+   ========================================================= */
+.cal-detail {
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dhead-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--kh-text-secondary);
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--kh-border-strong);
+}
+.dhead-strip-month {
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dhead {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  padding: 10px 0 4px;
+}
+.dhead-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  padding: 6px 4px;
+}
+.dhead-mid {
+  border-left: 1px solid var(--kh-border-strong);
+  border-right: 1px solid var(--kh-border-strong);
+}
+.dhead-label {
+  font-size: 11.5px;
+  color: var(--kh-text-muted);
+  line-height: 1.5;
+}
+.dhead-month {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kh-text);
+  line-height: 1.6;
+}
+.dhead-month--lunar { color: var(--kh-green); }
+.dhead-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1.5;
+}
+.dhead-sub {
+  font-size: 13px;
+  color: var(--kh-text-secondary);
+  line-height: 1.5;
+}
+.dhead-today {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--kh-primary);
+  background: var(--kh-primary-glow);
+  border-radius: 999px;
+  padding: 1px 10px;
+  margin-bottom: 2px;
+}
+.dhead-weekday {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--kh-primary);
+  line-height: 1.6;
+}
+.dhead-big {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 84px;
+  font-weight: 700;
+  color: var(--kh-primary);
+  line-height: 1;
+  margin: 2px 0 8px;
+}
+.dhead-weekday-alt {
+  font-size: 12px;
+  color: var(--kh-text-muted);
+}
+/* Tracking breaks Khmer shaping, so only the Latin weekday gets it */
+.dhead-weekday-alt--latin {
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+/* Section: "—— title ——" above a bordered card */
+.dsec { margin-top: 16px; }
+.dsec-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--kh-text-secondary);
+}
+.dsec-title::before,
+.dsec-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--kh-border-strong);
+}
+.dsec-card {
+  border: 1px solid var(--kh-border-strong);
+  border-radius: 14px;
+  padding: 2px 14px;
+  background: rgba(255,255,255,0.02);
+}
+[data-theme="light"] .dsec-card { background: #fff; }
+
+.dsec-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--kh-text);
+  --tone: var(--kh-primary);
+}
+.dsec-row + .dsec-row { border-top: 1px solid var(--kh-border); }
+.dsec-row--red    { --tone: var(--kh-red); }
+.dsec-row--gold   { --tone: var(--kh-gold); }
+.dsec-row--health { --tone: #f04e7a; }
+.dsec-row--ovulation { --tone: #ffa500; }
+.dsec-row--fertile   { --tone: #22c55e; }
+.dsec-bar {
+  flex: none;
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--tone);
+}
+.dsec-icon {
+  flex: none;
+  width: 18px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--tone);
+  font-size: 14px;
+}
+.dsec-icon .detail-sil-icon { background-color: var(--tone); }
+.dsec-text { flex: 1; min-width: 0; }
+.dsec-health-kind { font-weight: 600; color: var(--tone); margin-right: 6px; }
+.dsec-sub { color: var(--kh-text-secondary); font-size: 13px; }
+.dsec-note {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+
+/* Day info rows — label over value, copy button on the right */
+.dsec .detail-full-row {
+  padding: 8px 0;
+}
+.dsec .detail-full-row + .detail-full-row { border-top: 1px solid var(--kh-border); }
+.dinfo-main { flex: 1; min-width: 0; }
+.dinfo-label {
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  line-height: 1.4;
+}
+.dinfo-text {
+  font-size: 14px;
+  color: var(--kh-text);
+  line-height: 1.6;
+}
+.dsec .detail-copy-btn { border-color: transparent; }
+.dinfo-actions {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--kh-border);
+}
+.dinfo-action {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dinfo-action:active {
+  background: var(--kh-primary-glow);
+  color: var(--kh-primary);
+}
+
+/* The daily block keeps its own card; just space it like the sections */
+.cal-detail .detail-daily { margin-top: 16px; }
+
+@media (max-width: 360px) {
+  .dhead-big { font-size: 68px; }
+  .dhead-num { font-size: 26px; }
+  .dhead-weekday { font-size: 18px; }
+}
