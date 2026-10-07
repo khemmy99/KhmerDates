@@ -398,78 +398,147 @@ const KhCal = (() => {
     }).join('');
   }
 
+  // ----- Events page -----
+  const _ICON_PARTY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>';
+  const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
+
+  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil'
+
+  /** Lunar reading for a row subtitle, e.g. "១៥ កើត ខែស្រាពណ៍". */
+  function _lunarReading(lun) {
+    const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+    const kMonth = KC.khmerMonthNameFromKm(lun.km);
+    if (I18n.getLang() === 'km') {
+      return `${KC.khmerNumber(kd)} ${lun.kd <= 15 ? KC.RK[0] : KC.RK[1]} ខែ${kMonth}`;
+    }
+    return `${lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning')} ${kd} · ${kMonth}`;
+  }
+
+  /**
+   * Every row for a year: holiday spans (a multi-day festival is one row on
+   * its first day) plus each ថ្ងៃសីល, sorted by date.
+   */
+  function _collectEventRows(year, lang) {
+    const rows = [];
+    const byMonth = _collectYearEvents(year);
+    for (let m = 0; m < 12; m++) {
+      for (const ev of byMonth[m]) {
+        const start = new Date(year, ev.startMonth, ev.startDay);
+        const end   = new Date(year, ev.endMonth, ev.endDay);
+        const span  = Math.round((end - start) / 86400000) + 1;
+        let sub = I18n.t(ev.isPublic ? 'publicHoliday' : 'observanceDay');
+        if (span > 1) {
+          const endStr = ev.endMonth === ev.startMonth
+            ? _num(ev.endDay)
+            : _num(ev.endDay) + ' ' + I18n.gregMonthShort(ev.endMonth);
+          sub += ` · ${_num(ev.startDay)}–${endStr} (${_num(span)} ${I18n.t('days')})`;
+        }
+        rows.push({ start, end, kind: ev.isPublic ? 'public' : 'observance',
+                    name: ev.entry[lang] || ev.entry.km || '', sub });
+      }
+    }
+    if (I18n.getSilDays()) {
+      for (let d = new Date(year, 0, 1); d.getFullYear() === year; d = new Date(year, d.getMonth(), d.getDate() + 1)) {
+        const lun = KC.getKhmerDayMonthFromGregorian(d);
+        if (!KC.silDayFromKhmer(lun.km, lun.kd, year)) continue;
+        rows.push({ start: d, end: d, kind: 'sil', name: I18n.t('silDay'), sub: _lunarReading(lun) });
+      }
+    }
+    const order = { public: 0, observance: 1, sil: 2 };
+    return rows.sort((x, y) => (x.start - y.start) || (order[x.kind] - order[y.kind]));
+  }
+
+  function _renderEventChips() {
+    const el = document.getElementById('events-chips');
+    if (!el) return;
+    const chips = [
+      ['all', 'filterAll', _ICON_GRID],
+      ['public', 'filterPublic', _ICON_PARTY],
+      ['observance', 'filterObservance', _ICON_FLAG],
+    ];
+    if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
+    if (!chips.some(c => c[0] === _eventsFilter)) _eventsFilter = 'all';
+    el.innerHTML = chips.map(([id, key, icon]) =>
+      `<button type="button" class="ev-chip ev-chip--${id}${id === _eventsFilter ? ' is-active' : ''}" data-filter="${id}">
+        <span class="ev-chip-icon">${icon}</span>${escapeHtml(I18n.t(key))}
+      </button>`).join('');
+  }
+
   function _renderEventsList() {
     if (!HL) return;
     const lang = I18n.getLang();
-    const yearEl = document.getElementById('events-year');
-    const yearLabelEl = document.getElementById('events-year-label');
     const listEl = document.getElementById('events-list');
     if (!listEl) return;
 
-    if (yearEl)      yearEl.textContent      = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
-    if (yearLabelEl) yearLabelEl.textContent = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
+    const yearEl = document.getElementById('events-year');
+    if (yearEl) yearEl.textContent = _num(_eventsYear);
+    const todayNumEl = document.getElementById('events-today-num');
+    if (todayNumEl) todayNumEl.textContent = new Date().getDate();
+    _renderEventChips();
 
-    // Time-relative classification — used to highlight "today" and dim "past".
     const now = new Date();
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const todayLabel = I18n.t('today') || 'Today';
-    const daysLabel = I18n.t('days') || 'days';
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const icons = { public: _ICON_PARTY, observance: _ICON_FLAG, sil: _ICON_SIL };
 
-    const byMonth = _collectYearEvents(_eventsYear);
+    const rows = _collectEventRows(_eventsYear, lang)
+      .filter(r => _eventsFilter === 'all' || r.kind === _eventsFilter);
+
     const sections = [];
     for (let m = 0; m < 12; m++) {
-      const events = byMonth[m];
-      if (!events.length) continue;
-      const rows = events.map(ev => {
-        const baseName = ev.entry[lang] || ev.entry.km || '';
-        const dotCls = ev.isPublic ? 'events-dot--public' : 'events-dot--observance';
-        let dateStr;
-        let spanDays = 1;
-        if (ev.startDay === ev.endDay && ev.startMonth === ev.endMonth) {
-          dateStr = String(ev.startDay);
-        } else if (ev.startMonth === ev.endMonth) {
-          dateStr = ev.startDay + '–' + ev.endDay;
-          spanDays = ev.endDay - ev.startDay + 1;
-        } else {
-          const startDt = new Date(_eventsYear, ev.startMonth, ev.startDay);
-          const endDt   = new Date(_eventsYear, ev.endMonth,   ev.endDay);
-          spanDays = Math.round((endDt - startDt) / 86400000) + 1;
-          dateStr = ev.startDay + ' ' + I18n.gregMonthShort(ev.startMonth) +
-                  ' – ' + ev.endDay + ' ' + I18n.gregMonthShort(ev.endMonth);
-        }
-        const daysBadge = spanDays > 1
-          ? `<span class="events-days-badge">${escapeHtml((lang === 'km' ? KC.khmerNumber(spanDays) : spanDays) + ' ' + daysLabel)}</span>`
-          : '';
+      const inMonth = rows.filter(r => r.start.getMonth() === m);
+      if (!inMonth.length) continue;
 
-        // Time classification relative to today
-        const evStart = new Date(_eventsYear, ev.startMonth, ev.startDay).getTime();
-        const evEnd   = new Date(_eventsYear, ev.endMonth,   ev.endDay  ).getTime();
-        let timeCls = '';
-        let todayBadge = '';
-        if (todayMidnight >= evStart && todayMidnight <= evEnd) {
-          timeCls = ' events-row--today';
-          todayBadge = `<span class="events-today-badge">${escapeHtml(todayLabel)}</span>`;
-        } else if (todayMidnight > evEnd) {
-          timeCls = ' events-row--past';
-        }
+      // Lunar month(s) the Gregorian month spans, as on the grid header
+      const lastDay = new Date(_eventsYear, m + 1, 0).getDate();
+      const km1 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, 1)).km;
+      const km2 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, lastDay)).km;
+      const lunarMonths = KC.khmerMonthNameFromKm(km1) + (km2 !== km1 ? ' · ' + KC.khmerMonthNameFromKm(km2) : '');
 
-        return `<div class="events-row${ev.isPublic ? '' : ' events-row--observance'}${timeCls}">
-          <span class="events-dot ${dotCls}"></span>
-          <span class="events-date">${escapeHtml(dateStr)}</span>
-          <span class="events-name">${escapeHtml(baseName)}</span>
-          ${todayBadge}
-          ${daysBadge}
+      const items = inMonth.map(r => {
+        const dow = r.start.getDay();
+        const wd = lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
+        const isToday = today >= r.start && today <= r.end;
+        const timeCls = isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '';
+        return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${_eventsYear}" data-m="${m}" data-d="${r.start.getDate()}">
+          <div class="ev-date">
+            <span class="ev-wd">${escapeHtml(wd)}</span>
+            <span class="ev-day">${_num(r.start.getDate())}</span>
+          </div>
+          <span class="ev-icon">${icons[r.kind]}</span>
+          <div class="ev-body">
+            <div class="ev-name">${escapeHtml(r.name)}</div>
+            <div class="ev-sub">${escapeHtml(r.sub)}</div>
+          </div>
+          ${isToday ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
         </div>`;
       }).join('');
-      sections.push(`<div class="events-month">
-        <div class="events-month-label">${escapeHtml(I18n.gregMonth(m))}</div>
-        ${rows}
-      </div>`);
+
+      sections.push(`<section class="ev-month">
+        <div class="ev-month-head">
+          <span class="ev-month-name">${escapeHtml(I18n.gregMonth(m))} ${_num(_eventsYear)}</span>
+          <span class="ev-month-lunar">${escapeHtml(lunarMonths)}</span>
+        </div>
+        ${items}
+      </section>`);
     }
 
     listEl.innerHTML = sections.length
       ? sections.join('')
-      : `<div class="events-empty">${escapeHtml(I18n.t('noEvents') || 'No events')}</div>`;
+      : `<div class="ev-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
+  }
+
+  /** Scroll the events page so the first event from today on is at the top. */
+  function _scrollEventsToToday() {
+    const listEl = document.getElementById('events-list');
+    if (!listEl) return;
+    const next = listEl.querySelector('.ev-row:not(.ev-row--past)');
+    if (!next) { listEl.scrollTop = 0; return; }
+    const head = next.parentElement.querySelector('.ev-month-head');
+    // Land on the month header when the row opens its month; otherwise keep
+    // the row just below the sticky header.
+    listEl.scrollTop = next.previousElementSibling === head
+      ? next.parentElement.offsetTop
+      : next.offsetTop - (head ? head.offsetHeight : 0);
   }
 
   // ----- Day sheet sections -----
@@ -1202,6 +1271,43 @@ const KhCal = (() => {
         _eventsYear = new Date().getFullYear();
         _renderEventsList();
         eventsOverlay.classList.add('open');
+        _scrollEventsToToday();
+      });
+    }
+    const eventsToday = document.getElementById('events-today');
+    if (eventsToday) {
+      eventsToday.addEventListener('click', () => {
+        _eventsYear = new Date().getFullYear();
+        _renderEventsList();
+        _scrollEventsToToday();
+      });
+    }
+    const eventsListEl = document.getElementById('events-list');
+    // After a year or filter change: the current year opens at today, any
+    // other year at January.
+    const _resetEventsScroll = () => {
+      if (_eventsYear === new Date().getFullYear()) _scrollEventsToToday();
+      else if (eventsListEl) eventsListEl.scrollTop = 0;
+    };
+    const eventsChips = document.getElementById('events-chips');
+    if (eventsChips) {
+      eventsChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ev-chip');
+        if (!chip || chip.dataset.filter === _eventsFilter) return;
+        _eventsFilter = chip.dataset.filter;
+        _renderEventsList();
+        _resetEventsScroll();
+      });
+    }
+    // Tapping an event jumps the calendar to that day and opens its sheet
+    if (eventsListEl && eventsOverlay) {
+      eventsListEl.addEventListener('click', (e) => {
+        const row = e.target.closest('.ev-row');
+        if (!row) return;
+        eventsOverlay.classList.remove('open');
+        _year = +row.dataset.y;
+        _month = +row.dataset.m;
+        _showDetail(_year, _month, +row.dataset.d);
       });
     }
     if (eventsClose && eventsOverlay) {
@@ -1212,8 +1318,8 @@ const KhCal = (() => {
         if (e.target === eventsOverlay) eventsOverlay.classList.remove('open');
       });
     }
-    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); });
-    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); });
+    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); _resetEventsScroll(); });
+    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); _resetEventsScroll(); });
 
     // Weather overlay
     const weatherBtn     = document.getElementById('cal-weather-btn');
@@ -1770,12 +1876,12 @@ const KhCal = (() => {
     }
 
     // Click outside the detail sheet closes it — except on the controls that
-    // open it (a day cell, the Today buttons), or the same tap would open and
-    // immediately close the sheet.
+    // open it (a day cell, an event row, the Today buttons), or the same tap
+    // would open and immediately close the sheet.
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell, #cal-today-footer, #cal-today-btn')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .events-row, .ev-row, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

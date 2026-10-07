@@ -1064,61 +1064,6 @@ body {
 .cal-footer-btn--weather:active,
 .cal-footer-btn--weather:hover { color: #f5b860; }
 
-/* Events overlay — full-year holiday list grouped by month */
-.cal-events-panel .settings-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.events-year {
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-size: 13px;
-  color: var(--kh-text-secondary);
-  margin-left: 4px;
-}
-.events-year-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 4px 0 12px;
-}
-.events-year-btn {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--kh-border);
-  background: transparent;
-  color: var(--kh-text-secondary);
-  cursor: pointer;
-  font-size: 13px;
-}
-.events-year-btn:hover { background: rgba(91,156,246,0.1); color: var(--kh-primary); border-color: var(--kh-primary); }
-.events-year-label {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--kh-primary);
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  min-width: 64px;
-  text-align: center;
-}
-.events-list {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.events-month {
-  margin-bottom: 14px;
-}
-.events-month:last-child { margin-bottom: 0; }
-.events-month-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--kh-primary);
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--kh-border);
-  margin-bottom: 6px;
-}
 .events-row {
   display: flex;
   align-items: center;
@@ -1188,27 +1133,6 @@ body {
   color: var(--kh-text-secondary);
 }
 .events-name { flex: 1; }
-.events-days-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(91,156,246,0.12);
-  color: var(--kh-primary);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-.events-row--observance .events-days-badge {
-  background: rgba(232,178,92,0.12);
-  color: #e8b25c;
-}
-[data-theme="light"] .events-row--observance .events-days-badge { color: #b48228; }
-.events-empty {
-  text-align: center;
-  padding: 24px 0;
-  color: var(--kh-text-secondary);
-  font-style: italic;
-}
 [data-theme="light"] .events-row--observance .events-name { color: #b48228; }
 
 /* Footer button: health (pink accent on hover/active state) */
@@ -2704,9 +2628,6 @@ body {
   color: #b48228;
 }
 
-[data-theme="light"] .events-row--observance .events-days-badge {
-  color: #b48228;
-}
 
 [data-theme="light"] .cal-modal-field input[type="date"] {
   color-scheme: light;
@@ -3622,3 +3543,201 @@ body {
   .cal-kday { font-size: 11px; }
   .cal-cday { font-size: 10.5px; }
 }
+
+
+/* =========================================================
+   EVENTS PAGE — full-height list of the year's holidays,
+   observances and ថ្ងៃសីល: header (year switch, today, close),
+   filter chips, then rows under sticky month headers.
+   ========================================================= */
+#cal-events-overlay { align-items: stretch; }
+.cal-events-panel {
+  width: 100%;
+  max-width: 520px;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--kh-card-bg);
+}
+.ev-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 8px;
+}
+.ev-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+/* Page name as a small label over the year, so both fit between the arrows
+   on a 360px phone */
+.ev-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 84px;
+  line-height: 1.2;
+}
+.ev-title-label { font-size: 12px; font-weight: 600; color: var(--kh-text-muted); white-space: nowrap; }
+.ev-year { font-size: 24px; font-weight: 800; color: var(--kh-text); }
+.ev-year-btn,
+.ev-icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ev-year-btn { width: 32px; height: 40px; border-radius: 10px; }
+.ev-actions { display: flex; gap: 8px; flex: none; }
+.ev-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--kh-border-strong);
+  background: var(--kh-card-elevated);
+  color: var(--kh-text);
+  position: relative;
+}
+.ev-year-btn:active,
+.ev-icon-btn:active { background: var(--kh-primary-glow); color: var(--kh-primary); }
+/* Today's date number inside the calendar glyph */
+.ev-today-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -15%);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ev-chips {
+  display: flex;
+  gap: 8px;
+  padding: 6px 14px 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: none;
+}
+.ev-chips::-webkit-scrollbar { display: none; }
+.ev-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--kh-bg-subtle);
+  color: var(--kh-text-secondary);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ev-chip-icon { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
+.ev-chip-icon svg { width: 15px; height: 15px; }
+.ev-chip-icon .detail-sil-icon { width: 15px; height: 15px; background-color: currentColor; }
+.ev-chip.is-active { background: var(--kh-red); color: #fff; }
+
+.events-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
+  border-top: 1px solid var(--kh-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.ev-month-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--kh-bg-subtle);
+  border-bottom: 1px solid var(--kh-border);
+}
+.ev-month-name { font-size: 16px; font-weight: 800; color: var(--kh-text); }
+.ev-month-lunar { font-size: 12.5px; color: var(--kh-text-muted); white-space: nowrap; }
+
+.ev-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  --tone: var(--kh-gold);
+}
+.ev-row + .ev-row { border-top: 1px solid var(--kh-border); }
+.ev-row:active { background: var(--kh-primary-glow); }
+.ev-row--public { --tone: var(--kh-red); }
+.ev-row--sil    { --tone: #c2410c; }
+.ev-date {
+  flex: none;
+  width: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+}
+.ev-wd {
+  font-size: 10.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+.ev-day { font-size: 19px; font-weight: 800; color: var(--kh-text); }
+.ev-icon {
+  flex: none;
+  width: 24px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--tone);
+}
+.ev-icon svg { width: 22px; height: 22px; }
+.ev-icon .detail-sil-icon { width: 22px; height: 22px; background-color: var(--tone); }
+.ev-body { flex: 1; min-width: 0; }
+.ev-name { font-size: 15px; font-weight: 600; color: var(--kh-text); line-height: 1.45; }
+.ev-row--public .ev-name { color: var(--kh-red); }
+.ev-row--observance .ev-name { color: var(--kh-gold); }
+.ev-sub { font-size: 12.5px; color: var(--kh-text-muted); line-height: 1.45; }
+.ev-row--past { opacity: 0.55; }
+.ev-row--today { background: var(--kh-primary-glow); }
+.ev-today-badge {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--kh-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ev-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--kh-text-muted);
+}
+
+[data-theme="light"] .cal-events-panel { background: #fff; }
+[data-theme="light"] .ev-month-head { background: #F4F4F5; }
+[data-theme="light"] .ev-chip:not(.is-active) { background: #F1F1F3; color: #3F3F46; }
+[data-theme="light"] .ev-icon-btn { background: #fff; border-color: rgba(0,0,0,0.08); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+[data-theme="light"] .ev-row--observance .ev-name { color: #9A6B12; }
+[data-theme="light"] .ev-row--sil { --tone: #C2410C; }
