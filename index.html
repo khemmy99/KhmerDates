@@ -33,22 +33,19 @@
 </head>
 <body>
   <div class="cal-app">
-    <!-- Slim brand bar — logo + month/year select centered together on one row.
-         Today's full date lives in the day sheet, opened by the Today footer. -->
-    <header class="cal-topbar cal-topbar--slim cal-topbar--center">
-      <div class="cal-topbar-glow"></div>
+    <!-- Header: month + year title (opens the month/year picker) with the
+         other two calendars' month names under it; month arrows on the right. -->
+    <header class="cal-topbar cal-topbar--title">
       <div class="cal-topbar-row">
-        <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="34" height="34">
-        <!-- Month arrows for pointer devices. Changing month was swipe-only,
-             which leaves a laptop or the Office task pane with no way to do it.
-             Hidden on touch screens, where the swipe already works. -->
-        <button type="button" class="cal-month-nav" id="cal-prev-month" aria-label="Previous month" title="Previous month">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button type="button" class="cal-month-title" id="cal-month-title" aria-label="Choose month and year"></button>
-        <button type="button" class="cal-month-nav" id="cal-next-month" aria-label="Next month" title="Next month">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
+        <button type="button" class="cal-title-btn" id="cal-month-title" aria-label="Choose month and year"></button>
+        <div class="cal-title-nav">
+          <button type="button" class="cal-nav-round" id="cal-prev-month" aria-label="Previous month" title="Previous month">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button type="button" class="cal-nav-round" id="cal-next-month" aria-label="Next month" title="Next month">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+        </div>
       </div>
     </header>
 

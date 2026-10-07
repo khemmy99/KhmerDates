@@ -91,57 +91,6 @@ body {
   margin: 0 -14px;
   overflow: hidden;
 }
-.cal-topbar--slim .cal-topbar-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;   /* logo left, month-title right */
-  gap: 10px;
-  width: 100%;
-}
-.cal-topbar--slim .cal-topbar-icon {
-  flex-shrink: 0;
-}
-.cal-topbar--slim .cal-month-title {
-  /* Override the centered pill — now sits inline on the right of the topbar.
-     Tighter padding/typography since vertical space is limited. */
-  margin: 0;
-  padding: 6px 26px 6px 10px;
-}
-.cal-topbar--slim .cal-month-title::after {
-  right: 10px;                  /* chevron closer to the right edge */
-}
-.cal-topbar--slim .cal-month-col {
-  padding: 0 8px;
-  font-size: 12px;
-}
-.cal-topbar--slim .cal-month-col.is-active {
-  font-size: 14px;
-}
-.cal-topbar--slim .cal-month-year {
-  font-size: 12px;
-}
-/* ===== Centered variant — logo + month/year select centered on one row ===== */
-.cal-topbar--center .cal-topbar-row {
-  justify-content: center;          /* logo + select grouped in the center */
-  gap: 10px;
-}
-
-/* Legacy: brand text element is no longer rendered — keep CSS harmless
-   in case any cached HTML still includes it. */
-.cal-topbar-brand { display: none; }
-
-.cal-topbar-glow {
-  pointer-events: none;
-  position: absolute;
-  top: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(closest-side, rgba(91,156,246,0.22), transparent 70%);
-  filter: blur(6px);
-  z-index: 0;
-}
 .cal-topbar-row {
   position: relative;
   z-index: 1;
@@ -151,16 +100,6 @@ body {
   gap: 12px;
   text-align: left;
 }
-.cal-topbar-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  /* A hairline ring only. The old blue glow was tuned for the previous logo
-     and clashes with the red-and-cream mark. */
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.10);
-  flex-shrink: 0;
-}
-.cal-topbar-text { display: flex; flex-direction: column; }
 .cal-today-khmer {
   font-size: 14.5px;
   color: var(--kh-text);
@@ -185,73 +124,6 @@ body {
   justify-content: center;
   padding: 14px 0 4px;
   flex-shrink: 0;
-}
-.cal-month-title {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  padding: 8px 36px 8px 22px;          /* extra right padding for chevron */
-  border: 1px solid var(--kh-border);
-  background: linear-gradient(180deg, rgba(91,156,246,0.10) 0%, rgba(91,156,246,0.02) 100%);
-  border-radius: 999px;
-  color: inherit;
-  font-family: inherit;
-  transition: transform .12s var(--kh-transition), background .2s var(--kh-transition), border-color .2s var(--kh-transition);
-}
-.cal-month-title::after {
-  content: '';
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  width: 6px; height: 6px;
-  border-right: 1.6px solid var(--kh-text-secondary);
-  border-bottom: 1.6px solid var(--kh-text-secondary);
-  transform: translateY(-65%) rotate(45deg);
-  opacity: 0.7;
-}
-.cal-month-title:hover,
-.cal-month-title:active {
-  background: linear-gradient(180deg, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.05) 100%);
-  border-color: rgba(91,156,246,0.3);
-  transform: scale(0.985);
-}
-
-/* Four-column tri-language + year layout */
-.cal-month-col {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--kh-text-muted);
-  opacity: 0.55;
-  line-height: 1.2;
-  white-space: nowrap;
-  padding: 0 12px;
-  transition: opacity 0.2s, color 0.2s;
-}
-.cal-month-col + .cal-month-col {
-  border-left: 1px solid var(--kh-border);
-}
-.cal-month-col.is-active {
-  color: var(--kh-text);
-  opacity: 1;
-  font-weight: 700;
-  font-size: 16px;
-}
-.cal-month-en.is-active { color: var(--kh-primary); }
-.cal-month-year {
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--kh-text);
-  opacity: 0.85;
-}
-
-/* Tighten gap on the pill since we now have internal dividers */
-.cal-month-title {
-  gap: 0;
-  padding: 8px 32px 8px 14px;
 }
 
 /* Legacy classes still referenced by older code paths — keep as no-op */
@@ -738,7 +610,6 @@ body {
   background: rgba(59,125,230,0.05);
   border-color: rgba(59,125,230,0.2);
 }
-
 
 /* ===== Toast ===== */
 .toast-container {
@@ -1520,13 +1391,6 @@ body {
   gap: 10px;
 }
 
-.cal-topbar-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .cal-topbar-row > div:first-child {
   flex: 1;
 }
@@ -2304,12 +2168,10 @@ body {
   .install-banner { display: none !important; }
 }
 
-
 /* =========================================================
    LIGHT THEME — consolidated.
    Placed last so it overrides the light rules scattered above.
    ========================================================= */
-
 
 /* Scoped to :root deliberately. The settings panel has
    <button data-theme="light">, which matches a bare [data-theme="light"]
@@ -2342,10 +2204,6 @@ body {
     radial-gradient(120% 100% at 50% 0%, rgba(59,125,230,0.08) 0%, rgba(59,125,230,0.02) 40%, transparent 70%),
     linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
   box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-}
-
-[data-theme="light"] .cal-topbar-glow {
-  background: radial-gradient(closest-side, rgba(59,125,230,0.15), transparent 70%);
 }
 
 [data-theme="light"] .cal-weekdays {
@@ -2424,19 +2282,6 @@ body {
 [data-theme="light"] .cal-month-bar button {
   background: var(--kh-card-bg);
   border: 1px solid var(--kh-border-strong);
-}
-
-[data-theme="light"] .cal-month-title {
-  background: rgba(59,125,230,0.05);
-  border: 1px solid rgba(59,125,230,0.12);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
-}
-
-[data-theme="light"] .cal-month-title:hover,
-[data-theme="light"] .cal-month-title:active {
-  background: rgba(59,125,230,0.10);
-  border-color: rgba(59,125,230,0.25);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 [data-theme="light"] .cal-detail {
@@ -2550,35 +2395,6 @@ body {
   border-color: rgba(59,125,230,0.25);
 }
 
-
-
-/* ---------------------------------------------------------
-   LIGHT THEME — header + footer controls.
-   These components were styled only for the dark background
-   (blue #5B9CF6 glows, white hairlines, low-opacity icons),
-   which washes out on white. Overrides below restore contrast.
-   --------------------------------------------------------- */
-
-/* --- Header --- */
-[data-theme="light"] .cal-topbar-icon {
-  /* the base white ring is invisible on a light background */
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.10);
-}
-
-[data-theme="light"] .cal-month-col {
-  color: #475569;
-  opacity: 0.78;
-}
-
-[data-theme="light"] .cal-month-col + .cal-month-col {
-  border-left-color: rgba(0,0,0,0.10);
-}
-
-[data-theme="light"] .cal-month-year {
-  color: #334155;
-  opacity: 1;
-}
-
 [data-theme="light"] .cal-wh {
   color: #475569;
 }
@@ -2627,7 +2443,6 @@ body {
   fill: rgba(219,39,119,0.12);
 }
 
-
 /* =========================================================
    VISUAL POLISH — calmer hierarchy in the header and grid.
    Principle: colour is reserved for information (today,
@@ -2659,16 +2474,6 @@ body {
 .cal-gday { letter-spacing: 0.1px; }
 .cal-kday { margin-top: 2px; letter-spacing: 0.1px; }
 
-/* --- Header --- */
-
-/* Hairline dividers in the month pill were as strong as the text. */
-.cal-month-col + .cal-month-col { border-left-color: rgba(255,255,255,0.07); }
-
-/* Softer wash on the pill so the month name carries it, not the fill. */
-.cal-month-title {
-  background: linear-gradient(180deg, rgba(91,156,246,0.075) 0%, rgba(91,156,246,0.015) 100%);
-}
-
 /* Supporting metadata line — steps back behind the month name. */
 .cal-lunar-info { color: var(--kh-text-muted); letter-spacing: 0.15px; }
 
@@ -2696,12 +2501,6 @@ body {
 [data-theme="light"] .cal-cell.sat:not(.today):not(.selected) {
   background: linear-gradient(135deg, rgba(59,130,246,0.080) 0%, rgba(37,99,235,0.045) 100%);
 }
-
-[data-theme="light"] .cal-month-col + .cal-month-col { border-left-color: rgba(0,0,0,0.08); }
-[data-theme="light"] .cal-month-title {
-  background: rgba(59,125,230,0.045);
-  border: 1px solid rgba(59,125,230,0.11);
-}
 [data-theme="light"] .cal-lunar-info { color: #64748B; }
 
 /* Pre-existing cascade bug: the light-theme .sun/.sat washes are declared
@@ -2716,7 +2515,6 @@ body {
   background: var(--kh-primary);
   border-color: var(--kh-primary);
 }
-
 
 /* =========================================================
    MONTH EVENTS — rounded card under the grid listing the
@@ -2794,7 +2592,6 @@ body {
   color: #2563EB;
 }
 [data-theme="light"] .month-events-empty { color: #64748B; }
-
 
 /* =========================================================
    LAYOUT FIX — events card + floating Today pill.
@@ -2896,73 +2693,6 @@ body {
   color: #2563EB;
 }
 
-
-/* =========================================================
-   MONTH SELECT PILL — it reads as a button, so it needs a
-   visible edge and fill in both themes. Previously the border
-   and wash were so faint (0.075 / 0.045 alpha) that the control
-   almost disappeared, and the inactive language columns sat at
-   0.55 opacity on top of a muted colour.
-   ========================================================= */
-
-/* --- Dark --- */
-.cal-month-title {
-  background: linear-gradient(180deg, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.07) 100%);
-  border: 1px solid rgba(91,156,246,0.34);
-  box-shadow: 0 1px 6px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.05);
-}
-.cal-month-title:hover,
-.cal-month-title:active {
-  background: linear-gradient(180deg, rgba(91,156,246,0.26) 0%, rgba(91,156,246,0.10) 100%);
-  border-color: rgba(91,156,246,0.5);
-}
-
-.cal-month-col {
-  color: var(--kh-text-secondary);
-  opacity: 0.8;
-}
-.cal-month-col.is-active {
-  color: var(--kh-text);
-  opacity: 1;
-}
-.cal-month-col + .cal-month-col { border-left-color: rgba(255,255,255,0.14); }
-
-/* Chevron — the affordance that says "this opens a picker". */
-.cal-month-title::after {
-  border-right-color: var(--kh-text);
-  border-bottom-color: var(--kh-text);
-  opacity: 0.85;
-}
-
-/* --- Light --- */
-[data-theme="light"] .cal-month-title {
-  background: rgba(59,125,230,0.09);
-  border: 1px solid rgba(59,125,230,0.30);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-[data-theme="light"] .cal-month-title:hover,
-[data-theme="light"] .cal-month-title:active {
-  background: rgba(59,125,230,0.16);
-  border-color: rgba(59,125,230,0.45);
-}
-
-[data-theme="light"] .cal-month-col {
-  color: #475569;
-  opacity: 0.9;
-}
-[data-theme="light"] .cal-month-col.is-active {
-  color: #0F172A;
-  opacity: 1;
-}
-[data-theme="light"] .cal-month-col + .cal-month-col { border-left-color: rgba(0,0,0,0.14); }
-
-[data-theme="light"] .cal-month-title::after {
-  border-right-color: #1E293B;
-  border-bottom-color: #1E293B;
-  opacity: 0.85;
-}
-
-
 /* =========================================================
    LUNAR INFO LINE — ទុតិយាសាឍ | អដ្ឋស័ក | មមី | ព.ស.២៥៧០
    Each part now carries its own colour, reusing the palette
@@ -2984,57 +2714,13 @@ body {
 [data-theme="light"] .cal-lunar-info .lunar-sak    { color: #475569; }
 [data-theme="light"] .cal-lunar-info .lunar-animal { color: #1D4ED8; }
 [data-theme="light"] .cal-lunar-info .lunar-be     { color: #8A6B2C; }
-
-
-/* =========================================================
-   MONTH SELECT PILL — per-language colours, matching the
-   lunar info line: Khmer green, English blue, Chinese gold,
-   year slate. Specificity (0,2,0) and placed last so these
-   win over `.cal-month-col.is-active`, which sets the colour
-   for whichever language is selected. Size and weight still
-   mark the active column.
-   ========================================================= */
-.cal-month-col.cal-month-km   { color: var(--kh-green); }
-.cal-month-col.cal-month-en   { color: var(--kh-primary); }
-.cal-month-col.cal-month-zh   { color: var(--kh-gold); }
-.cal-month-col.cal-month-year { color: var(--kh-text-secondary); }
-.cal-month-col:not(.is-active) { opacity: 0.85; }
-
-[data-theme="light"] .cal-month-col.cal-month-km   { color: #047857; }
-[data-theme="light"] .cal-month-col.cal-month-en   { color: #1D4ED8; }
-[data-theme="light"] .cal-month-col.cal-month-zh   { color: #8A6B2C; }
-[data-theme="light"] .cal-month-col.cal-month-year { color: #475569; }
-
-
-/* =========================================================
-   HEADER TYPE SCALE — larger month pill and lunar info line.
-   Column padding is trimmed slightly to buy back the width the
-   bigger type costs, so the pill still fits on narrow phones.
-   ========================================================= */
-.cal-month-col {
-  font-size: 15.5px;
-  padding: 0 10px;
-}
-.cal-month-col.is-active {
-  font-size: 18px;
-}
-.cal-month-title {
-  padding: 9px 34px 9px 14px;
-}
 .cal-lunar-info {
   font-size: 12.5px;
 }
-.cal-topbar-icon {
-  width: 44px;
-  height: 44px;
-}
 
 @media (max-width: 380px) {
-  .cal-month-col { font-size: 14px; padding: 0 7px; }
-  .cal-month-col.is-active { font-size: 16px; }
   .cal-lunar-info { font-size: 11.5px; }
 }
-
 
 /* =========================================================
    SETTINGS SEGMENTED BUTTONS
@@ -3115,39 +2801,6 @@ body {
 #office-flash.show { opacity: 1; transform: translate(-50%, 0); }
 #office-flash.bad { border-color: var(--kh-red); color: var(--kh-red); }
 
-/* Month arrows. Hidden by default so the phone layout is unchanged — the swipe
-   already covers touch. Shown only where there is a real pointer, which is
-   exactly the case the swipe cannot serve: a laptop, a desktop browser, and
-   the Office task pane. */
-.cal-month-nav {
-  display: none;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  padding: 0;
-  border: 1px solid var(--kh-border);
-  border-radius: 9px;
-  background: transparent;
-  color: var(--kh-text-secondary);
-  cursor: pointer;
-  transition: color .15s, border-color .15s, background .15s;
-}
-.cal-month-nav:hover {
-  color: var(--kh-primary);
-  border-color: var(--kh-primary);
-  background: var(--kh-primary-glow);
-}
-.cal-month-nav:active { transform: scale(0.94); }
-
-@media (hover: hover) and (pointer: fine) {
-  .cal-month-nav { display: inline-flex; }
-}
-/* The task pane is always pointer-driven, so never leave it without arrows
-   even if the host reports coarse pointer capabilities. */
-.office-addin .cal-month-nav { display: inline-flex; }
-
 /* Free-text setting (the place prefix), styled like the toggle groups. */
 .settings-text-input {
   width: 100%;
@@ -3164,7 +2817,6 @@ body {
   border-color: var(--kh-primary);
 }
 .detail-place { font-weight: 600; }
-
 
 /* =========================================================
    DAY SHEET — tear-off calendar layout.
@@ -3426,7 +3078,6 @@ body {
   .cal-cday { font-size: 10.5px; }
 }
 
-
 /* =========================================================
    EVENTS PAGE — full-height list of the year's holidays,
    observances and ថ្ងៃសីល: header (year switch, today, close),
@@ -3657,4 +3308,71 @@ body {
 .cal-grid--km-digits .cal-sil { top: 2px; left: 2px; width: 8px; height: 8px; }
 @media (min-width: 480px) {
   .cal-grid--km-digits .cal-gday { font-size: 17px; }
+}
+
+
+/* =========================================================
+   HEADER — large month + year title on the left (tap: month/year
+   picker) with the other calendars' month names under it, and
+   round month arrows on the right. Replaces the logo and the
+   four-column month pill.
+   ========================================================= */
+.cal-topbar--title { padding-left: 18px; padding-right: 18px; }
+.cal-topbar--title .cal-topbar-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+.cal-title-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  margin-left: -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--kh-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cal-title-btn:active { background: var(--kh-primary-glow); }
+.cal-title-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.cal-title-main svg { flex: none; color: var(--kh-text-muted); }
+.cal-title-sub {
+  font-size: 12.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+.cal-title-nav { display: flex; gap: 8px; flex: none; }
+.cal-nav-round {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--kh-border-strong);
+  background: var(--kh-card-elevated);
+  color: var(--kh-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s var(--kh-transition);
+}
+.cal-nav-round:active { transform: scale(0.94); background: var(--kh-primary-glow); }
+[data-theme="light"] .cal-nav-round {
+  background: #fff;
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }

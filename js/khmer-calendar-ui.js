@@ -765,23 +765,22 @@ const KhCal = (() => {
     const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
     const lang = I18n.getLang();
 
-    // Month title — show FOUR columns side-by-side, each with its own divider:
-    //   Khmer (មិថុនា)  |  English (June)  |  Chinese (六月)  |  Year (2026)
-    // The active language column is highlighted; the others are dimmed.
-    // Year uses Khmer digits when the active language is km.
+    // Month title: month + year in the UI language, large, with the other two
+    // calendars' month names on a small line under it.
     const titleEl = document.getElementById('cal-month-title');
     if (titleEl) {
       const T = I18n.translations || {};
-      const km = (T.km && T.km.gregMonths && T.km.gregMonths[month])           || '';
-      const en = (T.en && T.en.gregMonths && T.en.gregMonths[month])           || '';
-      const zh = (T.zh && T.zh.gregMonthsShort && T.zh.gregMonthsShort[month]) || '';
-      const yearStr = (lang === 'km') ? KC.khmerNumber(year) : year;
-
+      const kmName = (T.km && T.km.gregMonths && T.km.gregMonths[month]) || '';
+      const enName = (T.en && T.en.gregMonths && T.en.gregMonths[month]) || '';
+      const zhName = (T.zh && T.zh.gregMonthsShort && T.zh.gregMonthsShort[month]) || '';
+      let main, sub;
+      if (lang === 'en')      { main = `${enName} ${year}`;  sub = `${kmName} · ${zhName}`; }
+      else if (lang === 'zh') { main = `${year}年${zhName}`; sub = `${kmName} · ${enName}`; }
+      else                    { main = `${kmName} ${KC.khmerNumber(year)}`; sub = `${enName} · ${zhName}`; }
       titleEl.innerHTML =
-        `<span class="cal-month-col cal-month-km${lang==='km'?' is-active':''}">${escapeHtml(km)}</span>` +
-        `<span class="cal-month-col cal-month-en${lang==='en'?' is-active':''}">${escapeHtml(en)}</span>` +
-        `<span class="cal-month-col cal-month-zh${lang==='zh'?' is-active':''}">${escapeHtml(zh)}</span>` +
-        `<span class="cal-month-col cal-month-year">${escapeHtml(String(yearStr))}</span>`;
+        `<span class="cal-title-main">${escapeHtml(main)}` +
+        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>` +
+        `<span class="cal-title-sub">${escapeHtml(sub)}</span>`;
     }
 
     // Lunar info — track the selected day (or today if visible, else mid-month).
@@ -1104,7 +1103,9 @@ const KhCal = (() => {
         const isCur = (m === _month && _pickerYear === _year);
         const isNow = (m === todayM && _pickerYear === todayY);
         const primary = lang === 'km' ? KC.ADM12[m] : I18n.monthShort(m);
-        const secondary = lang === 'km' ? I18n.gregMonthShort(m) : KC.ADM12[m];
+        // Second line names the month in another script: English under Khmer,
+        // Khmer under English/Chinese (it used to repeat the Khmer name)
+        const secondary = lang === 'km' ? I18n.translations.en.gregMonthsShort[m] : KC.ADM12[m];
         cells += `<div class="pick-cell${isCur ? ' selected' : ''}${isNow ? ' today' : ''}" data-action="pick-month" data-m="${m}">`
           + `<div class="pick-cell-km">${primary}</div>`
           + `<div class="pick-cell-en">${secondary}</div>`
