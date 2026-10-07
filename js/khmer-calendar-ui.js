@@ -355,7 +355,9 @@ const KhCal = (() => {
     // the month before (Pchum Ben runs Sep -> Oct)
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
-    const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first);
+    const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first)
+      .concat(_periodRowsFor(year, month))
+      .sort((a, b) => a.start - b.start);
 
     // The extra "today" row repeats a festival already counted
     const count = rows.filter(r => !r.isTodayRow).length;
@@ -441,7 +443,42 @@ const KhCal = (() => {
     return rows.sort((x, y) => (x.start - y.start) || (order[x.kind] - order[y.kind]));
   }
 
-  const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL });
+  const _ICON_DROP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>';
+  const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL,
+                                period: _ICON_DROP, predicted: _ICON_DROP });
+
+  /**
+   * Cycle-tracker rows for the month card: one per logged period and one per
+   * predicted period that touches the month. Runs are found day by day from
+   * HT.getDayInfo, scanning ten days either side so a run crossing the month
+   * edge keeps its real start, end and length.
+   */
+  function _periodRowsFor(year, month) {
+    if (!HT || !HT.isEnabled() || !HT.getActiveProfile()) return [];
+    const first = new Date(year, month, 1);
+    const last  = new Date(year, month + 1, 0);
+    const runs = [];
+    let run = null;
+    for (let d = new Date(year, month, -9); d <= new Date(year, month + 1, 10);
+         d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      const k = HT.getDayInfo(d).kind;
+      const kind = k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted' : null;
+      if (run && kind === run.kind) { run.end = d; continue; }
+      if (run) runs.push(run);
+      run = kind ? { kind, start: d, end: d } : null;
+    }
+    if (run) runs.push(run);
+
+    return runs.filter(r => r.end >= first && r.start <= last).map(r => {
+      const span = Math.round((r.end - r.start) / 86400000) + 1;
+      const range = r.start.getMonth() === r.end.getMonth()
+        ? `${_num(r.start.getDate())}–${_num(r.end.getDate())}`
+        : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
+      return { start: r.start, end: r.end, kind: r.kind,
+               name: I18n.t(r.kind === 'period' ? 'healthPeriod' : 'healthPredictedPeriod'),
+               sub: `${range} (${_num(span)} ${I18n.t('days')})` };
+    });
+  }
 
   /**
    * One event row. The small label over the day number is the weekday, or

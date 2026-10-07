@@ -3530,3 +3530,12 @@ html { background-color: #0a0c14; }
   white-space: nowrap;
 }
 
+/* Cycle-tracker rows in the month card — pink droplet; a predicted
+   period gets a dashed icon box */
+.ev-row--period,
+.ev-row--predicted { --tone: #f04e7a; --tone-bg: rgba(240,78,122,0.12); }
+.ev-row--period .ev-name { color: #f04e7a; }
+.ev-row--predicted .ev-name { color: var(--kh-text-secondary); }
+.ev-row--predicted .ev-icon { background: transparent; border: 1.5px dashed rgba(240,78,122,0.7); }
+[data-theme="light"] .ev-row--period .ev-name { color: #DB2777; }
+
