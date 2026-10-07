@@ -357,7 +357,9 @@ const KhCal = (() => {
     const last  = new Date(year, month + 1, 0);
     const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first);
 
-    if (countEl) countEl.textContent = rows.length ? _num(rows.length) : '';
+    // The extra "today" row repeats a festival already counted
+    const count = rows.filter(r => !r.isTodayRow).length;
+    if (countEl) countEl.textContent = count ? _num(count) : '';
 
     if (!rows.length) {
       bodyEl.innerHTML = `<div class="month-events-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
@@ -404,9 +406,30 @@ const KhCal = (() => {
           sub += ` · ${range} (${_num(span)} ${I18n.t('days')})`;
         }
         rows.push({ start, end, kind: ev.isPublic ? 'public' : 'observance',
-                    name: ev.entry[lang] || ev.entry.km || '', sub });
+                    name: ev.entry[lang] || ev.entry.km || '', sub, key: ev.id });
       }
     }
+
+    // A festival that began before today and is still running also gets a
+    // row on today's date ("day 11/16"), so the list shows at a glance that
+    // today is part of it. The original row then drops its Today marker.
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (today.getFullYear() === year) {
+      const todays = HL.getByDate(today) || [];
+      for (const r of rows.slice()) {
+        if (!(r.start < today && r.end >= today)) continue;
+        const h = todays.find(x => (x.id || (x.km + '|' + x.en)) === r.key);
+        const n = h && h.dayOfFestival ? h.dayOfFestival : Math.round((today - r.start) / 86400000) + 1;
+        const t = h && h.totalDays ? h.totalDays : Math.round((r.end - r.start) / 86400000) + 1;
+        const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(t));
+        rows.push({ start: today, end: today, kind: r.kind, name: r.name,
+                    sub: I18n.t(r.kind === 'public' ? 'publicHoliday' : 'observanceDay') + ' · ' + dayPart,
+                    isTodayRow: true });
+        r.hasTodayRow = true;
+      }
+    }
+
     if (I18n.getSilDays()) {
       for (let d = new Date(year, 0, 1); d.getFullYear() === year; d = new Date(year, d.getMonth(), d.getDate() + 1)) {
         const lun = KC.getKhmerDayMonthFromGregorian(d);
@@ -430,7 +453,7 @@ const KhCal = (() => {
     const label = r.start.getMonth() !== refMonth
       ? I18n.gregMonthShort(r.start.getMonth())
       : lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
-    const isToday = today >= r.start && today <= r.end;
+    const isToday = !r.hasTodayRow && today >= r.start && today <= r.end;
     const timeCls = isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '';
     return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${r.start.getFullYear()}" data-m="${r.start.getMonth()}" data-d="${r.start.getDate()}">
       <div class="ev-date">
@@ -507,11 +530,11 @@ const KhCal = (() => {
       : `<div class="ev-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
   }
 
-  /** Scroll the events page so the first event from today on is at the top. */
+  /** Scroll the events page to today's row, or else the next upcoming one. */
   function _scrollEventsToToday() {
     const listEl = document.getElementById('events-list');
     if (!listEl) return;
-    const next = listEl.querySelector('.ev-row:not(.ev-row--past)');
+    const next = listEl.querySelector('.ev-row--today') || listEl.querySelector('.ev-row:not(.ev-row--past)');
     if (!next) { listEl.scrollTop = 0; return; }
     const head = next.parentElement.querySelector('.ev-month-head');
     // Land on the month header when the row opens its month; otherwise keep
