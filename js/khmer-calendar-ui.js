@@ -656,29 +656,6 @@ const KhCal = (() => {
     return I18n.getLang() === 'km' ? KC.khmerNumber(n) : String(n);
   }
 
-  // === Render today's date in top bar ===
-  function _renderTopBar() {
-    const today = new Date();
-    const khEl = document.getElementById('cal-today-khmer');
-    const grEl = document.getElementById('cal-today-greg');
-    const lang = I18n.getLang();
-
-    if (lang === 'km') {
-      if (khEl) khEl.textContent = KC.khmerDates(today);
-      if (grEl) grEl.textContent = KC.gDates(today);
-    } else {
-      const lun = KC.getKhmerDayMonthFromGregorian(today);
-      const kdDisp = lun.kd <= 15 ? lun.kd : lun.kd - 15;
-      const wax = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
-      const kMonth = KC.khmerMonthNameFromKm(lun.km);
-      const be = KC.computeBEYear(today.getFullYear(), today.getMonth() + 1, lun.km, lun.kd);
-      // animal uses Apr 14 boundary, BE uses lunar Pisakh boundary
-      const animal = KC.khmerYearAnimalFromBE(today.getFullYear(), today.getMonth() + 1, today.getDate());
-      if (khEl) khEl.textContent = `${wax} ${kdDisp} ${kMonth} | ${animal} ${I18n.t('bePrefix')} ${be}`;
-      if (grEl) grEl.textContent = `${I18n.weekday(today.getDay())}, ${today.getDate()} ${I18n.monthName(today.getMonth())} ${today.getFullYear()}`;
-    }
-  }
-
   // === Render weekday headers ===
   function _renderWeekdays() {
     const el = document.getElementById('cal-weekdays');
@@ -1132,29 +1109,6 @@ const KhCal = (() => {
     _selectedDate = null;
     _renderCalendar();
     _showDetail(today.getFullYear(), today.getMonth(), today.getDate());
-    _showTodayPopup();
-  }
-
-  // ---------- Today popup (replaces the old date-heavy topbar) ----------
-  let _todayPopupTimer = null;
-
-  function _showTodayPopup() {
-    // Make sure the today date strings inside the popup are fresh
-    _renderTopBar();
-    const popup = document.getElementById('cal-today-popup');
-    if (!popup) return;
-    popup.classList.add('is-open');
-    popup.setAttribute('aria-hidden', 'false');
-    if (_todayPopupTimer) clearTimeout(_todayPopupTimer);
-    _todayPopupTimer = setTimeout(_hideTodayPopup, 5000);
-  }
-
-  function _hideTodayPopup() {
-    const popup = document.getElementById('cal-today-popup');
-    if (!popup) return;
-    popup.classList.remove('is-open');
-    popup.setAttribute('aria-hidden', 'true');
-    if (_todayPopupTimer) { clearTimeout(_todayPopupTimer); _todayPopupTimer = null; }
   }
 
   // === Touch swipe ===
@@ -1744,7 +1698,6 @@ const KhCal = (() => {
     // users who saved language=en/zh in a previous session see Khmer fallback
     // text on first paint until they toggle language again.
     I18n.updateStaticTexts();
-    _renderTopBar();
     _renderWeekdays();
     _renderCalendar();
     _initSettings();
@@ -1768,17 +1721,6 @@ const KhCal = (() => {
 
     const todayFooter = document.getElementById('cal-today-footer');
     if (todayFooter) todayFooter.addEventListener('click', _goToday);
-
-    // Today popup: tap anywhere on it (or its close button) to dismiss early
-    const todayPopup = document.getElementById('cal-today-popup');
-    const todayPopupClose = document.getElementById('cal-today-popup-close');
-    if (todayPopupClose) todayPopupClose.addEventListener('click', _hideTodayPopup);
-    if (todayPopup) {
-      todayPopup.addEventListener('click', (e) => {
-        // Backdrop tap (anywhere outside the card) dismisses
-        if (e.target === todayPopup) _hideTodayPopup();
-      });
-    }
 
     // Copy the full Khmer date from the day detail sheet
     const detailContent = document.getElementById('cal-detail-content');
@@ -1827,11 +1769,13 @@ const KhCal = (() => {
       _attachDetailSwipe(detail);
     }
 
-    // Click outside the detail sheet (but not on a calendar cell) closes it
+    // Click outside the detail sheet closes it — except on the controls that
+    // open it (a day cell, the Today buttons), or the same tap would open and
+    // immediately close the sheet.
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

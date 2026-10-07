@@ -34,8 +34,7 @@
 <body>
   <div class="cal-app">
     <!-- Slim brand bar — logo + month/year select centered together on one row.
-         The today's full Khmer + Gregorian dates moved to #cal-today-popup,
-         which slides down when the Today footer is tapped. -->
+         Today's full date lives in the day sheet, opened by the Today footer. -->
     <header class="cal-topbar cal-topbar--slim cal-topbar--center">
       <div class="cal-topbar-glow"></div>
       <div class="cal-topbar-row">
@@ -52,21 +51,6 @@
         </button>
       </div>
     </header>
-
-    <!-- Today popup — opens when the Today footer button is tapped.
-         Shows the full Khmer + Gregorian date for today. Tap anywhere to
-         dismiss; also auto-dismisses after 5 seconds. -->
-    <div class="cal-today-popup" id="cal-today-popup" aria-hidden="true">
-      <div class="cal-today-popup-card">
-        <div class="cal-today-popup-row">
-          <div class="cal-today-popup-text">
-            <div class="cal-today-khmer" id="cal-today-khmer"></div>
-            <div class="cal-today-greg" id="cal-today-greg"></div>
-          </div>
-          <button type="button" class="cal-today-popup-close" id="cal-today-popup-close" aria-label="Close">&times;</button>
-        </div>
-      </div>
-    </div>
 
     <!-- Period / Women's health overlay (opened from footer) -->
     <div class="cal-settings-overlay" id="cal-health-overlay">
@@ -743,12 +727,6 @@
         const el = document.getElementById(id);
         if (el && el.classList.contains('open')) el.classList.remove('open');
       });
-      // Esc also closes the today popup
-      const todayPopup = document.getElementById('cal-today-popup');
-      if (todayPopup && todayPopup.classList.contains('is-open')) {
-        todayPopup.classList.remove('is-open');
-        todayPopup.setAttribute('aria-hidden', 'true');
-      }
       const detail = document.getElementById('cal-detail');
       if (detail && detail.classList.contains('open')) detail.classList.remove('open');
     });
