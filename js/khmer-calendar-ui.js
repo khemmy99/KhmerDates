@@ -734,6 +734,12 @@ const KhCal = (() => {
     return I18n.getLang() === 'km' ? KC.khmerNumber(n) : String(n);
   }
 
+  // Gregorian day number in the grid and day sheet — follows its own
+  // setting (1 2 3 / ១ ២ ៣), independent of the UI language
+  function _gday(n) {
+    return I18n.getDayDigits() === 'khmer' ? KC.khmerNumber(n) : String(n);
+  }
+
   // === Render weekday headers ===
   function _renderWeekdays() {
     const el = document.getElementById('cal-weekdays');
@@ -821,6 +827,9 @@ const KhCal = (() => {
     // Build grid
     const gridEl = document.getElementById('cal-grid');
     if (!gridEl) return;
+    // Khmer digits run wider; the grid steps their size down to clear the
+    // corner marks (see .cal-grid--km-digits)
+    gridEl.classList.toggle('cal-grid--km-digits', I18n.getDayDigits() === 'khmer');
 
     const firstDowRaw = new Date(year, month, 1).getDay();
     const firstDow = I18n.getStartDay() === 'sun' ? firstDowRaw : (firstDowRaw + 6) % 7;
@@ -843,7 +852,7 @@ const KhCal = (() => {
       const healthClass = _healthClassFor(dt);
       const sil = _silFor(lun, dt);
       return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
-        ${sil.html}<span class="cal-gday">${d}</span>
+        ${sil.html}<span class="cal-gday">${_gday(d)}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
@@ -903,7 +912,7 @@ const KhCal = (() => {
       const healthClass = _healthClassFor(dt);
       const sil = _silFor(lun, dt);
       html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${year}" data-m="${month}" data-d="${d}">
-        ${sil.html}<span class="cal-gday">${d}</span>
+        ${sil.html}<span class="cal-gday">${_gday(d)}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
@@ -1030,7 +1039,7 @@ const KhCal = (() => {
         <div class="dhead-col dhead-mid">
           ${isToday ? `<div class="dhead-today">${escapeHtml(I18n.t('today'))}</div>` : ''}
           <div class="dhead-weekday">${escapeHtml(weekday)}</div>
-          <div class="dhead-big">${d}</div>
+          <div class="dhead-big">${_gday(d)}</div>
           <div class="dhead-weekday-alt${lang === 'km' ? ' dhead-weekday-alt--latin' : ''}">${escapeHtml(weekdayAlt)}</div>
         </div>
         <div class="dhead-col">
@@ -1415,6 +1424,19 @@ const KhCal = (() => {
     }
 
     _initReminders();
+
+    // Day-number digits (1 2 3 / ១ ២ ៣)
+    const digitsGroup = document.getElementById('digits-toggle');
+    if (digitsGroup) {
+      _setActiveToggle(digitsGroup, '[data-digits="' + I18n.getDayDigits() + '"]');
+      digitsGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-digits]');
+        if (!btn) return;
+        I18n.setDayDigits(btn.dataset.digits);
+        _setActiveToggle(digitsGroup, '[data-digits="' + btn.dataset.digits + '"]');
+        _refreshAll();
+      });
+    }
 
     // ថ្ងៃសីល markers on/off
     const silGroup = document.getElementById('sil-toggle');

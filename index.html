@@ -205,6 +205,15 @@
             </div>
           </div>
 
+          <div class="settings-section">
+            <!-- Digits for the Gregorian day number in the grid and day sheet -->
+            <div class="settings-label" data-i18n="dayDigits">លេខថ្ងៃ</div>
+            <div class="settings-toggle-group" id="digits-toggle">
+              <button class="settings-toggle active" data-digits="latin">1 2 3</button>
+              <button class="settings-toggle" data-digits="khmer">១ ២ ៣</button>
+            </div>
+          </div>
+
           <!-- Daily reminders. Shown on Android and iOS, hidden on the web build:
                a plain PWA cannot wake itself at 07:00, so the switches are only
                shown where a native scheduler exists to honour them. -->

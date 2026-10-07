@@ -3253,7 +3253,8 @@ body {
   line-height: 1.6;
 }
 .dhead-big {
-  font-family: Georgia, 'Times New Roman', serif;
+  /* Georgia has no Khmer digits; the Khmer face covers the ១ ២ ៣ setting */
+  font-family: Georgia, 'Times New Roman', 'Noto Sans Khmer', serif;
   font-size: 84px;
   font-weight: 700;
   color: var(--kh-primary);
@@ -3649,3 +3650,11 @@ body {
 /* One-line subtitle so a month's list stays scannable */
 .month-events-body .ev-sub { font-size: 11.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .month-events-body .ev-today-badge { font-size: 10.5px; padding: 1px 8px; }
+
+/* Khmer day digits (Settings → លេខថ្ងៃ) are ~40% wider than Latin ones; at
+   14px a two-digit day still clears the holiday dot and the ថ្ងៃសីល mark */
+.cal-grid--km-digits .cal-gday { font-size: 14px; letter-spacing: -0.4px; }
+.cal-grid--km-digits .cal-sil { top: 2px; left: 2px; width: 8px; height: 8px; }
+@media (min-width: 480px) {
+  .cal-grid--km-digits .cal-gday { font-size: 17px; }
+}

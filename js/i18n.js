@@ -161,6 +161,7 @@ const I18n = (() => {
       silNew: 'ថ្ងៃដាច់ខែ',
       silQuarter: 'ថ្ងៃសីលតូច',
       showSilDays: 'បង្ហាញថ្ងៃសីល',
+      dayDigits: 'លេខថ្ងៃ',
       on: 'បើក',
       off: 'បិទ',
       // ការជូនដំណឹង — daily reminders
@@ -317,6 +318,7 @@ const I18n = (() => {
       silNew: 'New moon',
       silQuarter: 'Half moon',
       showSilDays: 'Show holy days',
+      dayDigits: 'Day numbers',
       on: 'On',
       off: 'Off',
       // Daily reminders
@@ -473,6 +475,7 @@ const I18n = (() => {
       silNew: '新月',
       silQuarter: '弦月',
       showSilDays: '显示斋日',
+      dayDigits: '日期数字',
       on: '开',
       off: '关',
       // 每日提醒
@@ -492,15 +495,24 @@ const I18n = (() => {
   // ថ្ងៃសីល markers in the month grid. On by default — the Buddhist observance
   // days are the reason most people reach for a Khmer lunar calendar at all.
   let _silDays = localStorage.getItem('kh-cal-sildays') !== 'off';
+  // Digits for the Gregorian day number in the grid and day sheet:
+  // 'latin' (1 2 3, the default) or 'khmer' (១ ២ ៣).
+  let _dayDigits = localStorage.getItem('kh-cal-daydigits') === 'khmer' ? 'khmer' : 'latin';
 
   function getLang() { return _lang; }
   function getTheme() { return _theme; }
   function getStartDay() { return _startDay; }
   function getSilDays() { return _silDays; }
+  function getDayDigits() { return _dayDigits; }
 
   function setSilDays(on) {
     _silDays = !!on;
     localStorage.setItem('kh-cal-sildays', _silDays ? 'on' : 'off');
+  }
+
+  function setDayDigits(v) {
+    _dayDigits = v === 'khmer' ? 'khmer' : 'latin';
+    localStorage.setItem('kh-cal-daydigits', _dayDigits);
   }
 
   // The Android widgets and the reminder scheduler are native code and cannot
@@ -610,5 +622,5 @@ const I18n = (() => {
 
   syncToNative();
 
-  return { getLang, getTheme, getStartDay, getSilDays, setLang, setTheme, setStartDay, setSilDays, mirrorToNative, syncToNative, t, weekday, monthName, monthShort, gregMonth, gregMonthShort, updateStaticTexts, translations };
+  return { getLang, getTheme, getStartDay, getSilDays, getDayDigits, setLang, setTheme, setStartDay, setSilDays, setDayDigits, mirrorToNative, syncToNative, t, weekday, monthName, monthShort, gregMonth, gregMonthShort, updateStaticTexts, translations };
 })();
