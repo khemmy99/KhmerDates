@@ -505,10 +505,10 @@ const KhCal = (() => {
           : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
         sub = `${range} (${_num(span)} ${I18n.t('days')})`;
       }
-      // A period (logged or predicted) gets one row per day, "day 1/6" to
+      // A period (logged or predicted) or fertile window gets one row per day, "day 1/6" to
       // "day 6/6", so every day of it reads in the list; the first also
       // gives the range. Repeats are flagged so the card's count stays one.
-      if (span > 1 && (r.kind === 'period' || r.kind === 'predicted')) {
+      if (span > 1 && (r.kind === 'period' || r.kind === 'predicted' || r.kind === 'fertile')) {
         for (let n = 1; n <= span; n++) {
           const day = new Date(r.start.getFullYear(), r.start.getMonth(), r.start.getDate() + n - 1);
           if (day < from || day > to) continue;
