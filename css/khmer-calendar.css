@@ -3624,34 +3624,35 @@ body {
   line-height: 1;
 }
 
+/* The four chips share the row equally, so all of them fit a 360px phone */
 .ev-chips {
   display: flex;
-  gap: 8px;
-  padding: 6px 14px 12px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  gap: 6px;
+  padding: 6px 12px 12px;
   flex: none;
 }
-.ev-chips::-webkit-scrollbar { display: none; }
 .ev-chip {
-  flex: none;
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 6px;
+  white-space: nowrap;
   border-radius: 999px;
   border: 0;
   background: var(--kh-bg-subtle);
   color: var(--kh-text-secondary);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.ev-chip-icon { display: inline-flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
-.ev-chip-icon svg { width: 15px; height: 15px; }
-.ev-chip-icon .detail-sil-icon { width: 15px; height: 15px; background-color: currentColor; }
+.ev-chip-icon { flex: none; display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center; }
+.ev-chip-icon svg { width: 14px; height: 14px; }
+.ev-chip-icon .detail-sil-icon { width: 14px; height: 14px; background-color: currentColor; }
 .ev-chip.is-active { background: var(--kh-red); color: #fff; }
 
 .events-list {
