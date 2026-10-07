@@ -289,29 +289,6 @@ body {
   pointer-events: none;
 }
 .cal-cell.sil-major .cal-sil { opacity: 0.92; }
-/* Today and the selected day repaint the whole cell, so the mark switches to
-   that cell's accent instead of staying gold on a coloured ground. */
-.cal-cell.today .cal-sil    { background-color: var(--kh-green); opacity: 0.75; }
-.cal-cell.selected .cal-sil { background-color: #fff; opacity: 0.8; }
-
-/* Today */
-.cal-cell.today {
-  background: var(--kh-green-glow);
-  border-color: var(--kh-green);
-  box-shadow: 0 0 12px rgba(52,211,153,0.15), inset 0 0 8px rgba(52,211,153,0.05);
-}
-.cal-cell.today .cal-kday { color: var(--kh-green); font-weight: 700; }
-.cal-cell.today .cal-gday { color: rgba(52,211,153,0.7) !important; }
-.cal-cell.today .cal-cday { color: rgba(52,211,153,0.6); }
-
-/* Selected */
-.cal-cell.selected {
-  background: var(--kh-primary-glow);
-  border-color: var(--kh-primary);
-  box-shadow: 0 0 12px rgba(91,156,246,0.15), inset 0 0 8px rgba(91,156,246,0.05);
-}
-.cal-cell.selected .cal-kday { color: #fff; font-weight: 700; }
-.cal-cell.selected .cal-gday { color: rgba(255,255,255,0.6); }
 
 /* ===== Today Button (hidden, replaced by footer) ===== */
 /* Floating "jump to today" pill. _renderCalendar() flips display to 'block'
@@ -2227,28 +2204,6 @@ body {
   opacity: 0.22;
 }
 
-[data-theme="light"] .cal-cell.today {
-  background: linear-gradient(135deg, rgba(5, 150, 105, 0.12) 0%, rgba(4, 120, 87, 0.08) 100%);
-  border: 2px solid var(--kh-green);
-  box-shadow: 
-    0 0 0 3px rgba(5, 150, 105, 0.15),
-    0 4px 12px rgba(5, 150, 105, 0.20),
-    inset 0 1px 3px rgba(255, 255, 255, 0.8);
-}
-
-[data-theme="light"] .cal-cell.today .cal-kday {
-  color: var(--kh-green);
-  font-weight: 700;
-}
-
-[data-theme="light"] .cal-cell.today .cal-gday {
-  color: rgba(5, 150, 105, 0.7) !important;
-}
-
-[data-theme="light"] .cal-cell.today .cal-cday {
-  color: rgba(5, 150, 105, 0.6);
-}
-
 [data-theme="light"] .cal-cell.sun {
   background: linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(185, 28, 28, 0.03) 100%);
 }
@@ -2265,18 +2220,6 @@ body {
 [data-theme="light"] .cal-cday.cn-first {
   color: #B8892E;
   font-weight: 600;
-}
-
-[data-theme="light"] .cal-cell.selected {
-  background: var(--kh-primary);
-  border-color: var(--kh-primary);
-  box-shadow: 0 2px 8px rgba(59,125,230,0.35), 0 4px 16px rgba(59,125,230,0.20);
-}
-
-[data-theme="light"] .cal-cell.selected .cal-kday,
-[data-theme="light"] .cal-cell.selected .cal-gday,
-[data-theme="light"] .cal-cell.selected .cal-cday {
-  color: #ffffff !important;
 }
 
 [data-theme="light"] .cal-month-bar button {
@@ -2502,19 +2445,6 @@ body {
   background: linear-gradient(135deg, rgba(59,130,246,0.080) 0%, rgba(37,99,235,0.045) 100%);
 }
 [data-theme="light"] .cal-lunar-info { color: #64748B; }
-
-/* Pre-existing cascade bug: the light-theme .sun/.sat washes are declared
-   AFTER .cal-cell.today at equal specificity, so a today that lands on a
-   weekend lost its green highlight to the weekend tint. Re-assert the two
-   selected states here, at the end, where they win outright. */
-[data-theme="light"] .cal-cell.today {
-  background: linear-gradient(135deg, rgba(5,150,105,0.12) 0%, rgba(4,120,87,0.08) 100%);
-  border: 2px solid var(--kh-green);
-}
-[data-theme="light"] .cal-cell.selected {
-  background: var(--kh-primary);
-  border-color: var(--kh-primary);
-}
 
 /* =========================================================
    MONTH EVENTS — rounded card under the grid listing the
@@ -3310,7 +3240,6 @@ body {
   .cal-grid--km-digits .cal-gday { font-size: 17px; }
 }
 
-
 /* =========================================================
    HEADER — large month + year title on the left (tap: month/year
    picker) with the other calendars' month names under it, and
@@ -3376,7 +3305,6 @@ body {
   border-color: rgba(0,0,0,0.08);
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
-
 
 /* =========================================================
    PAGE BACKGROUND — a solid colour on <html> for each theme.
@@ -3470,3 +3398,37 @@ html { background-color: #0a0c14; }
   background: var(--kh-primary-glow);
 }
 
+/* =========================================================
+   TODAY + SELECTED DAY — today is a solid green tile with
+   white text; a selected day keeps its own colours inside a
+   blue ring. (Replaces the translucent today tint, faded green
+   number and glow, and the all-white solid-blue selection.)
+   ========================================================= */
+.cal-cell.today,
+[data-theme="light"] .cal-cell.today {
+  background: #059669;
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(5,150,105,0.35);
+}
+.cal-cell.today .cal-gday,
+.cal-cell.today .cal-kday,
+.cal-cell.today .cal-cday,
+[data-theme="light"] .cal-cell.today .cal-gday,
+[data-theme="light"] .cal-cell.today .cal-kday,
+[data-theme="light"] .cal-cell.today .cal-cday { color: #fff !important; } /* beats the weekend/holiday text colours */
+.cal-cell.today .cal-gday { font-weight: 800; }
+.cal-cell.today .cal-kday,
+.cal-cell.today .cal-cday { opacity: 0.9; }
+.cal-cell.today .cal-sil { background-color: #fff; opacity: 0.9; }
+/* A tracker day that is also today keeps only a white ring on the tile */
+.cal-cell.today::before { background: transparent; }
+.cal-cell.today.health-period::before,
+.cal-cell.today.health-ovulation::before { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.9); }
+.cal-cell.today.health-predicted::before { border-color: rgba(255,255,255,0.9); }
+
+.cal-cell.selected:not(.today),
+[data-theme="light"] .cal-cell.selected:not(.today) {
+  border-color: var(--kh-primary);
+  box-shadow: 0 0 0 1px var(--kh-primary), 0 2px 8px rgba(59,125,230,0.22);
+}
+.cal-cell.today.selected { box-shadow: 0 0 0 2px var(--kh-primary); }
