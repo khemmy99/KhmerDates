@@ -38,6 +38,9 @@
     <header class="cal-topbar cal-topbar--title">
       <div class="cal-topbar-row">
         <button type="button" class="cal-title-btn" id="cal-month-title" aria-label="Choose month and year"></button>
+        <!-- Lunar month · sak · animal · BE, on the line of the
+             English / Chinese month names -->
+        <div class="cal-lunar-info" id="cal-lunar-info"></div>
         <div class="cal-title-nav">
           <button type="button" class="cal-nav-round" id="cal-prev-month" aria-label="Previous month" title="Previous month">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -442,7 +445,6 @@
          supports swipe left/right to change month. -->
 
     <!-- Lunar info line -->
-    <div class="cal-lunar-info" id="cal-lunar-info"></div>
 
     <!-- Month/Year picker overlay -->
     <div class="cal-picker-overlay" id="cal-picker-overlay">

@@ -3581,3 +3581,33 @@ html { background-color: #0a0c14; }
   background: var(--fc-bg);
 }
 [data-theme="light"] #cal-footer .cal-footer-btn { color: #475569; }
+
+/* =========================================================
+   HEADER ROW — the lunar line sits on the right of the title,
+   level with "October · 10月". Month arrows are hidden on touch
+   screens (swipe and the month picker change month); a mouse
+   still gets them.
+   ========================================================= */
+.cal-topbar--title .cal-topbar-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  column-gap: 10px;
+}
+.cal-topbar .cal-lunar-info {
+  justify-self: end;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cal-topbar .cal-lunar-info .lunar-icon { width: 13px; height: 13px; }
+.cal-title-nav { display: none; align-self: center; }
+@media (hover: hover) and (pointer: fine) {
+  .cal-title-nav { display: flex; }
+}
+
