@@ -3586,3 +3586,39 @@ body {
   .dhead-num { font-size: 26px; }
   .dhead-weekday { font-size: 18px; }
 }
+
+/* =========================================================
+   SQUARE DAY CELLS — each day is a 1:1 tile. Rows no longer
+   stretch to fill the screen; the events card under the grid
+   takes the spare height instead, and scrolls when long.
+   Placed last so it wins over the min-height / font-size
+   steps in the width and height media queries above.
+   ========================================================= */
+.cal-grid {
+  grid-auto-rows: auto;
+  align-content: start;
+  flex: 0 0 auto;
+}
+.cal-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  padding: 2px 1px;
+  border-radius: 12px;
+}
+.cal-gday { font-size: 16px; line-height: 1.05; }
+.cal-kday { font-size: 9.5px; line-height: 1.15; }
+.cal-cday { font-size: 9px; line-height: 1.1; }
+/* Narrower tile: pull the ថ្ងៃសីល mark into the corner so it clears a
+   two-digit day number */
+.cal-sil { top: 3px; left: 3px; width: 9px; height: 9px; }
+.month-events {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+/* Wider screens (tablet, desktop, Office pane) have room for the full sizes */
+@media (min-width: 480px) {
+  .cal-gday { font-size: 19px; }
+  .cal-kday { font-size: 11px; }
+  .cal-cday { font-size: 10.5px; }
+}
