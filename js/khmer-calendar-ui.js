@@ -544,10 +544,10 @@ const KhCal = (() => {
   }
 
   // ----- Day sheet sections -----
-  // One line-icon set for holidays (calendar + star), observances (flag) and
+  // One line-icon set for holidays (calendar + heart), observances (flag) and
   // ថ្ងៃសីល (lotus). Shared by the day sheet and the events page; CSS sizes them.
   const _SVG_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
-  const _ICON_DAYOFF = _SVG_OPEN + '<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/><path fill="currentColor" stroke-width="1.2" d="m12 11.6 1.18 2.39 2.64.38-1.91 1.86.45 2.63L12 17.62l-2.36 1.24.45-2.63-1.91-1.86 2.64-.38z"/></svg>';
+  const _ICON_DAYOFF = _SVG_OPEN + '<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/><path fill="currentColor" stroke-width="1.2" d="M12 18.6l-2.5-2.4a1.55 1.55 0 0 1 2.5-1.85 1.55 1.55 0 0 1 2.5 1.85z"/></svg>';
   const _ICON_FLAG = _SVG_OPEN + '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.33 2q2 0 3.07-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.53"/></svg>';
   const _ICON_SIL = _SVG_OPEN + '<path d="M12 21c-2.3-1.4-4-4-4-7.3 0-3.1 1.7-6 4-8.2 2.3 2.2 4 5.1 4 8.2 0 3.3-1.7 5.9-4 7.3z"/><path d="M12 21c-4.3 0-8.3-2.4-9.7-6.8 2.1-.7 4.3-.7 6.2.1"/><path d="M12 21c4.3 0 8.3-2.4 9.7-6.8-2.1-.7-4.3-.7-6.2.1"/><path d="M8.4 10.1C7 9 5.6 8.6 4.4 8.6c0 1.6.4 3.1 1.2 4.6"/><path d="M15.6 10.1C17 9 18.4 8.6 19.6 8.6c0 1.6-.4 3.1-1.2 4.6"/></svg>';
 
