@@ -25,6 +25,15 @@
   --kh-shadow-md: 0 4px 16px rgba(0,0,0,0.35);
   --kh-shadow-lg: 0 8px 32px rgba(0,0,0,0.45);
   --kh-transition: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Seated Buddha silhouette, used as a mask so one shape can be tinted per
+     state (grid marker, detail sheet) instead of shipping several images. */
+  --kh-sil-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='4' r='1.25'/%3E%3Cellipse cx='12' cy='7.4' rx='3.2' ry='3.5'/%3E%3Cpath d='M12 9.4c-2.5 0-4.7 1.6-5.9 4l-1.35 2.7c-.5 1 .23 2.18 1.34 2.18h11.82c1.11 0 1.84-1.18 1.34-2.18l-1.35-2.7c-1.2-2.4-3.4-4-5.9-4Z'/%3E%3Cpath d='M12 17.9c5.6 0 10.1 1.05 10.1 2.35 0 1.3-2.4 2.35-5.4 2.35H7.3c-3 0-5.4-1.05-5.4-2.35C1.9 18.95 6.4 17.9 12 17.9Z'/%3E%3C/svg%3E");
+  /* How much of the iPhone home-indicator inset to reserve below the footer.
+     The inset is 34px but the indicator itself is only ~5px, so the full
+     clearance reads as a large empty strip under the icons. Tune the
+     multiplier: 1 = full Apple clearance, 0 = none (icons reach the very
+     bottom edge, indicator may overlap them). */
+  --kh-footer-safe: calc(env(safe-area-inset-bottom, 0px) * 0.5);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -57,7 +66,16 @@ body {
   display: flex;
   flex-direction: column;
   padding: 0 14px;
-  padding-bottom: 60px;
+  /* Must reserve the footer's real height, which grows with the safe area:
+     .cal-footer is fixed and sizes to max(56px, 50px + --kh-footer-safe), so a
+     flat 60px under-reserved on a gesture-navigation phone and the fixed bar
+     covered the bottom of the events card. .has-today-fab below already had
+     the safe-area term; this base rule did not. */
+  /* 56px is the footer's own height; the rest is clearance so the card's
+     rounded bottom edge sits above the bar instead of running into it — with
+     only the footer's height reserved the card met it flush and read as cut
+     off, since card and footer share a background colour. */
+  padding-bottom: calc(74px + var(--kh-footer-safe));
   position: relative;
 }
 
@@ -73,151 +91,6 @@ body {
   margin: 0 -14px;
   overflow: hidden;
 }
-.cal-topbar--slim .cal-topbar-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;   /* logo left, month-title right */
-  gap: 10px;
-  width: 100%;
-}
-.cal-topbar--slim .cal-topbar-icon {
-  flex-shrink: 0;
-}
-.cal-topbar--slim .cal-month-title {
-  /* Override the centered pill — now sits inline on the right of the topbar.
-     Tighter padding/typography since vertical space is limited. */
-  margin: 0;
-  padding: 6px 26px 6px 10px;
-}
-.cal-topbar--slim .cal-month-title::after {
-  right: 10px;                  /* chevron closer to the right edge */
-}
-.cal-topbar--slim .cal-month-col {
-  padding: 0 8px;
-  font-size: 12px;
-}
-.cal-topbar--slim .cal-month-col.is-active {
-  font-size: 14px;
-}
-.cal-topbar--slim .cal-month-year {
-  font-size: 12px;
-}
-/* ===== Centered variant — logo + month/year select centered on one row ===== */
-.cal-topbar--center .cal-topbar-row {
-  justify-content: center;          /* logo + select grouped in the center */
-  gap: 10px;
-}
-
-/* Legacy: brand text element is no longer rendered — keep CSS harmless
-   in case any cached HTML still includes it. */
-.cal-topbar-brand { display: none; }
-
-/* ===== Today popup — slides up above the footer Today button when tapped ===== */
-.cal-today-popup {
-  position: fixed;
-  left: 0;
-  right: 0;
-  /* Sit just above the footer bar (height 56px + iOS safe-area inset) */
-  bottom: calc(56px + env(safe-area-inset-bottom, 0px));
-  z-index: 500;
-  pointer-events: none;
-  display: flex;
-  justify-content: center;
-  padding: 0 14px;
-}
-.cal-today-popup.is-open { pointer-events: auto; }
-.cal-today-popup.is-open .cal-today-popup-card {
-  transform: translateY(0);
-  opacity: 1;
-}
-.cal-today-popup-card {
-  width: 100%;
-  max-width: 520px;
-  margin-bottom: 8px;
-  padding: 14px 16px;
-  background: var(--kh-card-elevated, rgba(20, 24, 40, 0.95));
-  border: 1px solid var(--kh-border-strong, rgba(91,156,246,0.3));
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.45), 0 2px 0 rgba(91,156,246,0.08) inset;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  transform: translateY(120%);
-  opacity: 0;
-  transition: transform 0.32s var(--kh-transition, cubic-bezier(0.4, 0, 0.2, 1)),
-              opacity 0.25s ease-out;
-}
-.cal-today-popup-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.cal-today-popup-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(91,156,246,0.25);
-}
-.cal-today-popup-text {
-  flex: 1;
-  min-width: 0;
-}
-.cal-today-popup-text .cal-today-khmer {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--kh-text);
-  line-height: 1.4;
-  letter-spacing: 0.2px;
-}
-.cal-today-popup-text .cal-today-greg {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  font-weight: 500;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  line-height: 1.3;
-  margin-top: 3px;
-}
-.cal-today-popup-close {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 1px solid var(--kh-border);
-  background: transparent;
-  color: var(--kh-text-muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.cal-today-popup-close:hover,
-.cal-today-popup-close:active {
-  background: rgba(91,156,246,0.12);
-  border-color: rgba(91,156,246,0.3);
-  color: var(--kh-text);
-}
-[data-theme="light"] .cal-today-popup-card {
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(0, 0, 0, 0.08);
-  box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-}
-.cal-topbar-glow {
-  pointer-events: none;
-  position: absolute;
-  top: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 280px;
-  height: 280px;
-  background: radial-gradient(closest-side, rgba(91,156,246,0.22), transparent 70%);
-  filter: blur(6px);
-  z-index: 0;
-}
 .cal-topbar-row {
   position: relative;
   z-index: 1;
@@ -227,14 +100,6 @@ body {
   gap: 12px;
   text-align: left;
 }
-.cal-topbar-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  box-shadow: 0 4px 16px rgba(91,156,246,0.25), 0 0 0 1px rgba(255,255,255,0.06);
-  flex-shrink: 0;
-}
-.cal-topbar-text { display: flex; flex-direction: column; }
 .cal-today-khmer {
   font-size: 14.5px;
   color: var(--kh-text);
@@ -259,73 +124,6 @@ body {
   justify-content: center;
   padding: 14px 0 4px;
   flex-shrink: 0;
-}
-.cal-month-title {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 14px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  padding: 8px 36px 8px 22px;          /* extra right padding for chevron */
-  border: 1px solid var(--kh-border);
-  background: linear-gradient(180deg, rgba(91,156,246,0.10) 0%, rgba(91,156,246,0.02) 100%);
-  border-radius: 999px;
-  color: inherit;
-  font-family: inherit;
-  transition: transform .12s var(--kh-transition), background .2s var(--kh-transition), border-color .2s var(--kh-transition);
-}
-.cal-month-title::after {
-  content: '';
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  width: 6px; height: 6px;
-  border-right: 1.6px solid var(--kh-text-secondary);
-  border-bottom: 1.6px solid var(--kh-text-secondary);
-  transform: translateY(-65%) rotate(45deg);
-  opacity: 0.7;
-}
-.cal-month-title:hover,
-.cal-month-title:active {
-  background: linear-gradient(180deg, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.05) 100%);
-  border-color: rgba(91,156,246,0.3);
-  transform: scale(0.985);
-}
-
-/* Four-column tri-language + year layout */
-.cal-month-col {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--kh-text-muted);
-  opacity: 0.55;
-  line-height: 1.2;
-  white-space: nowrap;
-  padding: 0 12px;
-  transition: opacity 0.2s, color 0.2s;
-}
-.cal-month-col + .cal-month-col {
-  border-left: 1px solid var(--kh-border);
-}
-.cal-month-col.is-active {
-  color: var(--kh-text);
-  opacity: 1;
-  font-weight: 700;
-  font-size: 16px;
-}
-.cal-month-en.is-active { color: var(--kh-primary); }
-.cal-month-year {
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  color: var(--kh-text);
-  opacity: 0.85;
-}
-
-/* Tighten gap on the pill since we now have internal dividers */
-.cal-month-title {
-  gap: 0;
-  padding: 8px 32px 8px 14px;
 }
 
 /* Legacy classes still referenced by older code paths — keep as no-op */
@@ -367,9 +165,12 @@ body {
 .cal-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  /* 1fr === minmax(auto, 1fr): rows share the leftover height so the grid
+     fills the screen, while each cell's min-height still acts as the floor. */
+  grid-auto-rows: 1fr;
   gap: 3px;
   flex: 1;
-  align-content: start;
+  align-content: stretch;
   padding: 2px 0 8px;
   touch-action: pan-y;
 }
@@ -387,6 +188,10 @@ body {
   -webkit-tap-highlight-color: transparent;
   border: 1.5px solid transparent;
   position: relative;
+  /* Faint surface so cells read as cards; the light theme overrides this
+     with an opaque white further down. */
+  background: rgba(255,255,255,0.025);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
 }
 .cal-cell:active {
   background: rgba(255,255,255,0.04);
@@ -468,28 +273,72 @@ body {
 }
 .cal-cell.observance.outside::after { opacity: 0.4; }
 
-/* Today */
-.cal-cell.today {
-  background: var(--kh-green-glow);
-  border-color: var(--kh-green);
-  box-shadow: 0 0 12px rgba(52,211,153,0.15), inset 0 0 8px rgba(52,211,153,0.05);
+/* ថ្ងៃសីល — Buddhist observance days (uposatha).
+   Full and new moon are the major days (ថ្ងៃសីលធំ) and get the solid mark; the
+   two half-moon days are dimmed so a month still reads at a glance. */
+.cal-sil {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 11px;
+  height: 11px;
+  background-color: var(--kh-gold);
+  opacity: 0.42;
+  -webkit-mask: var(--kh-sil-icon) center / contain no-repeat;
+  mask: var(--kh-sil-icon) center / contain no-repeat;
+  pointer-events: none;
 }
-.cal-cell.today .cal-kday { color: var(--kh-green); font-weight: 700; }
-.cal-cell.today .cal-gday { color: rgba(52,211,153,0.7) !important; }
-.cal-cell.today .cal-cday { color: rgba(52,211,153,0.6); }
-
-/* Selected */
-.cal-cell.selected {
-  background: var(--kh-primary-glow);
-  border-color: var(--kh-primary);
-  box-shadow: 0 0 12px rgba(91,156,246,0.15), inset 0 0 8px rgba(91,156,246,0.05);
-}
-.cal-cell.selected .cal-kday { color: #fff; font-weight: 700; }
-.cal-cell.selected .cal-gday { color: rgba(255,255,255,0.6); }
+.cal-cell.sil-major .cal-sil { opacity: 0.92; }
 
 /* ===== Today Button (hidden, replaced by footer) ===== */
+/* Floating "jump to today" pill. _renderCalendar() flips display to 'block'
+   inline whenever the visible month is not the current one, so everything
+   else here has to make it look right the moment it appears. */
 .cal-today-btn {
   display: none;
+  position: fixed;
+  left: 50%;
+  bottom: calc(68px + var(--kh-footer-safe));
+  transform: translateX(-50%);
+  z-index: 300;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--kh-primary);
+  color: #fff;
+  font-family: var(--kh-font);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  line-height: 1.35;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(91,156,246,0.35);
+  -webkit-tap-highlight-color: transparent;
+  transition: box-shadow .2s var(--kh-transition);
+}
+
+.cal-today-btn:active {
+  transform: translateX(-50%) scale(0.96);
+}
+
+/* While the pill is on screen the grid must end above it, not behind it.
+   _renderCalendar() adds this class whenever the pill is shown.
+   Higher specificity than .cal-app, so it wins over the base padding and
+   over the iOS safe-area override below. */
+.cal-app.has-today-fab {
+  padding-bottom: calc(114px + var(--kh-footer-safe));
+}
+
+/* The floating Today pill reserves 114px, which on a short screen leaves less
+   than the grid's min-content plus the card's normal floor — the two then
+   overflow and the pill lands on top of the card. The card gives way while the
+   pill is on screen; its body scrolls, so nothing is lost, and the grid keeps
+   its floor because shrinking that would push rows over the card instead. */
+/* With the pill on screen the column is ~40px tighter, which is more than the
+   grid alone can give back, so the card's floor drops to about one row. */
+.cal-app.has-today-fab .month-events {
+  min-height: 72px;
 }
 
 /* ===== Month / Year Picker Overlay ===== */
@@ -633,74 +482,7 @@ body {
   background: rgba(0,0,0,0.18);
 }
 
-.detail-main {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 14px;
-}
-.detail-left {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 60px;
-}
-.detail-kday-big {
-  font-size: 44px;
-  font-weight: 800;
-  color: var(--kh-primary);
-  line-height: 1;
-  min-width: 60px;
-  text-align: center;
-  text-shadow: 0 2px 12px rgba(91,156,246,0.2);
-}
-.detail-gday {
-  font-size: 13px;
-  color: var(--kh-text-muted);
-  line-height: 1;
-  min-width: 60px;
-  text-align: center;
-  margin-top: 4px;
-}
-.detail-info { flex: 1; }
-.detail-khmer-date {
-  font-size: 15px;
-  color: var(--kh-green);
-  font-weight: 600;
-  margin-bottom: 3px;
-  line-height: 1.4;
-}
-.detail-year {
-  font-size: 12px;
-  color: var(--kh-text-secondary);
-  margin-top: 2px;
-  line-height: 1.4;
-}
-.detail-weekday {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  margin-top: 4px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  font-weight: 500;
-}
-.detail-full {
-  font-size: 13px;
-  color: var(--kh-text);
-  line-height: 1.7;
-  padding: 8px 0;
-  border-top: 1px solid var(--kh-border);
-}
-.detail-greg {
-  color: var(--kh-text-muted);
-  font-size: 12px;
-  border-top: none;
-  padding-top: 0;
-}
-.detail-chinese {
-  color: var(--kh-gold);
-  font-size: 13px;
-}
+.detail-chinese { color: var(--kh-gold); }
 
 /* ----- Daily Block (astrology + reminders) in the detail panel ----- */
 .detail-daily {
@@ -806,41 +588,6 @@ body {
   border-color: rgba(59,125,230,0.2);
 }
 
-/* Public-holiday block inside the day detail */
-.detail-holiday {
-  background: rgba(248,113,113,0.08);
-  border: 1px solid rgba(248,113,113,0.25);
-  border-radius: var(--kh-radius);
-  padding: 10px 12px;
-  margin: 6px 0 10px;
-}
-.detail-holiday-item {
-  color: var(--kh-red);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.45;
-}
-.detail-holiday-item + .detail-holiday-item { margin-top: 4px; }
-[data-theme="light"] .detail-holiday {
-  background: rgba(217,68,68,0.07);
-  border-color: rgba(217,68,68,0.3);
-}
-
-/* Observance variant — gold/saffron, used for Pchum Ben days 1-13
-   and other cultural festival days that are not official rest days. */
-.detail-holiday--observance {
-  background: rgba(232,178,92,0.10);
-  border-color: rgba(232,178,92,0.30);
-}
-.detail-holiday--observance .detail-holiday-item { color: #e8b25c; }
-[data-theme="light"] .detail-holiday--observance {
-  background: rgba(180,130,40,0.08);
-  border-color: rgba(180,130,40,0.30);
-}
-[data-theme="light"] .detail-holiday--observance .detail-holiday-item {
-  color: #b48228;
-}
-
 /* ===== Toast ===== */
 .toast-container {
   position: fixed;
@@ -904,9 +651,9 @@ body {
 }
 .health-period-dates {
   flex: 1;
-  font-size: 13px;
+  font-size: 13.5px;
+  line-height: 1.6;
   color: var(--kh-text);
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
 }
 .health-period-action {
   width: 28px;
@@ -1157,157 +904,13 @@ body {
 .cal-footer-btn--weather:active,
 .cal-footer-btn--weather:hover { color: #f5b860; }
 
-/* Events overlay — full-year holiday list grouped by month */
-.cal-events-panel .settings-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.events-year {
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-size: 13px;
-  color: var(--kh-text-secondary);
-  margin-left: 4px;
-}
-.events-year-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 4px 0 12px;
-}
-.events-year-btn {
-  width: 32px; height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--kh-border);
-  background: transparent;
-  color: var(--kh-text-secondary);
-  cursor: pointer;
-  font-size: 13px;
-}
-.events-year-btn:hover { background: rgba(91,156,246,0.1); color: var(--kh-primary); border-color: var(--kh-primary); }
-.events-year-label {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--kh-primary);
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  min-width: 64px;
-  text-align: center;
-}
-.events-list {
-  max-height: 60vh;
-  overflow-y: auto;
-}
-.events-month {
-  margin-bottom: 14px;
-}
-.events-month:last-child { margin-bottom: 0; }
-.events-month-label {
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--kh-primary);
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--kh-border);
-  margin-bottom: 6px;
-}
-.events-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--kh-text);
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-.events-row--observance .events-name { color: #e8b25c; }
-
-/* Today — highlighted row with primary tint + a pulsing halo on the dot.
-   The halo is a positioned ::before pseudo-element so the animation uses
-   GPU-friendly opacity+transform instead of paint-heavy box-shadow. */
-.events-row--today {
-  background: linear-gradient(90deg, rgba(91,156,246,0.15) 0%, rgba(91,156,246,0.05) 100%);
-  border-left: 3px solid var(--kh-primary);
-  padding-left: 9px;
-}
-.events-row--today .events-dot { position: relative; }
-.events-row--today .events-dot::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  background: var(--kh-primary);
-  opacity: 0.35;
-  z-index: -1;
-  animation: events-today-pulse 2s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-@keyframes events-today-pulse {
-  0%, 100% { opacity: 0.25; transform: scale(1.0); }
-  50%      { opacity: 0.55; transform: scale(1.5); }
-}
-.events-today-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--kh-primary);
-  color: #ffffff;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-/* Past — dimmed */
-.events-row--past { opacity: 0.5; }
-.events-row--past .events-dot { box-shadow: none; }
-.events-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.events-dot--public      { background: #f04e7a; box-shadow: 0 0 4px rgba(240,78,122,0.5); }
-.events-dot--observance  { background: #e8b25c; box-shadow: 0 0 4px rgba(232,178,92,0.5); }
-.events-date {
-  flex-shrink: 0;
-  min-width: 60px;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--kh-text-secondary);
-}
-.events-name { flex: 1; }
-.events-days-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(91,156,246,0.12);
-  color: var(--kh-primary);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-.events-row--observance .events-days-badge {
-  background: rgba(232,178,92,0.12);
-  color: #e8b25c;
-}
-[data-theme="light"] .events-row--observance .events-days-badge { color: #b48228; }
-.events-empty {
-  text-align: center;
-  padding: 24px 0;
-  color: var(--kh-text-secondary);
-  font-style: italic;
-}
-[data-theme="light"] .events-row--observance .events-name { color: #b48228; }
-
 /* Footer button: health (pink accent on hover/active state) */
 .cal-footer-btn--health:active,
 .cal-footer-btn--health:hover { color: #ff6b9d; }
-.cal-footer-btn--health svg { stroke: currentColor; fill: rgba(255,107,157,0.12); }
+/* Outline at rest so all five icons read consistently; fill only on press. */
+.cal-footer-btn--health svg { stroke: currentColor; fill: none; }
+.cal-footer-btn--health:active svg,
+.cal-footer-btn--health:hover svg { fill: rgba(255,107,157,0.12); }
 
 /* Health overlay reuses .cal-settings-overlay styling — only minor tweaks */
 .cal-health-panel .settings-title {
@@ -1390,6 +993,33 @@ body {
 }
 .settings-switch input:checked + .settings-switch-slider { background: #ff6b9d; }
 .settings-switch input:checked + .settings-switch-slider::before { transform: translateX(20px); }
+
+/* Reminder switches. The pink above is the health tracker's accent; these sit
+   in the main settings list and take the app's gold instead. */
+.settings-switch--gold input:checked + .settings-switch-slider { background: var(--kh-gold); }
+
+/* Time fields for the two reminder slots. Same shape as .settings-text-input
+   but sized to its content, because it shares a row with its label. */
+.settings-time-input {
+  flex: none;
+  padding: 7px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--kh-border-strong);
+  background: var(--kh-card-elevated);
+  color: var(--kh-text);
+  font-family: var(--kh-font);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.settings-time-input::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+[data-theme="light"] .settings-time-input::-webkit-calendar-picker-indicator { filter: none; }
+
+.settings-hint {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--kh-text-muted);
+}
 
 /* Health body — shown when toggle is on */
 .settings-health-body {
@@ -1631,34 +1261,6 @@ body {
 }
 
 /* Detail panel health block */
-.detail-health {
-  background: rgba(255,107,157,0.08);
-  border: 1px solid rgba(255,107,157,0.22);
-  border-radius: var(--kh-radius);
-  padding: 10px 12px;
-  margin: 6px 0 10px;
-}
-.detail-health--ovulation { background: rgba(255,165,0,0.08); border-color: rgba(255,165,0,0.25); }
-.detail-health--fertile   { background: rgba(74,222,128,0.08); border-color: rgba(74,222,128,0.22); }
-.detail-health-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--kh-text);
-}
-.detail-health-icon { font-size: 14px; }
-.detail-health-kind { font-weight: 600; color: #f04e7a; }
-.detail-health--ovulation .detail-health-kind { color: #ffa500; }
-.detail-health--fertile   .detail-health-kind { color: #4ade80; }
-.detail-health-detail { color: var(--kh-text-secondary); }
-.detail-health-profile {
-  font-size: 11px;
-  color: var(--kh-text-muted);
-  margin-top: 2px;
-}
-
 /* ===== PWA Install Banner (sits above the footer nav) ===== */
 .install-banner.is-hidden { display: none; }
 .install-banner {
@@ -1709,7 +1311,12 @@ body {
 
 /* ===== Responsive ===== */
 @media (max-width: 460px) {
-  .cal-app { padding: 0 10px; }
+  /* Side padding only. The shorthand here used to reset padding-bottom to 0,
+     wiping out the footer reservation on every phone under 460px wide — the
+     events card then ran the full height of the app and the fixed footer
+     covered its last rows. .has-today-fab re-set the padding at higher
+     specificity, which is why the bug only showed on the current month. */
+  .cal-app { padding-left: 10px; padding-right: 10px; }
   .cal-cell { min-height: 50px; }
   .cal-gday { font-size: 16px; }
   .cal-kday { font-size: 10px; }
@@ -1740,8 +1347,9 @@ body {
 @supports (padding-top: env(safe-area-inset-top)) {
   .cal-topbar { padding-top: calc(16px + env(safe-area-inset-top)); }
   .cal-detail { padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
-  .install-banner { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  .cal-today-btn { bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .install-banner { bottom: calc(56px + var(--kh-footer-safe)); }
+  /* must clear the footer bar, not sit behind it */
+  .cal-today-btn { bottom: calc(68px + var(--kh-footer-safe)); }
 }
 
 /* ===== Standalone mode (installed PWA) ===== */
@@ -1750,66 +1358,7 @@ body {
 }
 
 /* ===== Light Theme ===== */
-[data-theme="light"] {
-  --kh-bg: #f0f2f8;
-  --kh-bg-subtle: #e8eaf2;
-  --kh-card-bg: #ffffff;
-  --kh-card-elevated: #f8f9fc;
-  --kh-border: rgba(0,0,0,0.08);
-  --kh-border-strong: rgba(0,0,0,0.12);
-  --kh-text: #1a1d2e;
-  --kh-text-secondary: #5a6078;
-  --kh-text-muted: #8a90a8;
-  --kh-primary: #3b7de6;
-  --kh-primary-glow: rgba(59,125,230,0.12);
-  --kh-green: #16a06a;
-  --kh-green-glow: rgba(22,160,106,0.1);
-  --kh-red: #d94444;
-  --kh-gold: #b8892e;
-  --kh-shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --kh-shadow-md: 0 4px 16px rgba(0,0,0,0.1);
-  --kh-shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
-}
-
-[data-theme="light"] .cal-topbar {
-  background: linear-gradient(180deg, rgba(59,125,230,0.08) 0%, transparent 100%);
-}
-
-[data-theme="light"] .cal-cell.today {
-  background: var(--kh-primary-glow);
-  box-shadow: inset 0 0 0 1.5px var(--kh-primary);
-}
-
-[data-theme="light"] .cal-cell.selected {
-  background: var(--kh-primary);
-  border-color: var(--kh-primary);
-  box-shadow: 0 2px 8px rgba(59,125,230,0.3);
-}
-[data-theme="light"] .cal-cell.selected .cal-kday,
-[data-theme="light"] .cal-cell.selected .cal-gday,
-[data-theme="light"] .cal-cell.selected .cal-cday {
-  color: #ffffff !important;
-}
-
-[data-theme="light"] .cal-month-bar button {
-  background: var(--kh-card-bg);
-  border: 1px solid var(--kh-border-strong);
-}
-
-[data-theme="light"] .cal-detail {
-  background: var(--kh-card-bg);
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
-}
-
-[data-theme="light"] .pick-cell {
-  background: var(--kh-card-bg);
-  border: 1px solid var(--kh-border-strong);
-}
-
-[data-theme="light"] .cal-today-btn {
-  background: var(--kh-primary);
-  box-shadow: 0 2px 12px rgba(59,125,230,0.3);
-}
+/* Light theme lives in one consolidated block at the end of this file. */
 
 /* ===== Top Bar Row ===== */
 .cal-topbar-row {
@@ -1817,13 +1366,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 10px;
-}
-
-.cal-topbar-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  flex-shrink: 0;
 }
 
 .cal-topbar-row > div:first-child {
@@ -2524,12 +2066,15 @@ body {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  height: 56px;
+  /* min-height, not height: box-sizing is border-box, so a fixed height would
+     let the safe-area padding below eat into the content box and push the
+     icons up out of the bar. */
+  min-height: 56px;
   background: var(--kh-card-bg);
   border-top: 1px solid var(--kh-border);
   z-index: 200;
-  padding: 0 16px;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding: 6px 16px 4px;
+  padding-bottom: calc(4px + var(--kh-footer-safe));
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
@@ -2549,10 +2094,17 @@ body {
   font-size: 10px;
   font-weight: 500;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 4px 6px;
   border-radius: var(--kh-radius);
   transition: color .2s, background .2s;
-  line-height: 1;
+  /* Khmer stacks diacritics above and below the baseline; line-height:1
+     clips them. */
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.cal-footer-btn svg {
+  flex-shrink: 0;
 }
 
 .cal-footer-btn:hover,
@@ -2582,13 +2134,1480 @@ body {
     padding-top: calc(env(safe-area-inset-top, 20px) + 10px);
   }
   .cal-footer {
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 4px);
+    padding-bottom: calc(4px + var(--kh-footer-safe));
   }
   .cal-app {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(60px + var(--kh-footer-safe));
   }
 }
 
 @media all and (display-mode: standalone) {
   .install-banner { display: none !important; }
 }
+
+/* =========================================================
+   LIGHT THEME — consolidated.
+   Placed last so it overrides the light rules scattered above.
+   ========================================================= */
+
+/* Scoped to :root deliberately. The settings panel has
+   <button data-theme="light">, which matches a bare [data-theme="light"]
+   selector — so this variable block leaked light-theme colours into that
+   one button while the app was in dark mode, rendering its label as dark
+   text on a dark surface. */
+:root[data-theme="light"] {
+  --kh-bg: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+  --kh-bg-subtle: #F0F4F8;
+  --kh-card-bg: #FFFFFF;
+  --kh-card-elevated: rgba(255, 255, 255, 0.95);
+  --kh-border: rgba(0,0,0,0.06);
+  --kh-border-strong: rgba(0,0,0,0.10);
+  --kh-text: #1E293B;
+  --kh-text-secondary: rgba(30, 41, 59, 0.65);
+  --kh-text-muted: #64748B;
+  --kh-primary: #3B7DE6;
+  --kh-primary-glow: rgba(59,125,230,0.12);
+  --kh-green: #059669;
+  --kh-green-glow: rgba(5, 150, 105, 0.15);
+  --kh-red: #DC2626;
+  --kh-gold: #B8892E;
+  --kh-shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+  --kh-shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  --kh-shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .cal-topbar {
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(59,125,230,0.08) 0%, rgba(59,125,230,0.02) 40%, transparent 70%),
+    linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .cal-weekdays {
+  background: rgba(248, 250, 252, 0.8);
+}
+
+[data-theme="light"] .cal-cell {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+  background: #FFFFFF;
+}
+
+[data-theme="light"] .cal-cell:active {
+  background: rgba(5, 150, 105, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(5, 150, 105, 0.2);
+  transform: scale(0.95);
+}
+
+[data-theme="light"] .cal-cell.outside {
+  background: #F1F5F9;
+  box-shadow: none;
+  opacity: 0.22;
+}
+
+[data-theme="light"] .cal-cell.sun {
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(185, 28, 28, 0.03) 100%);
+}
+
+[data-theme="light"] .cal-cell.sat {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(37, 99, 235, 0.03) 100%);
+}
+
+[data-theme="light"] .cal-cday {
+  color: rgba(180, 130, 40, 0.75);
+  font-weight: 500;
+}
+
+[data-theme="light"] .cal-cday.cn-first {
+  color: #B8892E;
+  font-weight: 600;
+}
+
+[data-theme="light"] .cal-month-bar button {
+  background: var(--kh-card-bg);
+  border: 1px solid var(--kh-border-strong);
+}
+
+[data-theme="light"] .cal-detail {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 -8px 32px rgba(0,0,0,0.10), 0 -4px 16px rgba(0,0,0,0.06);
+  border-top-color: rgba(0,0,0,0.08);
+}
+
+[data-theme="light"] .cal-detail-handle {
+  background: rgba(0,0,0,0.18);
+}
+
+[data-theme="light"] .cal-picker-panel {
+  background: var(--kh-card-bg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .pick-cell {
+  background: var(--kh-card-bg);
+  border: 1px solid var(--kh-border-strong);
+}
+
+[data-theme="light"] .pick-cell:hover {
+  background: rgba(59,125,230,0.05);
+}
+
+[data-theme="light"] .cal-today-btn {
+  background: var(--kh-primary);
+  box-shadow: 0 2px 12px rgba(59,125,230,0.3);
+}
+
+[data-theme="light"] .cal-settings-overlay {
+  background: rgba(0,0,0,0.45);
+}
+
+[data-theme="light"] .cal-settings-panel {
+  background: #FFFFFF;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+[data-theme="light"] .settings-header {
+  background: var(--kh-card-bg);
+}
+
+[data-theme="light"] .cal-footer {
+  background: rgba(255, 255, 255, 0.92);
+  border-top-color: rgba(0,0,0,0.06);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.04), 0 -2px 12px rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .about-hero {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(59,125,230,0.12) 0%, rgba(59,125,230,0.02) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(59,125,230,0.04) 0%, transparent 100%);
+  border-color: rgba(59,125,230,0.18);
+}
+
+[data-theme="light"] .about-card,
+[data-theme="light"] .about-action-btn {
+  background: rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .about-contact-row:hover {
+  background: rgba(59,125,230,0.05);
+}
+
+[data-theme="light"] .weather-current {
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(59,125,230,0.12) 0%, rgba(59,125,230,0.02) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(59,125,230,0.06) 0%, rgba(59,125,230,0.02) 100%);
+  border-color: rgba(59,125,230,0.18);
+}
+
+[data-theme="light"] .weather-hour {
+  background: rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .weather-day {
+  background: rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .health-period-row {
+  background: rgba(0,0,0,0.02);
+}
+
+[data-theme="light"] .health-reset-btn {
+  background: rgba(240,78,122,0.06);
+}
+
+[data-theme="light"] .detail-daily {
+  background: rgba(59,125,230,0.05);
+  border-color: rgba(59,125,230,0.20);
+}
+
+[data-theme="light"] .cal-modal-field input[type="date"] {
+  color-scheme: light;
+}
+
+[data-theme="light"] .settings-credits {
+  background: rgba(217,164,4,0.07);
+  border-color: rgba(217,164,4,0.22);
+}
+
+[data-theme="light"] .install-banner {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.08), 0 -2px 12px rgba(0,0,0,0.04);
+}
+
+[data-theme="light"] .settings-update-btn {
+  background: rgba(59,125,230,0.1);
+  border-color: rgba(59,125,230,0.25);
+}
+
+[data-theme="light"] .cal-wh {
+  color: #475569;
+}
+
+/* `[data-theme="light"] .cal-wh` above has the same specificity as the base
+   `.cal-wh.sun` / `.cal-wh.sat` rules but comes later, so it was overriding
+   them and rendering both weekend headers in dark slate. Restore the colours
+   here, where the extra class raises specificity. */
+[data-theme="light"] .cal-wh.sun {
+  color: #DC2626;
+  opacity: 1;
+}
+[data-theme="light"] .cal-wh.sat {
+  color: #2563EB;
+  opacity: 1;
+}
+
+/* --- Footer --- */
+[data-theme="light"] .cal-footer-btn {
+  color: #475569;
+}
+
+[data-theme="light"] .cal-footer-btn svg {
+  opacity: 0.9;
+}
+
+[data-theme="light"] .cal-footer-btn:hover,
+[data-theme="light"] .cal-footer-btn:active {
+  color: var(--kh-primary);
+  background: rgba(59,125,230,0.10);
+}
+
+/* Accent colours re-tuned for a white background */
+[data-theme="light"] .cal-footer-btn--weather:hover,
+[data-theme="light"] .cal-footer-btn--weather:active {
+  color: #B45309;
+}
+
+[data-theme="light"] .cal-footer-btn--health:hover,
+[data-theme="light"] .cal-footer-btn--health:active {
+  color: #DB2777;
+}
+
+[data-theme="light"] .cal-footer-btn--health:active svg,
+[data-theme="light"] .cal-footer-btn--health:hover svg {
+  fill: rgba(219,39,119,0.12);
+}
+
+/* =========================================================
+   VISUAL POLISH — calmer hierarchy in the header and grid.
+   Principle: colour is reserved for information (today,
+   weekend, holiday, observance, month boundaries). Everything
+   else is tonal, so the eye lands on the date first.
+   Appended last so it settles the cascade for both themes.
+   ========================================================= */
+
+/* --- Calendar cells: three clear tiers --- */
+
+/* Tier 3 — Chinese numerals. These were gold on every cell, which competed
+   with the date. Muted here so .cn-first (first day of a Chinese month) is
+   the only gold in the grid and actually reads as a marker. */
+.cal-cday { color: rgba(212,168,74,0.40); font-weight: 400; }
+.cal-cday.cn-first { color: var(--kh-gold); font-weight: 600; }
+
+/* Tier 2 — Khmer lunar line. Keeps the កើត/រោច hue cue, but desaturated so
+   the grid reads as one surface rather than green/blue stripes. */
+.cal-cell.keit .cal-kday { color: rgba(52,211,153,0.66); }
+.cal-cell.roc  .cal-kday { color: rgba(91,156,246,0.66); }
+
+/* Weekend keeps its own tint and must still win over keit/roc. */
+.cal-cell.sun.keit .cal-kday,
+.cal-cell.sun.roc  .cal-kday { color: rgba(248,113,113,0.62); }
+.cal-cell.sat.keit .cal-kday,
+.cal-cell.sat.roc  .cal-kday { color: rgba(91,156,246,0.62); }
+
+/* Tier 1 — the Gregorian date. Slightly tighter and calmer spacing. */
+.cal-gday { letter-spacing: 0.1px; }
+.cal-kday { margin-top: 2px; letter-spacing: 0.1px; }
+
+/* Supporting metadata line — steps back behind the month name. */
+.cal-lunar-info { color: var(--kh-text-muted); letter-spacing: 0.15px; }
+
+/* Weekday initials are labels, not content. */
+.cal-wh { font-weight: 600; opacity: 0.92; }
+
+/* --- Light theme --- */
+
+[data-theme="light"] .cal-cday { color: #8A6B2C; }
+[data-theme="light"] .cal-cday.cn-first { color: #B8892E; font-weight: 600; }
+
+[data-theme="light"] .cal-cell.keit .cal-kday { color: #047857; font-weight: 600; }
+[data-theme="light"] .cal-cell.roc  .cal-kday { color: #1D4ED8; font-weight: 600; }
+[data-theme="light"] .cal-cell.sun.keit .cal-kday,
+[data-theme="light"] .cal-cell.sun.roc  .cal-kday { color: #B91C1C; font-weight: 600; }
+[data-theme="light"] .cal-cell.sat.keit .cal-kday,
+[data-theme="light"] .cal-cell.sat.roc  .cal-kday { color: #1D4ED8; font-weight: 600; }
+
+/* Weekend wash: the number colour already marks the weekend, so the cell
+   only needs a whisper. :not() keeps today/selected states from being
+   overwritten when they fall on a weekend. */
+[data-theme="light"] .cal-cell.sun:not(.today):not(.selected) {
+  background: linear-gradient(135deg, rgba(220,38,38,0.075) 0%, rgba(185,28,28,0.045) 100%);
+}
+[data-theme="light"] .cal-cell.sat:not(.today):not(.selected) {
+  background: linear-gradient(135deg, rgba(59,130,246,0.080) 0%, rgba(37,99,235,0.045) 100%);
+}
+[data-theme="light"] .cal-lunar-info { color: #64748B; }
+
+/* =========================================================
+   MONTH EVENTS — rounded card under the grid listing the
+   holidays/observances of whichever month is on screen.
+   ========================================================= */
+.month-events {
+  flex-shrink: 0;
+  margin: 4px 0 8px;
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius-lg);
+  background: var(--kh-card-bg);
+  box-shadow: var(--kh-shadow-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  /* Generous but bounded: the grid keeps its own min row height, and a busy
+     month scrolls inside the card rather than pushing the grid off screen. */
+  min-height: 132px;
+  max-height: 34vh;
+}
+
+.month-events-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px 9px;
+  border-bottom: 1px solid var(--kh-border);
+  flex-shrink: 0;
+}
+
+.month-events-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--kh-text);
+  letter-spacing: 0.2px;
+}
+
+.month-events-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--kh-primary-glow);
+  color: var(--kh-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+.month-events-count:empty { display: none; }
+
+.month-events-body {
+  padding: 6px 12px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+}
+
+.month-events-empty {
+  padding: 22px 8px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--kh-text-muted);
+}
+
+/* Light theme */
+[data-theme="light"] .month-events {
+  background: #FFFFFF;
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
+}
+[data-theme="light"] .month-events-head { border-bottom-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .month-events-count {
+  background: rgba(59,125,230,0.10);
+  color: #2563EB;
+}
+[data-theme="light"] .month-events-empty { color: #64748B; }
+
+/* =========================================================
+   LAYOUT FIX — events card + floating Today pill.
+   With a busy month (e.g. October, 6 events) the card was
+   flex-shrink:0 with a 34vh cap, so grid + card overflowed
+   .cal-app and spilled under the Today pill and the footer.
+   Now the grid takes its natural height and the card absorbs
+   whatever space is left, scrolling internally instead.
+   ========================================================= */
+/* Which box absorbs the leftover height decides how the screen reads. Letting
+   the card absorb it meant a quiet month showed one event above a third of a
+   screen of empty card. The grid takes the slack instead, so spare space
+   becomes larger, easier-to-tap date cells.
+
+   flex-shrink stays 0 on the grid: the cells have their own min-height, so a
+   shrunken grid cannot shrink its contents — the rows would overflow downward
+   and paint over the card. Growing is safe; shrinking is not. */
+.cal-grid {
+  /* flex-shrink is 1 now, but deliberately WITHOUT min-height:0. That leaves
+     the automatic minimum in place, so the grid can give space back to the
+     events card only down to its own min-content — six rows at the cells' own
+     min-height. It cannot be squeezed past that, which is what used to make
+     rows overflow and paint over the card. */
+  flex: 1 1 auto;
+}
+
+/* The card sizes to its content between a floor and a cap; it does not grow
+   into spare height. Growing meant a month with one event showed that event
+   above a large empty card — the complaint this layout started with. The grid
+   takes the slack instead, and the card still expands for a busy month up to
+   the cap, past which .month-events-body scrolls.
+
+   The floor belongs here and not on .month-events-body: a min-height on the
+   body does not shrink with the card, so the body spilled past the card's
+   rounded bottom and ran into the footer. The grid is the box with slack —
+   grid-auto-rows:1fr over .cal-cell{min-height:60px} puts its floor at about
+   385px, roughly 110px below the height it takes when free — so the grid gives
+   way and the card keeps its size. */
+.month-events {
+  flex: 0 1 auto;
+  min-height: 132px;
+  max-height: 46vh;
+}
+
+/* No floor here. .month-events-body is the scroll area, and a min-height on it
+   does not shrink with the card — the body simply spilled past the card's
+   rounded bottom and ran into the footer, which is what made the card look cut
+   off. With min-height:0 the card sizes to its content, shrinks when the month
+   needs six rows, and the body scrolls inside it. */
+.month-events-body {
+  min-height: 0;
+}
+
+/* =========================================================
+   COPY — the app sets user-select:none globally, which also
+   blocked long-press-to-copy on the date text. Re-enable it
+   where the content is worth copying, and add an explicit
+   copy button to the day detail sheet.
+   ========================================================= */
+.detail-selectable,
+.cal-lunar-info {
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+.detail-full-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-copy-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  border: 1px solid var(--kh-border-strong);
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s var(--kh-transition), color .15s var(--kh-transition);
+}
+.detail-copy-btn:active {
+  background: var(--kh-primary-glow);
+  color: var(--kh-primary);
+}
+
+[data-theme="light"] .detail-copy-btn {
+  border-color: rgba(0,0,0,0.12);
+  color: #475569;
+}
+[data-theme="light"] .detail-copy-btn:active {
+  background: rgba(59,125,230,0.10);
+  color: #2563EB;
+}
+
+/* =========================================================
+   LUNAR INFO LINE — ទុតិយាសាឍ | អដ្ឋស័ក | មមី | ព.ស.២៥៧០
+   Each part now carries its own colour, reusing the palette
+   already in the grid: green for the lunar month (as កើត),
+   blue for the year animal, gold for the Buddhist Era.
+   ========================================================= */
+.cal-lunar-info .lunar-sep {
+  margin: 0 7px;
+  color: var(--kh-border-strong);
+}
+.cal-lunar-info .lunar-month  { color: var(--kh-green); font-weight: 600; }
+.cal-lunar-info .lunar-sak    { color: var(--kh-text-secondary); }
+.cal-lunar-info .lunar-animal { color: var(--kh-primary); font-weight: 500; }
+.cal-lunar-info .lunar-be     { color: var(--kh-gold); font-weight: 500; }
+
+/* Light theme — solid values, since low-alpha colours wash out on white. */
+[data-theme="light"] .cal-lunar-info .lunar-sep    { color: rgba(0,0,0,0.22); }
+[data-theme="light"] .cal-lunar-info .lunar-month  { color: #047857; }
+[data-theme="light"] .cal-lunar-info .lunar-sak    { color: #475569; }
+[data-theme="light"] .cal-lunar-info .lunar-animal { color: #1D4ED8; }
+[data-theme="light"] .cal-lunar-info .lunar-be     { color: #8A6B2C; }
+.cal-lunar-info {
+  font-size: 12.5px;
+}
+
+@media (max-width: 380px) {
+  .cal-lunar-info { font-size: 11.5px; }
+}
+
+/* =========================================================
+   SETTINGS SEGMENTED BUTTONS
+   The unselected option was `background: transparent` with a
+   0.10-alpha border, so on the white settings panel the "Dark"
+   / "ខ្មែរ" / "Sunday" buttons were white-on-white with an almost
+   invisible outline. Give the unselected state a real surface.
+   `:not(.active)` keeps the selected blue pill untouched — these
+   rules would otherwise outrank it.
+   ========================================================= */
+.settings-toggle:not(.active) {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.20);
+  color: var(--kh-text);
+}
+.settings-toggle:not(.active):hover,
+.settings-toggle:not(.active):active {
+  background: rgba(255,255,255,0.12);
+  border-color: var(--kh-primary);
+  color: var(--kh-primary);
+}
+
+[data-theme="light"] .settings-toggle:not(.active) {
+  background: #F1F5F9;
+  border-color: rgba(0,0,0,0.16);
+  color: #334155;
+}
+[data-theme="light"] .settings-toggle:not(.active):hover,
+[data-theme="light"] .settings-toggle:not(.active):active {
+  background: #E2E8F0;
+  border-color: #2563EB;
+  color: #1D4ED8;
+}
+
+/* =========================================================
+   OFFICE ADD-IN — only active when the page is loaded from
+   the add-in manifest (?office=1). A task pane is roughly
+   phone-shaped, so the layout needs no changes; this is the
+   insert affordance and its confirmation.
+   ========================================================= */
+.office-insert-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  border: 1px solid var(--kh-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--kh-primary);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.office-insert-btn:hover,
+.office-insert-btn:active { background: var(--kh-primary-glow); }
+
+/* The add-in cannot use the app's toast, which is private to its module. */
+#office-flash {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  transform: translate(-50%, 12px);
+  z-index: 400;
+  max-width: 88%;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--kh-card-bg);
+  border: 1px solid var(--kh-border);
+  color: var(--kh-text);
+  font-size: 12px;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s, transform .18s;
+}
+#office-flash.show { opacity: 1; transform: translate(-50%, 0); }
+#office-flash.bad { border-color: var(--kh-red); color: var(--kh-red); }
+
+/* Free-text setting (the place prefix), styled like the toggle groups. */
+.settings-text-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--kh-border);
+  border-radius: 10px;
+  background: var(--kh-card-bg);
+  color: var(--kh-text);
+  font: inherit;
+  font-size: 13px;
+}
+.settings-text-input:focus {
+  outline: none;
+  border-color: var(--kh-primary);
+}
+.detail-place { font-weight: 600; }
+
+/* =========================================================
+   DAY SHEET — tear-off calendar layout.
+   Strip (year | month) → three columns (lunar | weekday + big
+   day | solar) → titled section cards. The sheet scrolls when
+   the sections outgrow the screen.
+   ========================================================= */
+.cal-detail {
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dhead-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 12.5px;
+  color: var(--kh-text-secondary);
+  padding-bottom: 8px;
+  border-bottom: 3px double var(--kh-border-strong);
+}
+.dhead-strip-month {
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.dhead {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  padding: 10px 0 4px;
+}
+.dhead-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-width: 0;
+  padding: 6px 4px;
+}
+.dhead-mid {
+  border-left: 1px solid var(--kh-border-strong);
+  border-right: 1px solid var(--kh-border-strong);
+}
+.dhead-label {
+  font-size: 11.5px;
+  color: var(--kh-text-muted);
+  line-height: 1.5;
+}
+.dhead-month {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--kh-text);
+  line-height: 1.6;
+}
+.dhead-month--lunar { color: var(--kh-green); }
+.dhead-num {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1.5;
+}
+.dhead-sub {
+  font-size: 13px;
+  color: var(--kh-text-secondary);
+  line-height: 1.5;
+}
+.dhead-today {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--kh-primary);
+  background: var(--kh-primary-glow);
+  border-radius: 999px;
+  padding: 1px 10px;
+  margin-bottom: 2px;
+}
+.dhead-weekday {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--kh-primary);
+  line-height: 1.6;
+}
+.dhead-big {
+  /* Georgia has no Khmer digits; the Khmer face covers the ១ ២ ៣ setting */
+  font-family: Georgia, 'Times New Roman', 'Noto Sans Khmer', serif;
+  font-size: 84px;
+  font-weight: 700;
+  color: var(--kh-primary);
+  line-height: 1;
+  margin: 2px 0 8px;
+}
+.dhead-weekday-alt {
+  font-size: 12px;
+  color: var(--kh-text-muted);
+}
+/* Tracking breaks Khmer shaping, so only the Latin weekday gets it */
+.dhead-weekday-alt--latin {
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+/* Section: "—— title ——" above a bordered card */
+.dsec { margin-top: 16px; }
+.dsec-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--kh-text-secondary);
+}
+.dsec-title::before,
+.dsec-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--kh-border-strong);
+}
+.dsec-card {
+  border: 1px solid var(--kh-border-strong);
+  border-radius: 14px;
+  padding: 2px 14px;
+  background: rgba(255,255,255,0.02);
+}
+[data-theme="light"] .dsec-card { background: #fff; }
+
+.dsec-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--kh-text);
+  --tone: var(--kh-primary);
+}
+.dsec-row + .dsec-row { border-top: 1px solid var(--kh-border); }
+.dsec-row--red    { --tone: var(--kh-red); }
+.dsec-row--gold   { --tone: var(--kh-gold); }
+.dsec-row--health { --tone: #f04e7a; }
+.dsec-row--ovulation { --tone: #ffa500; }
+.dsec-row--fertile   { --tone: #22c55e; }
+.dsec-bar {
+  flex: none;
+  width: 3px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--tone);
+}
+.dsec-icon {
+  flex: none;
+  width: 20px;
+  display: inline-flex;
+  justify-content: center;
+  color: var(--tone);
+  font-size: 14px;
+}
+.dsec-text { flex: 1; min-width: 0; }
+.dsec-health-kind { font-weight: 600; color: var(--tone); margin-right: 6px; }
+.dsec-sub { color: var(--kh-text-secondary); font-size: 13px; }
+.dsec-note {
+  flex: none;
+  font-size: 12.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+
+/* Day info rows — label over value, copy button on the right */
+.dsec .detail-full-row {
+  padding: 8px 0;
+}
+.dsec .detail-full-row + .detail-full-row { border-top: 1px solid var(--kh-border); }
+.dinfo-main { flex: 1; min-width: 0; }
+.dinfo-label {
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  line-height: 1.4;
+}
+.dinfo-text {
+  font-size: 14px;
+  color: var(--kh-text);
+  line-height: 1.6;
+}
+.dsec .detail-copy-btn { border-color: transparent; }
+.dinfo-actions {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--kh-border);
+}
+.dinfo-action {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dinfo-action:active {
+  background: var(--kh-primary-glow);
+  color: var(--kh-primary);
+}
+
+/* The daily block keeps its own card; just space it like the sections */
+.cal-detail .detail-daily { margin-top: 16px; }
+
+@media (max-width: 360px) {
+  .dhead-big { font-size: 68px; }
+  .dhead-num { font-size: 26px; }
+  .dhead-weekday { font-size: 18px; }
+}
+
+/* =========================================================
+   SQUARE DAY CELLS — each day is a 1:1 tile. Rows no longer
+   stretch to fill the screen; the events card under the grid
+   takes the spare height instead, and scrolls when long.
+   Placed last so it wins over the min-height / font-size
+   steps in the width and height media queries above.
+   ========================================================= */
+.cal-grid {
+  grid-auto-rows: auto;
+  align-content: start;
+  flex: 0 0 auto;
+}
+.cal-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  padding: 2px 1px;
+  border-radius: 12px;
+}
+.cal-gday { font-size: 16px; line-height: 1.05; }
+.cal-kday { font-size: 9.5px; line-height: 1.15; }
+.cal-cday { font-size: 9px; line-height: 1.1; }
+/* Narrower tile: pull the ថ្ងៃសីល mark into the corner so it clears a
+   two-digit day number */
+.cal-sil { top: 3px; left: 3px; width: 9px; height: 9px; }
+.month-events {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+/* Wider screens (tablet, desktop, Office pane) have room for the full sizes */
+@media (min-width: 480px) {
+  .cal-gday { font-size: 19px; }
+  .cal-kday { font-size: 11px; }
+  .cal-cday { font-size: 10.5px; }
+}
+
+/* =========================================================
+   EVENTS PAGE — full-height list of the year's holidays,
+   observances and ថ្ងៃសីល: header (year switch, today, close),
+   filter chips, then rows under sticky month headers.
+   ========================================================= */
+#cal-events-overlay { align-items: stretch; }
+.cal-events-panel {
+  width: 100%;
+  max-width: 520px;
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--kh-card-bg);
+}
+.ev-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 8px;
+}
+.ev-year-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+/* Page name as a small label over the year, so both fit between the arrows
+   on a 360px phone */
+.ev-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 84px;
+  line-height: 1.2;
+}
+.ev-title-label { font-size: 12px; font-weight: 600; color: var(--kh-text-muted); white-space: nowrap; }
+.ev-year { font-size: 24px; font-weight: 800; color: var(--kh-text); }
+.ev-year-btn,
+.ev-icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--kh-text-secondary);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ev-year-btn { width: 32px; height: 40px; border-radius: 10px; }
+.ev-actions { display: flex; gap: 8px; flex: none; }
+.ev-icon-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--kh-border-strong);
+  background: var(--kh-card-elevated);
+  color: var(--kh-text);
+  position: relative;
+}
+.ev-year-btn:active,
+.ev-icon-btn:active { background: var(--kh-primary-glow); color: var(--kh-primary); }
+/* Today's date number inside the calendar glyph */
+.ev-today-num {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -15%);
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+/* The four chips share the row equally, so all of them fit a 360px phone */
+.ev-chips {
+  display: flex;
+  gap: 6px;
+  padding: 6px 12px 12px;
+  flex: none;
+}
+.ev-chip {
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 6px;
+  white-space: nowrap;
+  border-radius: 999px;
+  border: 0;
+  background: var(--kh-bg-subtle);
+  color: var(--kh-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.ev-chip-icon { flex: none; display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center; }
+.ev-chip-icon svg { width: 14px; height: 14px; }
+.ev-chip.is-active { background: var(--kh-red); color: #fff; }
+
+.events-list {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  position: relative;
+  border-top: 1px solid var(--kh-border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.ev-month-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--kh-bg-subtle);
+  border-bottom: 1px solid var(--kh-border);
+}
+.ev-month-name { font-size: 16px; font-weight: 800; color: var(--kh-text); }
+.ev-month-lunar { font-size: 12.5px; color: var(--kh-text-muted); white-space: nowrap; }
+
+.ev-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  --tone: var(--kh-gold);
+  --tone-bg: rgba(212,168,74,0.14);
+}
+.ev-row + .ev-row { border-top: 1px solid var(--kh-border); }
+.ev-row:active { background: var(--kh-primary-glow); }
+.ev-row--public { --tone: var(--kh-red); --tone-bg: rgba(248,113,113,0.14); }
+.ev-row--sil    { --tone: #fb923c; --tone-bg: rgba(251,146,60,0.14); }
+.ev-date {
+  flex: none;
+  width: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+}
+.ev-wd {
+  font-size: 10.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+.ev-day { font-size: 19px; font-weight: 800; color: var(--kh-text); }
+.ev-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tone);
+  background: var(--tone-bg);
+}
+.ev-icon svg { width: 21px; height: 21px; }
+.ev-body { flex: 1; min-width: 0; }
+.ev-name { font-size: 15px; font-weight: 600; color: var(--kh-text); line-height: 1.45; }
+.ev-row--public .ev-name { color: var(--kh-red); }
+.ev-row--observance .ev-name { color: var(--kh-gold); }
+.ev-sub { font-size: 12.5px; color: var(--kh-text-muted); line-height: 1.45; }
+.ev-row--past { opacity: 0.55; }
+.ev-row--today { background: var(--kh-primary-glow); }
+.ev-today-badge {
+  flex: none;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--kh-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ev-empty {
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--kh-text-muted);
+}
+
+[data-theme="light"] .cal-events-panel { background: #fff; }
+[data-theme="light"] .ev-month-head { background: #F4F4F5; }
+[data-theme="light"] .ev-chip:not(.is-active) { background: #F1F1F3; color: #3F3F46; }
+[data-theme="light"] .ev-icon-btn { background: #fff; border-color: rgba(0,0,0,0.08); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+[data-theme="light"] .ev-row--observance .ev-name { color: #9A6B12; }
+[data-theme="light"] .ev-row             { --tone-bg: rgba(184,137,46,0.12); }
+[data-theme="light"] .ev-row--public     { --tone-bg: rgba(220,38,38,0.09); }
+[data-theme="light"] .ev-row--sil        { --tone: #C2410C; --tone-bg: rgba(194,65,12,0.09); }
+.dsec-icon svg { width: 18px; height: 18px; }
+
+/* Day sheet opened from the events page sits above it (the overlay is z 600),
+   so closing the sheet reveals the list again */
+.cal-detail.cal-detail--over-events { z-index: 700; }
+/* Closed, it parks just below the screen; above the events page its shadow
+   would show along the bottom edge */
+.cal-detail.cal-detail--over-events:not(.open) { box-shadow: none; }
+
+/* Month card under the grid: the events page rows, compact */
+.month-events-body { padding: 2px 0 6px; }
+.month-events-body .ev-row { padding: 6px 14px; gap: 10px; border-radius: 0; }
+.month-events-body .ev-date { width: 40px; }
+.month-events-body .ev-wd { font-size: 10px; }
+.month-events-body .ev-day { font-size: 16px; }
+.month-events-body .ev-icon { width: 28px; height: 28px; border-radius: 8px; }
+.month-events-body .ev-icon svg { width: 16px; height: 16px; }
+.month-events-body .ev-name { font-size: 14px; line-height: 1.4; }
+/* One-line subtitle so a month's list stays scannable */
+.month-events-body .ev-sub { font-size: 11.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.month-events-body .ev-today-badge { font-size: 10.5px; padding: 1px 8px; }
+
+/* Khmer day digits (Settings → លេខថ្ងៃ) are ~40% wider than Latin ones; at
+   13.5px a two-digit day still clears the holiday dot and the ថ្ងៃសីល mark */
+.cal-grid--km-digits .cal-gday { font-size: 13.5px; letter-spacing: -0.6px; }
+.cal-grid--km-digits .cal-sil { top: 2px; left: 2px; width: 8px; height: 8px; }
+@media (min-width: 480px) {
+  .cal-grid--km-digits .cal-gday { font-size: 17px; }
+}
+
+/* =========================================================
+   HEADER — large month + year title on the left (tap: month/year
+   picker) with the other calendars' month names under it, and
+   round month arrows on the right. Replaces the logo and the
+   four-column month pill.
+   ========================================================= */
+.cal-topbar--title { padding-left: 18px; padding-right: 18px; }
+.cal-topbar--title .cal-topbar-row {
+  justify-content: space-between;
+  gap: 12px;
+}
+.cal-title-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  min-width: 0;
+  margin-left: -8px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--kh-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cal-title-btn:active { background: var(--kh-primary-glow); }
+.cal-title-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+.cal-title-main svg { flex: none; color: var(--kh-text-muted); }
+.cal-title-sub {
+  font-size: 12.5px;
+  color: var(--kh-text-muted);
+  white-space: nowrap;
+}
+.cal-title-nav { display: flex; gap: 8px; flex: none; }
+.cal-nav-round {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--kh-border-strong);
+  background: var(--kh-card-elevated);
+  color: var(--kh-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .12s var(--kh-transition);
+}
+.cal-nav-round:active { transform: scale(0.94); background: var(--kh-primary-glow); }
+[data-theme="light"] .cal-nav-round {
+  background: #fff;
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+/* =========================================================
+   PAGE BACKGROUND — a solid colour on <html> for each theme.
+   <body> is position:fixed, so <html> has no height and the
+   gradient on <body> paints nothing in Android's WebView; the
+   app window's dark #0f1117 showed through behind the light
+   theme. (Desktop browsers fall back to white, hiding it.)
+   ========================================================= */
+html { background-color: #0a0c14; }
+:root[data-theme="light"] { background-color: #F8FAFC; }
+
+/* =========================================================
+   LUNAR LINE + WEEKDAY ROW — one quiet centred line (moon icon,
+   lunar month bold, the rest muted, "·" separators) and plain
+   weekday labels with no band behind them.
+   ========================================================= */
+.cal-lunar-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 4px;
+  border-bottom: 0;
+  font-size: 12.5px;
+  color: var(--kh-text-secondary);
+}
+.cal-lunar-info .lunar-icon { flex: none; color: var(--kh-gold); }
+.cal-lunar-info .lunar-sep,
+[data-theme="light"] .cal-lunar-info .lunar-sep { margin: 0; color: var(--kh-text-muted); opacity: 0.7; }
+.cal-lunar-info .lunar-month,
+[data-theme="light"] .cal-lunar-info .lunar-month { color: var(--kh-text); font-weight: 700; }
+.cal-lunar-info .lunar-sak,
+.cal-lunar-info .lunar-animal,
+.cal-lunar-info .lunar-be,
+[data-theme="light"] .cal-lunar-info .lunar-sak,
+[data-theme="light"] .cal-lunar-info .lunar-animal,
+[data-theme="light"] .cal-lunar-info .lunar-be { color: var(--kh-text-secondary); font-weight: 500; }
+
+.cal-weekdays,
+[data-theme="light"] .cal-weekdays {
+  background: transparent;
+  padding: 8px 0 4px;
+}
+.cal-wh {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 1;
+}
+
+/* =========================================================
+   CYCLE TRACKER DAYS — a ring and tint over the whole tile
+   instead of a 4px dot (which the white light-theme cells also
+   hid the tint behind). Text stays above the overlay.
+   ========================================================= */
+.cal-cell > span:not(.cal-sil) { position: relative; z-index: 1; }
+.cal-cell.health-period::before,
+.cal-cell.health-predicted::before,
+.cal-cell.health-ovulation::before,
+.cal-cell.health-fertile::before {
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  border-radius: inherit;
+  opacity: 1;
+  pointer-events: none;
+}
+.cal-cell.health-period::before    { background: rgba(240,78,122,0.14); box-shadow: inset 0 0 0 2px #f04e7a; }
+.cal-cell.health-predicted::before { background: rgba(240,78,122,0.05); box-shadow: none; border: 1.5px dashed rgba(240,78,122,0.9); }
+.cal-cell.health-ovulation::before { background: rgba(245,158,11,0.12); box-shadow: inset 0 0 0 2px #f59e0b; }
+.cal-cell.health-fertile::before   { background: rgba(34,197,94,0.11); box-shadow: inset 0 0 0 1px rgba(34,197,94,0.55); }
+
+/* =========================================================
+   MONTH PICKER — the light theme's plain cell rule was
+   overriding the selected and current-month highlights.
+   ========================================================= */
+.pick-cell.selected,
+[data-theme="light"] .pick-cell.selected {
+  background: var(--kh-primary);
+  border-color: var(--kh-primary);
+  box-shadow: 0 2px 10px rgba(59,125,230,0.30);
+}
+.pick-cell.selected .pick-cell-km { color: #fff; }
+.pick-cell.selected .pick-cell-en { color: rgba(255,255,255,0.85); }
+.pick-cell.today:not(.selected),
+[data-theme="light"] .pick-cell.today:not(.selected) {
+  border: 1.5px solid var(--kh-primary);
+  background: var(--kh-primary-glow);
+}
+
+/* =========================================================
+   TODAY + SELECTED DAY — today is a solid green tile with
+   white text; a selected day keeps its own colours inside a
+   blue ring. (Replaces the translucent today tint, faded green
+   number and glow, and the all-white solid-blue selection.)
+   ========================================================= */
+.cal-cell.today,
+[data-theme="light"] .cal-cell.today {
+  background: #059669;
+  border-color: #059669;
+  box-shadow: 0 2px 8px rgba(5,150,105,0.35);
+}
+.cal-cell.today .cal-gday,
+.cal-cell.today .cal-kday,
+.cal-cell.today .cal-cday,
+[data-theme="light"] .cal-cell.today .cal-gday,
+[data-theme="light"] .cal-cell.today .cal-kday,
+[data-theme="light"] .cal-cell.today .cal-cday { color: #fff !important; } /* beats the weekend/holiday text colours */
+.cal-cell.today .cal-gday { font-weight: 800; }
+.cal-cell.today .cal-kday,
+.cal-cell.today .cal-cday { opacity: 0.9; }
+.cal-cell.today .cal-sil { background-color: #fff; opacity: 0.9; }
+/* A tracker day that is also today keeps only a white ring on the tile */
+.cal-cell.today::before { background: transparent; }
+.cal-cell.today.health-period::before,
+.cal-cell.today.health-ovulation::before { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.9); }
+.cal-cell.today.health-predicted::before { border-color: rgba(255,255,255,0.9); }
+
+.cal-cell.selected:not(.today),
+[data-theme="light"] .cal-cell.selected:not(.today) {
+  border-color: var(--kh-primary);
+  box-shadow: 0 0 0 1px var(--kh-primary), 0 2px 8px rgba(59,125,230,0.22);
+}
+.cal-cell.today.selected { box-shadow: 0 0 0 2px var(--kh-primary); }
+
+
+/* =========================================================
+   PERIOD RANGE PICKER — a month calendar in the log modal:
+   tap the first day, then the last; the range shows as a pink
+   band. Replaces two native mm/dd/yyyy date inputs.
+   ========================================================= */
+.hl-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.hl-cal-title { font-size: 15px; font-weight: 700; color: var(--kh-text); }
+.hl-nav {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--kh-border-strong);
+  background: transparent;
+  color: var(--kh-text);
+  cursor: pointer;
+}
+.hl-nav:disabled { opacity: 0.3; cursor: default; }
+.hl-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 4px;
+}
+.hl-wd {
+  text-align: center;
+  font-size: 11px;
+  color: var(--kh-text-muted);
+  padding: 2px 0 4px;
+}
+.hl-day {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--kh-text);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hl-day span {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.hl-day--today span { box-shadow: inset 0 0 0 1.5px var(--kh-primary); }
+.hl-day--disabled { opacity: 0.3; cursor: default; }
+.hl-day--logged span::after {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f04e7a;
+}
+/* Range: a band across the row, solid circles at both ends */
+.hl-day--in,
+.hl-day--start,
+.hl-day--end { background: rgba(240,78,122,0.14); }
+.hl-day--start { border-radius: 19px 0 0 19px; }
+.hl-day--end   { border-radius: 0 19px 19px 0; }
+.hl-day--single { border-radius: 19px; background: transparent; }
+.hl-day--start span,
+.hl-day--end span { background: #f04e7a; color: #fff; font-weight: 700; box-shadow: none; }
+
+.hl-summary { margin-top: 10px; min-height: 40px; }
+.hl-range { font-size: 14px; font-weight: 700; color: var(--kh-text); }
+.hl-hint { font-size: 12.5px; color: var(--kh-text-muted); margin-top: 2px; }
+
+/* Period history: readable dates and a length badge */
+.health-period-len {
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(240,78,122,0.12);
+  color: #f04e7a;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Cycle-tracker rows in the month card — pink droplet; a predicted
+   period gets a dashed icon box */
+.ev-row--period,
+.ev-row--predicted { --tone: #f04e7a; --tone-bg: rgba(240,78,122,0.12); }
+.ev-row--period .ev-name { color: #f04e7a; }
+.ev-row--predicted .ev-name { color: var(--kh-text-secondary); }
+.ev-row--predicted .ev-icon { background: transparent; border: 1.5px dashed rgba(240,78,122,0.7); }
+[data-theme="light"] .ev-row--period .ev-name { color: #DB2777; }
+
+/* Fertile window (green baby icon) and ovulation (orange) rows */
+.ev-row--fertile   { --tone: #16a34a; --tone-bg: rgba(34,197,94,0.12); }
+.ev-row--ovulation { --tone: #f59e0b; --tone-bg: rgba(245,158,11,0.13); }
+.ev-row--fertile .ev-name   { color: #16a34a; }
+.ev-row--ovulation .ev-name { color: #d97706; }
+
+/* Several events on one day read as one group: one date, no divider */
+.ev-row.ev-row--cont { border-top: 0; padding-top: 0; }
+.ev-row--cont .ev-date { visibility: hidden; }
+
+/* Five filter chips (period tracker on): chips size to their label and
+   tighten so all five still fit a 360px phone */
+.ev-chips--five { gap: 4px; padding-left: 10px; padding-right: 10px; }
+.ev-chips--five .ev-chip { flex: 1 1 auto; padding: 7px 4px; gap: 3px; font-size: 12.5px; }
+.ev-chip--cycle.is-active { background: #f04e7a; }
+
+
+/* =========================================================
+   FOOTER ICONS — each icon carries its feature's colour (the
+   same ones used across the app: today green, period pink,
+   events red, weather sky, settings slate); labels stay
+   neutral, and a press tints the button in that colour.
+   ========================================================= */
+#cal-today-footer  { --fc: #34d399; --fc-bg: rgba(52,211,153,0.14); }
+#cal-health-btn    { --fc: #f472b6; --fc-bg: rgba(244,114,182,0.14); }
+#cal-events-btn    { --fc: #f87171; --fc-bg: rgba(248,113,113,0.14); }
+#cal-weather-btn   { --fc: #38bdf8; --fc-bg: rgba(56,189,248,0.14); }
+#cal-settings-btn  { --fc: #94a3b8; --fc-bg: rgba(148,163,184,0.16); }
+[data-theme="light"] #cal-today-footer { --fc: #059669; --fc-bg: rgba(5,150,105,0.10); }
+[data-theme="light"] #cal-health-btn   { --fc: #DB2777; --fc-bg: rgba(219,39,119,0.09); }
+[data-theme="light"] #cal-events-btn   { --fc: #DC2626; --fc-bg: rgba(220,38,38,0.09); }
+[data-theme="light"] #cal-weather-btn  { --fc: #0284C7; --fc-bg: rgba(2,132,199,0.09); }
+[data-theme="light"] #cal-settings-btn { --fc: #475569; --fc-bg: rgba(71,85,105,0.10); }
+
+#cal-footer .cal-footer-btn { color: var(--kh-text-secondary); font-weight: 600; }
+#cal-footer .cal-footer-btn svg { color: var(--fc); opacity: 1; }
+#cal-footer .cal-footer-btn:hover,
+#cal-footer .cal-footer-btn:active {
+  color: var(--kh-text);
+  background: var(--fc-bg);
+}
+[data-theme="light"] #cal-footer .cal-footer-btn { color: #475569; }
+
+/* =========================================================
+   HEADER ROW — the lunar line sits on the right of the title,
+   level with "October · 10月". Month arrows are hidden on touch
+   screens (swipe and the month picker change month); a mouse
+   still gets them.
+   ========================================================= */
+.cal-topbar--title .cal-topbar-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: end;
+  column-gap: 10px;
+}
+.cal-topbar .cal-lunar-info {
+  justify-self: end;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cal-topbar .cal-lunar-info .lunar-icon { width: 13px; height: 13px; }
+.cal-title-nav { display: none; align-self: center; }
+@media (hover: hover) and (pointer: fine) {
+  .cal-title-nav { display: flex; }
+}
+

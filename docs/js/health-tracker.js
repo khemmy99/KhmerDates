@@ -203,9 +203,13 @@ const HealthTracker = (() => {
     const ymd = _ymd(date);
     const periods = (profile.periods || []).slice().sort((a, b) => a.start.localeCompare(b.start));
 
-    // (1) Is this date within a LOGGED period?
+    // (1) Is this date within a LOGGED period? One logged with only a start
+    // date is still running, so it covers the usual period length rather than
+    // just its first day.
+    const loggedLen = getEffectivePeriodLength(profile);
     for (const p of periods) {
-      if (p.start <= ymd && (p.end ? ymd <= p.end : ymd === p.start)) {
+      const end = p.end || _ymd(new Date(_parseYmd(p.start).getTime() + (loggedLen - 1) * 86400000));
+      if (p.start <= ymd && ymd <= end) {
         // dayInCycle relative to this period's start
         const dayInPeriod = _diffDays(_parseYmd(ymd), _parseYmd(p.start)) + 1;
         return { kind: 'period', logged: true, dayInPeriod };

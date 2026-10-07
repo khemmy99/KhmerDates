@@ -10,7 +10,7 @@ const KhCal = (() => {
   const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
-  const APP_VERSION = '1.4.6';
+  const APP_VERSION = '1.5.5';
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -49,9 +49,14 @@ const KhCal = (() => {
     WX.getCurrentPosition().then(pos => {
       WX.setLocation({ kind: 'gps', lat: pos.lat, lon: pos.lon });
       _loadWeather();
-    }).catch(() => {
+    }).catch(err => {
+      // Every failure used to read "Location unavailable. Pick a city above.",
+      // which sent people to the city list when the fix was to turn location on
+      // or grant the permission. getCurrentPosition() now says which it was.
+      const key = { disabled: 'gpsOff', denied: 'gpsNoPermission', timeout: 'gpsTimeout' }[err && err.code]
+                || 'gpsDenied';
       if (cur) cur.innerHTML =
-        `<div class="weather-error">${escapeHtml(I18n.t('gpsDenied') || 'Location unavailable. Pick a city above.')}</div>`;
+        `<div class="weather-error">${escapeHtml(I18n.t(key) || 'Location unavailable. Pick a city above.')}</div>`;
     });
   }
 
@@ -164,7 +169,12 @@ const KhCal = (() => {
    * Build a year-long list of unique holiday occurrences, grouped by month.
    * Consecutive days of the same holiday are collapsed into a date range.
    */
+  // Walking a whole year of holidays is expensive, and the month-events card
+  // asks for it on every render (i.e. every swipe). Memoise per year.
+  const _yearEventsCache = {};
+
   function _collectYearEvents(year) {
+    if (_yearEventsCache[year]) return _yearEventsCache[year];
     if (!HL) return [];
     const byMonth = {};
     for (let m = 0; m < 12; m++) byMonth[m] = [];
@@ -190,11 +200,14 @@ const KhCal = (() => {
       }
     }
 
-    // Collapse consecutive same-id rows into spans
+    // Collapse consecutive same-id rows into spans. A festival whose last
+    // days are a public holiday (Pchum Ben) splits where that starts, so
+    // the rest days get their own row and filter as days off.
     const collapsed = [];
     for (const r of rows) {
       const prev = collapsed[collapsed.length - 1];
-      if (prev && prev.id === r.id && r.month === prev.endMonth) {
+      const sameRun = prev && prev.id === r.id && prev.isPublic === r.isPublic;
+      if (sameRun && r.month === prev.endMonth) {
         // check day continuity (within same month)
         const prevDate = new Date(year, prev.endMonth, prev.endDay);
         const thisDate = new Date(year, r.month, r.day);
@@ -202,7 +215,7 @@ const KhCal = (() => {
         if (oneDay === 1) { prev.endDay = r.day; prev.endMonth = r.month; continue; }
       }
       // Or continuity across month boundary (e.g. Pchum Ben spans Sep→Oct)
-      if (prev && prev.id === r.id) {
+      if (sameRun) {
         const prevEnd = new Date(year, prev.endMonth, prev.endDay);
         const thisStart = new Date(year, r.month, r.day);
         if ((thisStart - prevEnd) / 86400000 === 1) {
@@ -220,142 +233,563 @@ const KhCal = (() => {
 
     // Group by START month for the section headers
     for (const c of collapsed) byMonth[c.startMonth].push(c);
+    _yearEventsCache[year] = byMonth;
     return byMonth;
+  }
+
+  // ---------- Toast + clipboard ----------
+
+  /**
+   * Small transient message in the top-right corner.
+   * NOTE: _toast() was already being called by the period-log flow but had
+   * never been defined, which threw a ReferenceError there.
+   */
+  function _toast(msg, ms) {
+    const box = document.getElementById('toast-container');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity .25s, transform .25s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-8px)';
+      setTimeout(() => el.remove(), 280);
+    }, ms || 1500);
+  }
+
+  function _copyText(text) {
+    if (!text) return;
+
+    // 1. Native bridge (iOS app shell) — most reliable: execCommand('copy')
+    //    inside WKWebView is gated on user activation and often fails.
+    const bridge = window.webkit && window.webkit.messageHandlers &&
+                   window.webkit.messageHandlers.khmerCopy;
+    if (bridge) {
+      try {
+        bridge.postMessage(text);
+        _toast(I18n.t('copied'));
+        return;
+      } catch (e) { /* fall through to the web paths */ }
+    }
+
+    // 2. Async Clipboard API — needs a secure context (not file://).
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => _toast(I18n.t('copied')))
+        .catch(() => _legacyCopy(text));
+      return;
+    }
+
+    // 3. Selection + execCommand fallback (plain browser / PWA).
+    _legacyCopy(text);
+  }
+
+  /**
+   * iOS WKWebView ignores textarea.select() for copy purposes; it needs a real
+   * Range selection over a contenteditable node, and the element must not be
+   * display:none / zero-opacity or the selection is dropped.
+   */
+  function _legacyCopy(text) {
+    const host = document.createElement('div');
+    host.textContent = text;
+    host.contentEditable = 'true';
+    host.setAttribute('readonly', '');
+    host.style.cssText =
+      'position:fixed;left:0;bottom:0;width:1px;height:1px;overflow:hidden;' +
+      'white-space:pre;color:transparent;background:transparent;border:0;' +
+      'padding:0;-webkit-user-select:text;user-select:text;';
+    document.body.appendChild(host);
+
+    const sel = window.getSelection();
+    const saved = sel.rangeCount ? sel.getRangeAt(0) : null;
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+
+    sel.removeAllRanges();
+    if (saved) sel.addRange(saved);
+    document.body.removeChild(host);
+
+    _toast(ok ? I18n.t('copied') : I18n.t('copyFailed'));
+  }
+
+  const _ICON_COPY  = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+  const _ICON_SHARE = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg>';
+
+  /** One labelled, selectable date line in the detail sheet plus its copy button. */
+  function _copyRow(label, text, extraCls) {
+    const safe = escapeHtml(text);
+    const copyLabel = escapeHtml(I18n.t('copy'));
+    return `<div class="detail-full-row">
+      <div class="dinfo-main">
+        <div class="dinfo-label">${escapeHtml(label)}</div>
+        <div class="dinfo-text detail-selectable${extraCls ? ' ' + extraCls : ''}">${safe}</div>
+      </div>
+      <button type="button" class="detail-copy-btn" data-copy="${safe}"
+              aria-label="${copyLabel}" title="${copyLabel}">${_ICON_COPY}</button>
+    </div>`;
+  }
+
+  /**
+   * Events card shown under the grid for whichever month is on screen.
+   * Reuses the same rows as the full-year panel so the two stay consistent.
+   */
+  function _renderMonthEvents(year, month) {
+    const bodyEl  = document.getElementById('month-events-body');
+    const titleEl = document.getElementById('month-events-title');
+    const countEl = document.getElementById('month-events-count');
+    if (!bodyEl) return;
+
+    const lang = I18n.getLang();
+    if (titleEl) titleEl.textContent = I18n.t('eventsFooter');
+
+    if (!HL) { bodyEl.innerHTML = ''; if (countEl) countEl.textContent = ''; return; }
+
+    // Everything that touches this month, including a festival that began
+    // the month before (Pchum Ben runs Sep -> Oct)
+    const first = new Date(year, month, 1);
+    const last  = new Date(year, month + 1, 0);
+    const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first)
+      .concat(_periodRowsFor(year, month))
+      .sort((a, b) => a.start - b.start);
+
+    // The extra "today" row repeats a festival already counted
+    const count = rows.filter(r => !r.isTodayRow).length;
+    if (countEl) countEl.textContent = count ? _num(count) : '';
+
+    if (!rows.length) {
+      bodyEl.innerHTML = `<div class="month-events-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
+      return;
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    bodyEl.innerHTML = _eventRowsHtml(rows, today, lang, month);
+  }
+
+  // ----- Events page -----
+  const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
+
+  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil'
+
+  /** Lunar reading for a row subtitle, e.g. "១៥ កើត ខែស្រាពណ៍". */
+  function _lunarReading(lun) {
+    const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+    const kMonth = KC.khmerMonthNameFromKm(lun.km);
+    if (I18n.getLang() === 'km') {
+      return `${KC.khmerNumber(kd)} ${lun.kd <= 15 ? KC.RK[0] : KC.RK[1]} ខែ${kMonth}`;
+    }
+    return `${lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning')} ${kd} · ${kMonth}`;
+  }
+
+  /**
+   * Every row for a year: holiday spans (a multi-day festival is one row on
+   * its first day) plus each ថ្ងៃសីល, sorted by date.
+   */
+  function _collectEventRows(year, lang) {
+    const rows = [];
+    const byMonth = _collectYearEvents(year);
+    for (let m = 0; m < 12; m++) {
+      for (const ev of byMonth[m]) {
+        const start = new Date(year, ev.startMonth, ev.startDay);
+        const end   = new Date(year, ev.endMonth, ev.endDay);
+        const span  = Math.round((end - start) / 86400000) + 1;
+        let sub = I18n.t(ev.isPublic ? 'publicHoliday' : 'observanceDay');
+        if (span > 1) {
+          const range = ev.endMonth === ev.startMonth
+            ? `${_num(ev.startDay)}–${_num(ev.endDay)}`
+            : `${_num(ev.startDay)} ${I18n.gregMonthShort(ev.startMonth)} – ${_num(ev.endDay)} ${I18n.gregMonthShort(ev.endMonth)}`;
+          sub += ` · ${range} (${_num(span)} ${I18n.t('days')})`;
+        }
+        rows.push({ start, end, kind: ev.isPublic ? 'public' : 'observance',
+                    name: ev.entry[lang] || ev.entry.km || '', sub, key: ev.id });
+      }
+    }
+
+    // A festival that began before today and is still running also gets a
+    // row on today's date ("day 11/16"), so the list shows at a glance that
+    // today is part of it. The original row then drops its Today marker.
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (today.getFullYear() === year) {
+      const todays = HL.getByDate(today) || [];
+      for (const r of rows.slice()) {
+        if (!(r.start <= today && r.end >= today && r.end > r.start)) continue;
+        const h = todays.find(x => (x.id || (x.km + '|' + x.en)) === r.key);
+        const n = h && h.dayOfFestival ? h.dayOfFestival : Math.round((today - r.start) / 86400000) + 1;
+        const t = h && h.totalDays ? h.totalDays : Math.round((r.end - r.start) / 86400000) + 1;
+        const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(t));
+        // Starting today: its own row is already on today, so it just gains
+        // the day count
+        if (r.start.getTime() === today.getTime()) { r.sub += ' · ' + dayPart; continue; }
+        rows.push({ start: today, end: today, kind: r.kind, name: r.name,
+                    sub: I18n.t(r.kind === 'public' ? 'publicHoliday' : 'observanceDay') + ' · ' + dayPart,
+                    isTodayRow: true });
+        r.hasTodayRow = true;
+      }
+    }
+
+    if (I18n.getSilDays()) {
+      for (let d = new Date(year, 0, 1); d.getFullYear() === year; d = new Date(year, d.getMonth(), d.getDate() + 1)) {
+        const lun = KC.getKhmerDayMonthFromGregorian(d);
+        if (!KC.silDayFromKhmer(lun.km, lun.kd, year)) continue;
+        rows.push({ start: d, end: d, kind: 'sil', name: I18n.t('silDay'), sub: _lunarReading(lun) });
+      }
+    }
+    const order = { public: 0, observance: 1, sil: 2 };
+    return rows.sort((x, y) => (x.start - y.start) || (order[x.kind] - order[y.kind]));
+  }
+
+  const _ICON_DROP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>';
+  const _ICON_BABY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></svg>';
+  const _ICON_OVUM = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>';
+  const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL,
+                                period: _ICON_DROP, predicted: _ICON_DROP,
+                                fertile: _ICON_BABY, ovulation: _ICON_OVUM });
+
+  /**
+   * Cycle-tracker rows for the month card: one per logged period and one per
+   * predicted period that touches the month. Runs are found day by day from
+   * HT.getDayInfo, scanning ten days either side so a run crossing the month
+   * edge keeps its real start, end and length.
+   */
+  function _periodRowsFor(year, month) {
+    return _cycleRows(new Date(year, month, 1), new Date(year, month + 1, 0));
+  }
+
+  /**
+   * Cycle-tracker rows touching [from, to]: logged and predicted periods, the
+   * fertile window and the ovulation day. Runs come from HT.getDayInfo,
+   * scanned ten days past each end so a run crossing the edge keeps its real
+   * dates. A run under way today carries "day n/t": on its own row when it
+   * starts today, otherwise on an extra row on today's date.
+   */
+  function _cycleRows(from, to) {
+    if (!HT || !HT.isEnabled() || !HT.getActiveProfile()) return [];
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Ovulation sits inside the fertile window, so it counts toward the
+    // window's run and also gets a row of its own
+    const runKind = k => k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted'
+                       : (k === 'fertile' || k === 'ovulation') ? 'fertile' : null;
+    const runs = [];
+    let run = null;
+    const stop = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 10);
+    for (let d = new Date(from.getFullYear(), from.getMonth(), from.getDate() - 10); d <= stop;
+         d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      const k = HT.getDayInfo(d).kind;
+      if (k === 'ovulation') runs.push({ kind: 'ovulation', start: d, end: d });
+      const kind = runKind(k);
+      if (run && kind === run.kind) { run.end = d; continue; }
+      if (run) runs.push(run);
+      run = kind ? { kind, start: d, end: d } : null;
+    }
+    if (run) runs.push(run);
+
+    const NAME = { period: 'healthPeriod', predicted: 'healthPredictedPeriod',
+                   fertile: 'healthFertile', ovulation: 'healthOvulation' };
+    const out = [];
+    for (const r of runs) {
+      if (r.end < from || r.start > to) continue;
+      const span = Math.round((r.end - r.start) / 86400000) + 1;
+      let sub = '';
+      if (span > 1) {
+        const range = r.start.getMonth() === r.end.getMonth()
+          ? `${_num(r.start.getDate())}–${_num(r.end.getDate())}`
+          : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
+        sub = `${range} (${_num(span)} ${I18n.t('days')})`;
+      }
+      // A period (logged or predicted) or fertile window gets one row per day, "day 1/6" to
+      // "day 6/6", so every day of it reads in the list; the first also
+      // gives the range. Repeats are flagged so the card's count stays one.
+      if (span > 1 && (r.kind === 'period' || r.kind === 'predicted' || r.kind === 'fertile')) {
+        for (let n = 1; n <= span; n++) {
+          const day = new Date(r.start.getFullYear(), r.start.getMonth(), r.start.getDate() + n - 1);
+          if (day < from || day > to) continue;
+          const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span));
+          out.push({ start: day, end: day, kind: r.kind, name: I18n.t(NAME[r.kind]),
+                     sub: n === 1 ? `${dayPart} · ${sub}` : dayPart, isTodayRow: n > 1 });
+        }
+        continue;
+      }
+      const row = { start: r.start, end: r.end, kind: r.kind, name: I18n.t(NAME[r.kind]), sub };
+      out.push(row);
+      if (span > 1 && r.start <= today && r.end >= today) {
+        const n = Math.round((today - r.start) / 86400000) + 1;
+        const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span));
+        if (n === 1) {
+          row.sub += ' · ' + dayPart;
+        } else if (today >= from && today <= to) {
+          out.push({ start: today, end: today, kind: r.kind, name: row.name, isTodayRow: true, sub: dayPart });
+          row.hasTodayRow = true;
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * One event row. The small label over the day number is the weekday, or
+   * the month when the event started outside refMonth (so "២៧" under the
+   * October card reads as 27 September, not 27 October).
+   */
+  /** Render rows in order; a row on the same date as the one before it is a
+   *  continuation: its date is hidden and the Today badge shown once. */
+  function _eventRowsHtml(rows, today, lang, refMonth) {
+    return rows.map((r, i) => _eventRowHtml(r, today, lang, refMonth,
+      i > 0 && rows[i - 1].start.getTime() === r.start.getTime())).join('');
+  }
+
+  function _eventRowHtml(r, today, lang, refMonth, sameDay) {
+    const dow = r.start.getDay();
+    const label = r.start.getMonth() !== refMonth
+      ? I18n.gregMonthShort(r.start.getMonth())
+      : lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
+    const isToday = !r.hasTodayRow && today >= r.start && today <= r.end;
+    const timeCls = (isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '') +
+                    (sameDay ? ' ev-row--cont' : '');
+    return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${r.start.getFullYear()}" data-m="${r.start.getMonth()}" data-d="${r.start.getDate()}">
+      <div class="ev-date">
+        <span class="ev-wd">${escapeHtml(label)}</span>
+        <span class="ev-day">${_num(r.start.getDate())}</span>
+      </div>
+      <span class="ev-icon">${_EVENT_ICONS()[r.kind]}</span>
+      <div class="ev-body">
+        <div class="ev-name">${escapeHtml(r.name)}</div>
+        <div class="ev-sub">${escapeHtml(r.sub)}</div>
+      </div>
+      ${isToday && !sameDay ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
+    </div>`;
+  }
+
+  function _renderEventChips() {
+    const el = document.getElementById('events-chips');
+    if (!el) return;
+    const chips = [
+      ['all', 'filterAll', _ICON_GRID],
+      ['public', 'filterPublic', _ICON_DAYOFF],
+      ['observance', 'filterObservance', _ICON_FLAG],
+    ];
+    if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) chips.push(['cycle', 'healthPeriod', _ICON_DROP]);
+    if (!chips.some(c => c[0] === _eventsFilter)) _eventsFilter = 'all';
+    el.classList.toggle('ev-chips--five', chips.length > 4);
+    el.innerHTML = chips.map(([id, key, icon]) =>
+      `<button type="button" class="ev-chip ev-chip--${id}${id === _eventsFilter ? ' is-active' : ''}" data-filter="${id}">
+        <span class="ev-chip-icon">${icon}</span>${escapeHtml(I18n.t(key))}
+      </button>`).join('');
   }
 
   function _renderEventsList() {
     if (!HL) return;
     const lang = I18n.getLang();
-    const yearEl = document.getElementById('events-year');
-    const yearLabelEl = document.getElementById('events-year-label');
     const listEl = document.getElementById('events-list');
     if (!listEl) return;
 
-    if (yearEl)      yearEl.textContent      = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
-    if (yearLabelEl) yearLabelEl.textContent = lang === 'km' ? KC.khmerNumber(_eventsYear) : _eventsYear;
+    const yearEl = document.getElementById('events-year');
+    if (yearEl) yearEl.textContent = _num(_eventsYear);
+    const todayNumEl = document.getElementById('events-today-num');
+    if (todayNumEl) todayNumEl.textContent = new Date().getDate();
+    _renderEventChips();
 
-    // Time-relative classification — used to highlight "today" and dim "past".
     const now = new Date();
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const todayLabel = I18n.t('today') || 'Today';
-    const daysLabel = I18n.t('days') || 'days';
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const byMonth = _collectYearEvents(_eventsYear);
+    const cycle = _cycleRows(new Date(_eventsYear, 0, 1), new Date(_eventsYear, 11, 31))
+      .filter(r => r.start.getFullYear() === _eventsYear);  // grouped by start month below
+    const rows = _collectEventRows(_eventsYear, lang).concat(cycle)
+      .sort((a, b) => a.start - b.start)
+      .filter(r => _eventsFilter === 'all' ||
+                   (_eventsFilter === 'cycle' ? ['period', 'predicted', 'fertile', 'ovulation'].includes(r.kind) : r.kind === _eventsFilter));
+
     const sections = [];
     for (let m = 0; m < 12; m++) {
-      const events = byMonth[m];
-      if (!events.length) continue;
-      const rows = events.map(ev => {
-        const baseName = ev.entry[lang] || ev.entry.km || '';
-        const dotCls = ev.isPublic ? 'events-dot--public' : 'events-dot--observance';
-        let dateStr;
-        let spanDays = 1;
-        if (ev.startDay === ev.endDay && ev.startMonth === ev.endMonth) {
-          dateStr = String(ev.startDay);
-        } else if (ev.startMonth === ev.endMonth) {
-          dateStr = ev.startDay + '–' + ev.endDay;
-          spanDays = ev.endDay - ev.startDay + 1;
-        } else {
-          const startDt = new Date(_eventsYear, ev.startMonth, ev.startDay);
-          const endDt   = new Date(_eventsYear, ev.endMonth,   ev.endDay);
-          spanDays = Math.round((endDt - startDt) / 86400000) + 1;
-          dateStr = ev.startDay + ' ' + I18n.gregMonthShort(ev.startMonth) +
-                  ' – ' + ev.endDay + ' ' + I18n.gregMonthShort(ev.endMonth);
-        }
-        const daysBadge = spanDays > 1
-          ? `<span class="events-days-badge">${escapeHtml((lang === 'km' ? KC.khmerNumber(spanDays) : spanDays) + ' ' + daysLabel)}</span>`
-          : '';
+      const inMonth = rows.filter(r => r.start.getMonth() === m);
+      if (!inMonth.length) continue;
 
-        // Time classification relative to today
-        const evStart = new Date(_eventsYear, ev.startMonth, ev.startDay).getTime();
-        const evEnd   = new Date(_eventsYear, ev.endMonth,   ev.endDay  ).getTime();
-        let timeCls = '';
-        let todayBadge = '';
-        if (todayMidnight >= evStart && todayMidnight <= evEnd) {
-          timeCls = ' events-row--today';
-          todayBadge = `<span class="events-today-badge">${escapeHtml(todayLabel)}</span>`;
-        } else if (todayMidnight > evEnd) {
-          timeCls = ' events-row--past';
-        }
+      // Lunar month(s) the Gregorian month spans, as on the grid header
+      const lastDay = new Date(_eventsYear, m + 1, 0).getDate();
+      const km1 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, 1)).km;
+      const km2 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, lastDay)).km;
+      const lunarMonths = KC.khmerMonthNameFromKm(km1) + (km2 !== km1 ? ' · ' + KC.khmerMonthNameFromKm(km2) : '');
 
-        return `<div class="events-row${ev.isPublic ? '' : ' events-row--observance'}${timeCls}">
-          <span class="events-dot ${dotCls}"></span>
-          <span class="events-date">${escapeHtml(dateStr)}</span>
-          <span class="events-name">${escapeHtml(baseName)}</span>
-          ${todayBadge}
-          ${daysBadge}
-        </div>`;
-      }).join('');
-      sections.push(`<div class="events-month">
-        <div class="events-month-label">${escapeHtml(I18n.gregMonth(m))}</div>
-        ${rows}
-      </div>`);
+      const items = _eventRowsHtml(inMonth, today, lang, m);
+
+      sections.push(`<section class="ev-month">
+        <div class="ev-month-head">
+          <span class="ev-month-name">${escapeHtml(I18n.gregMonth(m))} ${_num(_eventsYear)}</span>
+          <span class="ev-month-lunar">${escapeHtml(lunarMonths)}</span>
+        </div>
+        ${items}
+      </section>`);
     }
 
     listEl.innerHTML = sections.length
       ? sections.join('')
-      : `<div class="events-empty">${escapeHtml(I18n.t('noEvents') || 'No events')}</div>`;
+      : `<div class="ev-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
   }
 
-  function _renderHolidayBlock(dt, lang) {
-    if (!HL) return '';
-    const list = HL.getByDate(dt);
-    if (!list || !list.length) return '';
-    // Use the same red/gold split as the cell markers: a block is red only
-    // when at least one matching entry is a public holiday; otherwise gold.
-    const kind  = HL.classifyDate(dt) || 'public';
-    const modCls = kind === 'observance' ? ' detail-holiday--observance' : '';
-    const items = list.map(h => `<div class="detail-holiday-item">${escapeHtml(HL.nameFor(h, lang))}</div>`).join('');
-    return `<div class="detail-holiday${modCls}">${items}</div>`;
+  /** Scroll the events page to today's row, or else the next upcoming one. */
+  function _scrollEventsToToday() {
+    const listEl = document.getElementById('events-list');
+    if (!listEl) return;
+    const next = listEl.querySelector('.ev-row--today') || listEl.querySelector('.ev-row:not(.ev-row--past)');
+    if (!next) { listEl.scrollTop = 0; return; }
+    const head = next.parentElement.querySelector('.ev-month-head');
+    // Land on the month header when the row opens its month; otherwise keep
+    // the row just below the sticky header.
+    listEl.scrollTop = next.previousElementSibling === head
+      ? next.parentElement.offsetTop
+      : next.offsetTop - (head ? head.offsetHeight : 0);
   }
 
-  function _renderHealthBlock(dt, lang) {
+  // ----- Day sheet sections -----
+  // One line-icon set for holidays (calendar + heart), observances (flag) and
+  // ថ្ងៃសីល (lotus). Shared by the day sheet and the events page; CSS sizes them.
+  const _SVG_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  const _ICON_DAYOFF = _SVG_OPEN + '<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/><path fill="currentColor" stroke-width="1.2" d="M12 18.6l-2.5-2.4a1.55 1.55 0 0 1 2.5-1.85 1.55 1.55 0 0 1 2.5 1.85z"/></svg>';
+  const _ICON_FLAG = _SVG_OPEN + '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.33 2q2 0 3.07-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.53"/></svg>';
+  const _ICON_SIL = _SVG_OPEN + '<path d="M12 21c-2.3-1.4-4-4-4-7.3 0-3.1 1.7-6 4-8.2 2.3 2.2 4 5.1 4 8.2 0 3.3-1.7 5.9-4 7.3z"/><path d="M12 21c-4.3 0-8.3-2.4-9.7-6.8 2.1-.7 4.3-.7 6.2.1"/><path d="M12 21c4.3 0 8.3-2.4 9.7-6.8-2.1-.7-4.3-.7-6.2.1"/><path d="M8.4 10.1C7 9 5.6 8.6 4.4 8.6c0 1.6.4 3.1 1.2 4.6"/><path d="M15.6 10.1C17 9 18.4 8.6 19.6 8.6c0 1.6-.4 3.1-1.2 4.6"/></svg>';
+
+  /** Titled card; the title sits between two rules above the card. */
+  function _sheetSection(title, body, extraCls) {
+    return `<section class="dsec${extraCls ? ' ' + extraCls : ''}">
+      <h3 class="dsec-title"><span>${escapeHtml(title)}</span></h3>
+      <div class="dsec-card">${body}</div>
+    </section>`;
+  }
+
+  /** One row inside a section: tone bar, icon, text (HTML), optional note. */
+  function _sheetRow(tone, icon, textHtml, noteHtml) {
+    return `<div class="dsec-row dsec-row--${tone}">
+      <span class="dsec-bar"></span>
+      <span class="dsec-icon">${icon}</span>
+      <span class="dsec-text">${textHtml}</span>
+      ${noteHtml ? `<span class="dsec-note">${noteHtml}</span>` : ''}
+    </div>`;
+  }
+
+  function _silLabel(sil) {
+    const phaseKey = sil.kind === 'full' ? 'silFull' : sil.kind === 'new' ? 'silNew' : 'silQuarter';
+    return I18n.t('silDay') + ' · ' + I18n.t(phaseKey);
+  }
+
+  function _healthRow(dt) {
     if (!HT || !HT.isEnabled()) return '';
     const info = HT.getDayInfo(dt);
     if (!info || info.kind === 'none') return '';
 
     const profile = HT.getActiveProfile();
     const profileName = profile ? profile.name : '';
+    const fill = (key, fallback, n) => (I18n.t(key) || fallback).replace('{n}', _num(n));
 
     let icon = '', kindLabel = '', detail = '';
     switch (info.kind) {
       case 'period':
         icon = '🔴';
         kindLabel = I18n.t('healthPeriod') || 'Period';
-        detail = (I18n.t('healthDayN') || 'Day {n}').replace('{n}', info.dayInPeriod);
+        detail = fill('healthDayN', 'Day {n}', info.dayInPeriod);
         break;
       case 'predicted-period':
         icon = '🩸';
         kindLabel = I18n.t('healthPredictedPeriod') || 'Predicted period';
-        detail = (I18n.t('healthDayN') || 'Day {n}').replace('{n}', info.dayInPeriod);
+        detail = fill('healthDayN', 'Day {n}', info.dayInPeriod);
         break;
       case 'ovulation':
         icon = '🥚';
         kindLabel = I18n.t('healthOvulation') || 'Ovulation';
-        detail = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        detail = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         break;
       case 'fertile':
         icon = '🌱';
         kindLabel = I18n.t('healthFertile') || 'Fertile window';
-        detail = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        detail = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         break;
       case 'normal':
         icon = '🌸';
-        kindLabel = (I18n.t('healthCycleDayN') || 'Cycle day {n}').replace('{n}', info.dayInCycle);
+        kindLabel = fill('healthCycleDayN', 'Cycle day {n}', info.dayInCycle);
         if (info.daysToNextPeriod > 0) {
-          detail = (I18n.t('healthDaysToNext') || '~{n} days to next period').replace('{n}', info.daysToNextPeriod);
+          detail = fill('healthDaysToNext', '~{n} days to next period', info.daysToNextPeriod);
         }
         break;
     }
 
-    return `<div class="detail-health detail-health--${info.kind}">
-      <div class="detail-health-row">
-        <span class="detail-health-icon">${icon}</span>
-        <span class="detail-health-kind">${escapeHtml(kindLabel)}</span>
-        ${detail ? `<span class="detail-health-detail">${escapeHtml(detail)}</span>` : ''}
-      </div>
-      ${profileName ? `<div class="detail-health-profile">${escapeHtml(profileName)}</div>` : ''}
-    </div>`;
+    const text = `<b class="dsec-health-kind">${escapeHtml(kindLabel)}</b>`
+               + (detail ? `<span class="dsec-sub">${escapeHtml(detail)}</span>` : '');
+    return _sheetRow('health dsec-row--' + info.kind, icon, text,
+                     profileName ? escapeHtml(profileName) : '');
+  }
+
+  // ព្រឹត្តិការណ៍ — holidays, ថ្ងៃសីល and the cycle tracker for this day.
+  // Red bar = public holiday, gold = observance (same split as the grid dots).
+  function _renderDayEvents(dt, lang) {
+    const rows = [];
+    const list = HL ? HL.getByDate(dt) : null;
+    (list || []).forEach(h => {
+      const obs = h.observance === true;
+      rows.push(_sheetRow(obs ? 'gold' : 'red', obs ? _ICON_FLAG : _ICON_DAYOFF, escapeHtml(HL.nameFor(h, lang))));
+    });
+    if (I18n.getSilDays()) {
+      const sil = KC.silDayFromGregorian(dt);
+      if (sil) rows.push(_sheetRow('gold', _ICON_SIL, escapeHtml(_silLabel(sil))));
+    }
+    const health = _healthRow(dt);
+    if (health) rows.push(health);
+    return rows.length ? _sheetSection(I18n.t('eventsFooter'), rows.join('')) : '';
+  }
+
+  function _countdown(n) {
+    return n === 1 ? I18n.t('tomorrow') : I18n.t('inNDays').replace('{n}', _num(n));
+  }
+
+  // បន្ទាប់ — the next ថ្ងៃសីល and the next couple of holidays after `dt`.
+  // A holiday counts from the day it starts; a festival already running on
+  // `dt` is skipped until it changes phase (e.g. Pchum Ben observance days
+  // rolling into its public-holiday days).
+  const UPCOMING_SCAN_DAYS = 90;
+  const UPCOMING_MAX_HOLIDAYS = 2;
+
+  function _renderUpcoming(dt, lang) {
+    const keyOf = h => (h.id || h.km) + (h.observance === true ? ':o' : ':p');
+    const keysOn = day => new Set(((HL && HL.getByDate(day)) || []).map(keyOf));
+
+    const found = [];
+    const seenHolidays = new Set();
+    let needSil = I18n.getSilDays();
+    let holidays = 0;
+    let prevKeys = keysOn(dt);
+
+    for (let i = 1; i <= UPCOMING_SCAN_DAYS && (needSil || holidays < UPCOMING_MAX_HOLIDAYS); i++) {
+      const day = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() + i);
+      const lun = KC.getKhmerDayMonthFromGregorian(day);
+
+      if (needSil && KC.silDayFromKhmer(lun.km, lun.kd, day.getFullYear())) {
+        found.push(_sheetRow('gold', _ICON_SIL, escapeHtml(I18n.t('silDay')), escapeHtml(_countdown(i))));
+        needSil = false;
+      }
+
+      const list = (HL && HL.getByDate(day)) || [];
+      const keys = new Set();
+      for (const h of list) {
+        const key = keyOf(h);
+        keys.add(key);
+        const base = h.id || h.km;
+        if (holidays >= UPCOMING_MAX_HOLIDAYS || prevKeys.has(key) || seenHolidays.has(base)) continue;
+        seenHolidays.add(base);
+        holidays++;
+        const obs = h.observance === true;
+        found.push(_sheetRow(obs ? 'gold' : 'red', obs ? _ICON_FLAG : _ICON_DAYOFF,
+                             escapeHtml(h[lang] || h.km || ''), escapeHtml(_countdown(i))));
+      }
+      prevKeys = keys;
+    }
+    return found.length ? _sheetSection(I18n.t('upNext'), found.join('')) : '';
   }
 
   function _renderDailyBlock(dt, lang) {
@@ -405,27 +839,10 @@ const KhCal = (() => {
     return I18n.getLang() === 'km' ? KC.khmerNumber(n) : String(n);
   }
 
-  // === Render today's date in top bar ===
-  function _renderTopBar() {
-    const today = new Date();
-    const khEl = document.getElementById('cal-today-khmer');
-    const grEl = document.getElementById('cal-today-greg');
-    const lang = I18n.getLang();
-
-    if (lang === 'km') {
-      if (khEl) khEl.textContent = KC.khmerDates(today);
-      if (grEl) grEl.textContent = KC.gDates(today);
-    } else {
-      const lun = KC.getKhmerDayMonthFromGregorian(today);
-      const kdDisp = lun.kd <= 15 ? lun.kd : lun.kd - 15;
-      const wax = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
-      const kMonth = KC.khmerMonthNameFromKm(lun.km);
-      const be = KC.computeBEYear(today.getFullYear(), today.getMonth() + 1, lun.km, lun.kd);
-      // animal uses Apr 14 boundary, BE uses lunar Pisakh boundary
-      const animal = KC.khmerYearAnimalFromBE(today.getFullYear(), today.getMonth() + 1, today.getDate());
-      if (khEl) khEl.textContent = `${wax} ${kdDisp} ${kMonth} | ${animal} ${I18n.t('bePrefix')} ${be}`;
-      if (grEl) grEl.textContent = `${I18n.weekday(today.getDay())}, ${today.getDate()} ${I18n.monthName(today.getMonth())} ${today.getFullYear()}`;
-    }
+  // Gregorian day number in the grid and day sheet — follows its own
+  // setting (1 2 3 / ១ ២ ៣), independent of the UI language
+  function _gday(n) {
+    return I18n.getDayDigits() === 'khmer' ? KC.khmerNumber(n) : String(n);
   }
 
   // === Render weekday headers ===
@@ -453,23 +870,22 @@ const KhCal = (() => {
     const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
     const lang = I18n.getLang();
 
-    // Month title — show FOUR columns side-by-side, each with its own divider:
-    //   Khmer (មិថុនា)  |  English (June)  |  Chinese (六月)  |  Year (2026)
-    // The active language column is highlighted; the others are dimmed.
-    // Year uses Khmer digits when the active language is km.
+    // Month title: month + year in the UI language, large, with the other two
+    // calendars' month names on a small line under it.
     const titleEl = document.getElementById('cal-month-title');
     if (titleEl) {
       const T = I18n.translations || {};
-      const km = (T.km && T.km.gregMonths && T.km.gregMonths[month])           || '';
-      const en = (T.en && T.en.gregMonths && T.en.gregMonths[month])           || '';
-      const zh = (T.zh && T.zh.gregMonthsShort && T.zh.gregMonthsShort[month]) || '';
-      const yearStr = (lang === 'km') ? KC.khmerNumber(year) : year;
-
+      const kmName = (T.km && T.km.gregMonths && T.km.gregMonths[month]) || '';
+      const enName = (T.en && T.en.gregMonths && T.en.gregMonths[month]) || '';
+      const zhName = (T.zh && T.zh.gregMonthsShort && T.zh.gregMonthsShort[month]) || '';
+      let main, sub;
+      if (lang === 'en')      { main = `${enName} ${year}`;  sub = `${kmName} · ${zhName}`; }
+      else if (lang === 'zh') { main = `${year}年${zhName}`; sub = `${kmName} · ${enName}`; }
+      else                    { main = `${kmName} ${KC.khmerNumber(year)}`; sub = `${enName} · ${zhName}`; }
       titleEl.innerHTML =
-        `<span class="cal-month-col cal-month-km${lang==='km'?' is-active':''}">${escapeHtml(km)}</span>` +
-        `<span class="cal-month-col cal-month-en${lang==='en'?' is-active':''}">${escapeHtml(en)}</span>` +
-        `<span class="cal-month-col cal-month-zh${lang==='zh'?' is-active':''}">${escapeHtml(zh)}</span>` +
-        `<span class="cal-month-col cal-month-year">${escapeHtml(String(yearStr))}</span>`;
+        `<span class="cal-title-main">${escapeHtml(main)}` +
+        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>` +
+        `<span class="cal-title-sub">${escapeHtml(sub)}</span>`;
     }
 
     // Lunar info — track the selected day (or today if visible, else mid-month).
@@ -478,11 +894,7 @@ const KhCal = (() => {
     // the boundary (e.g. April).
     const infoEl = document.getElementById('cal-lunar-info');
     if (infoEl) {
-      const firstDayLunar = KC.getKhmerDayMonthFromGregorian(new Date(year, month, 1));
       const lastDay = new Date(year, month + 1, 0).getDate();
-      const lastDayLunar = KC.getKhmerDayMonthFromGregorian(new Date(year, month, lastDay));
-      const km1 = KC.khmerMonthNameFromKm(firstDayLunar.km);
-      const km2 = (lastDayLunar.km !== firstDayLunar.km) ? ' - ' + KC.khmerMonthNameFromKm(lastDayLunar.km) : '';
 
       let refDay;
       if (_selectedDate && _selectedDate.y === year && _selectedDate.m === month) {
@@ -494,20 +906,35 @@ const KhCal = (() => {
       }
 
       const refLun = KC.getKhmerDayMonthFromGregorian(new Date(year, month, refDay));
+      // Show the single lunar month the reference day actually falls in, not a
+      // "first - last" range. A Gregorian month usually straddles two lunar
+      // months (and in a Khmer leap year, បឋមាសាឍ then ទុតិយាសាឍ), so the range
+      // was always shown even though only one of them applies today.
+      const kmName = KC.khmerMonthNameFromKm(refLun.km);
       const be = KC.computeBEYear(year, month + 1, refLun.km, refLun.kd);
       // Animal & Sak follow Apr 14 boundary; BE follows lunar Pisakh boundary
       const animal = KC.khmerYearAnimalFromBE(year, month + 1, refDay);
       const sak = KC.sakNameFromAD(year, month + 1, refDay);
-      if (lang === 'km') {
-        infoEl.textContent = `${km1}${km2} | ${sak} | ${animal} | ព.ស.${KC.khmerNumber(be)}`;
-      } else {
-        infoEl.textContent = `${km1}${km2} | ${sak} | ${animal} | ${I18n.t('bePrefix')} ${be}`;
-      }
+      // Rendered as spans rather than one string so each part can carry its own
+      // colour — the line was a single flat grey before.
+      const beText = (lang === 'km')
+        ? `ព.ស.${KC.khmerNumber(be)}`
+        : `${I18n.t('bePrefix')} ${be}`;
+      const sep = '<span class="lunar-sep">·</span>';
+      infoEl.innerHTML =
+        '<svg class="lunar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.5 6.5 0 0 0 11 11z"/></svg>' +
+        `<span class="lunar-month">${escapeHtml(kmName)}</span>` + sep +
+        `<span class="lunar-sak">${escapeHtml(sak)}</span>` + sep +
+        `<span class="lunar-animal">${escapeHtml(animal)}</span>` + sep +
+        `<span class="lunar-be">${escapeHtml(beText)}</span>`;
     }
 
     // Build grid
     const gridEl = document.getElementById('cal-grid');
     if (!gridEl) return;
+    // Khmer digits run wider; the grid steps their size down to clear the
+    // corner marks (see .cal-grid--km-digits)
+    gridEl.classList.toggle('cal-grid--km-digits', I18n.getDayDigits() === 'khmer');
 
     const firstDowRaw = new Date(year, month, 1).getDay();
     const firstDow = I18n.getStartDay() === 'sun' ? firstDowRaw : (firstDowRaw + 6) % 7;
@@ -528,11 +955,25 @@ const KhCal = (() => {
                          : holidayKind === 'observance' ? ' observance'
                          : '';
       const healthClass = _healthClassFor(dt);
-      return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
-        <span class="cal-gday">${d}</span>
+      const sil = _silFor(lun, dt);
+      return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
+        ${sil.html}<span class="cal-gday">${_gday(d)}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
+    }
+
+    // ថ្ងៃសីល marker. Takes the lunar date the caller already converted —
+    // KC.getKhmerDayMonthFromGregorian() walks year by year from 1900 and the
+    // grid pays for it once per cell as it is.
+    function _silFor(lun, dt) {
+      if (!I18n.getSilDays()) return { cls: '', html: '' };
+      const sil = KC.silDayFromKhmer(lun.km, lun.kd, dt.getFullYear());
+      if (!sil) return { cls: '', html: '' };
+      return {
+        cls: sil.major ? ' sil sil-major' : ' sil',
+        html: '<span class="cal-sil" aria-hidden="true"></span>'
+      };
     }
 
     function _healthClassFor(dt) {
@@ -574,8 +1015,9 @@ const KhCal = (() => {
                          : holidayKind === 'observance' ? ' observance'
                          : '';
       const healthClass = _healthClassFor(dt);
-      html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}" data-y="${year}" data-m="${month}" data-d="${d}">
-        <span class="cal-gday">${d}</span>
+      const sil = _silFor(lun, dt);
+      html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${year}" data-m="${month}" data-d="${d}">
+        ${sil.html}<span class="cal-gday">${_gday(d)}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
@@ -592,16 +1034,52 @@ const KhCal = (() => {
 
     gridEl.innerHTML = html;
 
-    // Today button
+    _renderMonthEvents(year, month);
+
+    // Today button — only shown when we're away from the current month.
+    // The button is position:fixed, so the app also gets a class that reserves
+    // room for it; otherwise it floats on top of the last row of days.
     const todayBtn = document.getElementById('cal-today-btn');
     if (todayBtn) {
+      const onCurrentMonth = (year === todayY && month === todayM);
       todayBtn.textContent = I18n.t('today');
-      todayBtn.style.display = (year === todayY && month === todayM) ? 'none' : 'block';
+      todayBtn.style.display = onCurrentMonth ? 'none' : 'block';
+      const app = document.querySelector('.cal-app');
+      if (app) app.classList.toggle('has-today-fab', !onCurrentMonth);
     }
   }
 
   // === Day detail panel ===
-  function _showDetail(y, m, d) {
+  /* ===== Place prefix =====
+   * Khmer letters open with the place before the date:
+   *   ខេត្តព្រះសីហនុ, ថ្ងៃទី១៧ ខែសីហា ឆ្នាំ២០២៦
+   * gDatesPro() in khmer-calendar.js builds exactly this but hard-codes the
+   * province in ADH[3], so the place is a saved setting instead and the row is
+   * composed here from the Gregorian string the sheet already has.
+   *
+   * Deliberately rendered as part of _showDetail's own markup. A previous
+   * attempt appended this row from the Office add-in into the element its
+   * MutationObserver was watching, which fed itself endlessly and froze the
+   * task pane. As part of the normal render there is no observer involved.
+   */
+  const PLACE_KEY = 'kh-cal-place';
+  const PLACE_DEFAULT = 'ខេត្តព្រះសីហនុ';
+
+  function _getPlace() {
+    try {
+      const v = localStorage.getItem(PLACE_KEY);
+      return v === null ? PLACE_DEFAULT : v;
+    } catch (e) { return PLACE_DEFAULT; }
+  }
+  function _setPlace(v) {
+    try { localStorage.setItem(PLACE_KEY, v); } catch (e) {}
+  }
+
+  /**
+   * Open the day sheet. opts.overEvents lifts it above the events page (which
+   * stays open underneath) instead of sitting over the calendar.
+   */
+  function _showDetail(y, m, d, opts) {
     _selectedDate = { y, m, d };
     _renderCalendar();
 
@@ -609,6 +1087,7 @@ const KhCal = (() => {
     const panel = document.getElementById('cal-detail');
     const content = document.getElementById('cal-detail-content');
     if (!panel || !content) return;
+    panel.classList.toggle('cal-detail--over-events', !!(opts && opts.overEvents));
 
     const lang = I18n.getLang();
     const khDate = KC.khmerDates(dt);
@@ -625,41 +1104,69 @@ const KhCal = (() => {
     const cn = CC.fromDate(dt);
     const cnLine = cn ? `农历${cn.monthName}${cn.dayName} | ${cn.stemBranch}年【${cn.animal}】` : '';
 
-    let waxLabel, weekday, yearLine, gregLine, bigNum, smallNum;
+    const T = I18n.translations;
+    const enWeekday = dt.toLocaleDateString('en-US', { weekday: 'long' });
+    const kmWeekday = 'ថ្ងៃ' + KC.KD7[dow];
+    const waxLabel = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
+    const isToday = new Date().toDateString() === dt.toDateString();
 
+    // Title weekday in the UI language; the small line under the big number
+    // repeats it in a second language, as on a printed tear-off calendar.
+    let weekday, weekdayAlt, yearStrip, monthStrip;
     if (lang === 'km') {
-      waxLabel = lun.kd <= 15 ? KC.RK[0] : KC.RK[1];
-      weekday = KC.KD7[dow];
-      bigNum = KC.khmerNumber(kdDisp);
-      smallNum = String(d);
-      yearLine = `${animal} ${sak} ព.ស.${KC.khmerNumber(be)}`;
-      gregLine = `${d} ${I18n.gregMonth(m)} ${y}`;
+      weekday = kmWeekday;
+      weekdayAlt = enWeekday;
+      yearStrip = `ឆ្នាំ${animal} ${sak} ព.ស. ${KC.khmerNumber(be)}`;
+      monthStrip = `${T.en.gregMonths[m]} ${y}`;
     } else {
-      waxLabel = lun.kd <= 15 ? I18n.t('waxing') : I18n.t('waning');
-      weekday = I18n.weekday(dow);
-      bigNum = String(kdDisp);
-      smallNum = KC.khmerNumber(kdDisp);
-      yearLine = `${animal} ${sak} ${I18n.t('bePrefix')} ${be}`;
-      gregLine = `${d} ${I18n.gregMonth(m)} ${y}`;
+      weekday = lang === 'zh' ? '星期' + I18n.weekday(dow) : enWeekday;
+      weekdayAlt = kmWeekday;
+      yearStrip = `${animal} ${sak} · ${I18n.t('bePrefix')} ${be}`;
+      monthStrip = `${T.km.gregMonths[m]} ${KC.khmerNumber(y)}`;
     }
 
+    const place = _getPlace().trim();
+    const shareText = [khDate, cnLine, grDate].filter(Boolean).join('\n');
+    const canShare = typeof navigator.share === 'function';
+
     content.innerHTML = `
-      <div class="detail-main">
-        <div class="detail-left">
-          <div class="detail-kday-big">${bigNum}</div>
-          <div class="detail-gday">${smallNum}</div>
+      <div class="dhead-strip">
+        <span>${escapeHtml(yearStrip)}</span>
+        <span class="dhead-strip-month">${escapeHtml(monthStrip)}</span>
+      </div>
+      <div class="dhead">
+        <div class="dhead-col">
+          <div class="dhead-label">${escapeHtml(I18n.t('lunarCal'))}</div>
+          <div class="dhead-month dhead-month--lunar">${escapeHtml(kMonthName)}</div>
+          <div class="dhead-num">${_num(kdDisp)}</div>
+          <div class="dhead-sub">${escapeHtml(waxLabel)}</div>
         </div>
-        <div class="detail-info">
-          <div class="detail-khmer-date">${waxLabel} ${lang === 'km' ? 'ខែ' : ''}${kMonthName} | ${weekday}</div>
-          <div class="detail-year">${yearLine}</div>
-          <div class="detail-weekday">${gregLine}</div>
+        <div class="dhead-col dhead-mid">
+          ${isToday ? `<div class="dhead-today">${escapeHtml(I18n.t('today'))}</div>` : ''}
+          <div class="dhead-weekday">${escapeHtml(weekday)}</div>
+          <div class="dhead-big">${_gday(d)}</div>
+          <div class="dhead-weekday-alt${lang === 'km' ? ' dhead-weekday-alt--latin' : ''}">${escapeHtml(weekdayAlt)}</div>
+        </div>
+        <div class="dhead-col">
+          <div class="dhead-label">${escapeHtml(I18n.t('solarCal'))}</div>
+          <div class="dhead-month">${escapeHtml(I18n.gregMonth(m))}</div>
+          <div class="dhead-num">${_num(d)}</div>
+          <div class="dhead-sub">${_num(y)}</div>
         </div>
       </div>
-      ${_renderHolidayBlock(dt, lang)}
-      ${_renderHealthBlock(dt, lang)}
-      <div class="detail-full">${escapeHtml(khDate)}</div>
-      ${cnLine ? `<div class="detail-full detail-chinese">${cnLine}</div>` : ''}
-      <div class="detail-full detail-greg">${escapeHtml(grDate)}</div>
+      ${_renderDayEvents(dt, lang)}
+      ${_sheetSection(I18n.t('dayInfo'), `
+        ${_copyRow(I18n.t('lunarCal'), khDate)}
+        ${cnLine ? _copyRow(I18n.t('chineseCal'), cnLine, 'detail-chinese') : ''}
+        ${_copyRow(I18n.t('solarCal'), grDate)}
+        ${place ? _copyRow(I18n.t('place'), place + ', ' + grDate, 'detail-place') : ''}
+        <div class="dinfo-actions">
+          <button type="button" class="detail-copy-btn dinfo-action" data-copy="${escapeHtml(shareText)}"
+                  aria-label="${escapeHtml(I18n.t('copy'))}" title="${escapeHtml(I18n.t('copy'))}">${_ICON_COPY}</button>
+          ${canShare ? `<button type="button" class="detail-share-btn dinfo-action" data-share="${escapeHtml(shareText)}"
+                  aria-label="${escapeHtml(I18n.t('share'))}" title="${escapeHtml(I18n.t('share'))}">${_ICON_SHARE}</button>` : ''}
+        </div>`)}
+      ${_renderUpcoming(dt, lang)}
       ${_renderDailyBlock(dt, lang)}
     `;
 
@@ -702,7 +1209,9 @@ const KhCal = (() => {
         const isCur = (m === _month && _pickerYear === _year);
         const isNow = (m === todayM && _pickerYear === todayY);
         const primary = lang === 'km' ? KC.ADM12[m] : I18n.monthShort(m);
-        const secondary = lang === 'km' ? I18n.gregMonthShort(m) : KC.ADM12[m];
+        // Second line names the month in another script: English under Khmer,
+        // Khmer under English/Chinese (it used to repeat the Khmer name)
+        const secondary = lang === 'km' ? I18n.translations.en.gregMonthsShort[m] : KC.ADM12[m];
         cells += `<div class="pick-cell${isCur ? ' selected' : ''}${isNow ? ' today' : ''}" data-action="pick-month" data-m="${m}">`
           + `<div class="pick-cell-km">${primary}</div>`
           + `<div class="pick-cell-en">${secondary}</div>`
@@ -799,29 +1308,6 @@ const KhCal = (() => {
     _selectedDate = null;
     _renderCalendar();
     _showDetail(today.getFullYear(), today.getMonth(), today.getDate());
-    _showTodayPopup();
-  }
-
-  // ---------- Today popup (replaces the old date-heavy topbar) ----------
-  let _todayPopupTimer = null;
-
-  function _showTodayPopup() {
-    // Make sure the today date strings inside the popup are fresh
-    _renderTopBar();
-    const popup = document.getElementById('cal-today-popup');
-    if (!popup) return;
-    popup.classList.add('is-open');
-    popup.setAttribute('aria-hidden', 'false');
-    if (_todayPopupTimer) clearTimeout(_todayPopupTimer);
-    _todayPopupTimer = setTimeout(_hideTodayPopup, 5000);
-  }
-
-  function _hideTodayPopup() {
-    const popup = document.getElementById('cal-today-popup');
-    if (!popup) return;
-    popup.classList.remove('is-open');
-    popup.setAttribute('aria-hidden', 'true');
-    if (_todayPopupTimer) { clearTimeout(_todayPopupTimer); _todayPopupTimer = null; }
   }
 
   // === Touch swipe ===
@@ -845,7 +1331,8 @@ const KhCal = (() => {
   function _attachDetailSwipe(panel) {
     let startY = 0, currentY = 0, tracking = false;
     panel.addEventListener('touchstart', (e) => {
-      if (!panel.classList.contains('open')) return;
+      // The sheet scrolls now; only a pull-down from the very top closes it.
+      if (!panel.classList.contains('open') || panel.scrollTop > 0) return;
       startY = e.touches[0].clientY;
       currentY = startY;
       tracking = true;
@@ -914,6 +1401,41 @@ const KhCal = (() => {
         _eventsYear = new Date().getFullYear();
         _renderEventsList();
         eventsOverlay.classList.add('open');
+        _scrollEventsToToday();
+      });
+    }
+    const eventsToday = document.getElementById('events-today');
+    if (eventsToday) {
+      eventsToday.addEventListener('click', () => {
+        _eventsYear = new Date().getFullYear();
+        _renderEventsList();
+        _scrollEventsToToday();
+      });
+    }
+    const eventsListEl = document.getElementById('events-list');
+    // After a year or filter change: the current year opens at today, any
+    // other year at January.
+    const _resetEventsScroll = () => {
+      if (_eventsYear === new Date().getFullYear()) _scrollEventsToToday();
+      else if (eventsListEl) eventsListEl.scrollTop = 0;
+    };
+    const eventsChips = document.getElementById('events-chips');
+    if (eventsChips) {
+      eventsChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ev-chip');
+        if (!chip || chip.dataset.filter === _eventsFilter) return;
+        _eventsFilter = chip.dataset.filter;
+        _renderEventsList();
+        _resetEventsScroll();
+      });
+    }
+    // Tapping an event opens its day sheet on top of the events page, so
+    // closing the sheet lands back on the list where the user left it
+    if (eventsListEl) {
+      eventsListEl.addEventListener('click', (e) => {
+        const row = e.target.closest('.ev-row');
+        if (!row) return;
+        _showDetail(+row.dataset.y, +row.dataset.m, +row.dataset.d, { overEvents: true });
       });
     }
     if (eventsClose && eventsOverlay) {
@@ -924,8 +1446,8 @@ const KhCal = (() => {
         if (e.target === eventsOverlay) eventsOverlay.classList.remove('open');
       });
     }
-    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); });
-    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); });
+    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); _resetEventsScroll(); });
+    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); _resetEventsScroll(); });
 
     // Weather overlay
     const weatherBtn     = document.getElementById('cal-weather-btn');
@@ -978,11 +1500,25 @@ const KhCal = (() => {
         if (!btn) return;
         I18n.setLang(btn.dataset.lang);
         _setActiveToggle(langGroup, '[data-lang="' + btn.dataset.lang + '"]');
+        // Pending reminders on iOS carry finished text, so a language change
+        // has to rewrite them; Android words each one as it fires and ignores
+        // this.
+        if (typeof Reminders !== 'undefined') Reminders.syncSchedule();
         _refreshAll();
       });
     }
     // Start day toggle
     const startGroup = document.getElementById('startday-toggle');
+    const placeInput = document.getElementById('place-input');
+    if (placeInput) {
+      placeInput.value = _getPlace();
+      placeInput.addEventListener('input', () => {
+        _setPlace(placeInput.value);
+        // Refresh the open sheet so the row tracks the field as it is typed.
+        if (_selectedDate) _showDetail(_selectedDate.y, _selectedDate.m, _selectedDate.d);
+      });
+    }
+
     if (startGroup) {
       _setActiveToggle(startGroup, '[data-start="' + I18n.getStartDay() + '"]');
       startGroup.addEventListener('click', (e) => {
@@ -993,6 +1529,72 @@ const KhCal = (() => {
         _refreshAll();
       });
     }
+
+    _initReminders();
+
+    // Day-number digits (1 2 3 / ១ ២ ៣)
+    const digitsGroup = document.getElementById('digits-toggle');
+    if (digitsGroup) {
+      _setActiveToggle(digitsGroup, '[data-digits="' + I18n.getDayDigits() + '"]');
+      digitsGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-digits]');
+        if (!btn) return;
+        I18n.setDayDigits(btn.dataset.digits);
+        _setActiveToggle(digitsGroup, '[data-digits="' + btn.dataset.digits + '"]');
+        _refreshAll();
+      });
+    }
+
+    // ថ្ងៃសីល markers on/off
+    const silGroup = document.getElementById('sil-toggle');
+    if (silGroup) {
+      _setActiveToggle(silGroup, '[data-sil="' + (I18n.getSilDays() ? 'on' : 'off') + '"]');
+      silGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-sil]');
+        if (!btn) return;
+        I18n.setSilDays(btn.dataset.sil === 'on');
+        _setActiveToggle(silGroup, '[data-sil="' + btn.dataset.sil + '"]');
+        _refreshAll();
+      });
+    }
+  }
+
+  /**
+   * Reminder switches and the two times.
+   *
+   * Nothing is scheduled from here — the native side re-reads these settings
+   * when the app is next opened or backgrounded, which is why there is no
+   * "apply" step. The whole block stays hidden where no native scheduler
+   * exists, rather than offering switches that would do nothing.
+   */
+  function _initReminders() {
+    const section = document.getElementById('reminders-section');
+    if (!section || typeof Reminders === 'undefined') return;
+    if (!Reminders.isSupported()) return;
+
+    section.hidden = false;
+    Reminders.syncToNative();
+
+    [['notif-daily', 'daily'], ['notif-sil', 'sil'], ['notif-holiday', 'holiday']]
+      .forEach(([id, which]) => {
+        const box = document.getElementById(id);
+        if (!box) return;
+        box.checked = Reminders.isOn(which);
+        box.addEventListener('change', () => Reminders.setOn(which, box.checked));
+      });
+
+    [['notif-morning-time', 'morning'], ['notif-evening-time', 'evening']]
+      .forEach(([id, which]) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.value = Reminders.getTime(which);
+        // 'change' rather than 'input': a time field reports every partial edit,
+        // and half of "07:00" is a different alarm.
+        input.addEventListener('change', () => {
+          Reminders.setTime(which, input.value);
+          input.value = Reminders.getTime(which);
+        });
+      });
   }
 
   function _setActiveToggle(group, selector) {
@@ -1069,6 +1671,7 @@ const KhCal = (() => {
     document.getElementById('health-log-close').addEventListener('click', _closeLogPeriodModal);
     document.getElementById('health-log-cancel').addEventListener('click', _closeLogPeriodModal);
     document.getElementById('health-log-save').addEventListener('click', _saveLogPeriod);
+    document.getElementById('health-log-cal').addEventListener('click', _onLogCalClick);
     document.getElementById('health-profiles-close').addEventListener('click', _closeProfilesModal);
     document.getElementById('health-add-profile-btn').addEventListener('click', _addProfilePrompt);
     const resetBtn = document.getElementById('health-reset-all-btn');
@@ -1108,18 +1711,23 @@ const KhCal = (() => {
     const period = HT.getEffectivePeriodLength(profile);
     const periods = profile.periods || [];
     const last = periods.length ? periods[periods.length - 1].start : null;
+    const next = last ? HT.predictNextPeriods(profile.id, 1)[0] : null;
     el.innerHTML = `
       <div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('cycleLength') || 'Cycle')}</span>
-        <span class="health-summary-val">~${cycle} ${escapeHtml(I18n.t('days') || 'days')}</span>
+        <span class="health-summary-val">~${_num(cycle)} ${escapeHtml(I18n.t('days') || 'days')}</span>
       </div>
       <div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('periodLength') || 'Period')}</span>
-        <span class="health-summary-val">~${period} ${escapeHtml(I18n.t('days') || 'days')}</span>
+        <span class="health-summary-val">~${_num(period)} ${escapeHtml(I18n.t('days') || 'days')}</span>
       </div>
       ${last ? `<div class="health-summary-row">
         <span class="health-summary-label">${escapeHtml(I18n.t('lastPeriod') || 'Last period')}</span>
-        <span class="health-summary-val">${escapeHtml(last)}</span>
+        <span class="health-summary-val">${escapeHtml(_fmtYmd(last, true))}</span>
+      </div>` : ''}
+      ${next ? `<div class="health-summary-row">
+        <span class="health-summary-label">${escapeHtml(I18n.t('nextPeriod'))}</span>
+        <span class="health-summary-val">${escapeHtml(_fmtYmd(next, true))}</span>
       </div>` : ''}
     `;
   }
@@ -1137,18 +1745,118 @@ const KhCal = (() => {
       return;
     }
     _editingPeriodStart = existing ? existing.start : null;
-    const startEl = document.getElementById('health-log-start');
-    const endEl   = document.getElementById('health-log-end');
-    if (existing) {
-      if (startEl) startEl.value = existing.start;
-      if (endEl)   endEl.value   = existing.end || '';
-    } else {
-      const today = new Date();
-      if (startEl) startEl.value = HT._ymd(today);
-      if (endEl)   endEl.value   = '';
-    }
+    const start = existing ? existing.start : HT._ymd(new Date());
+    const [vy, vm] = start.split('-').map(Number);
+    _logPick = { start, end: existing ? (existing.end || null) : null, viewY: vy, viewM: vm - 1 };
+    _renderLogCal();
     const overlay = document.getElementById('health-log-overlay');
     if (overlay) overlay.classList.add('open');
+  }
+
+  // ----- Period range picker (inside the log modal) -----
+  let _logPick = null; // { start, end, viewY, viewM } — dates as YYYY-MM-DD
+
+  /** "៧ តុលា" (or "៧ តុលា ២០២៦" with withYear) in the UI language. */
+  function _fmtYmd(ymd, withYear) {
+    const [y, m, d] = ymd.split('-').map(Number);
+    const lang = I18n.getLang();
+    if (lang === 'zh') return (withYear ? y + '年' : '') + (m) + '月' + d + '日';
+    const month = lang === 'km' ? I18n.gregMonth(m - 1) : I18n.gregMonthShort(m - 1);
+    return `${_num(d)} ${month}${withYear ? ' ' + _num(y) : ''}`;
+  }
+
+  function _daysBetween(a, b) {
+    const [ay, am, ad] = a.split('-').map(Number);
+    const [by, bm, bd] = b.split('-').map(Number);
+    return Math.round((new Date(by, bm - 1, bd) - new Date(ay, am - 1, ad)) / 86400000);
+  }
+
+  function _renderLogCal() {
+    const calEl = document.getElementById('health-log-cal');
+    const sumEl = document.getElementById('health-log-summary');
+    if (!calEl || !_logPick) return;
+    const { start, end, viewY, viewM } = _logPick;
+    const startEl = document.getElementById('health-log-start');
+    const endEl   = document.getElementById('health-log-end');
+    if (startEl) startEl.value = start || '';
+    if (endEl)   endEl.value   = end || '';
+
+    const todayYmd = HT._ymd(new Date());
+    const lang = I18n.getLang();
+    const T = I18n.translations[lang] || I18n.translations.km;
+    const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+
+    // Other logged periods, shown as a small dot for context
+    const profile = HT.getActiveProfile();
+    const others = ((profile && profile.periods) || []).filter(p => p.start !== _editingPeriodStart);
+    const inOther = ymd => others.some(p => ymd >= p.start && ymd <= (p.end || p.start));
+
+    const first = new Date(viewY, viewM, 1);
+    const lead = (first.getDay() - order[0] + 7) % 7;
+    const days = new Date(viewY, viewM + 1, 0).getDate();
+    let cells = order.map(dw => `<div class="hl-wd">${escapeHtml(T.weekdaysShort[dw])}</div>`).join('');
+    for (let i = 0; i < lead; i++) cells += '<div></div>';
+    for (let d = 1; d <= days; d++) {
+      const ymd = HT._ymd(new Date(viewY, viewM, d));
+      const cls = ['hl-day'];
+      if (ymd > todayYmd) cls.push('hl-day--disabled');
+      if (ymd === todayYmd) cls.push('hl-day--today');
+      if (inOther(ymd)) cls.push('hl-day--logged');
+      if (start && ymd === start) cls.push('hl-day--start');
+      if (end && ymd === end) cls.push('hl-day--end');
+      if (start && end && ymd > start && ymd < end) cls.push('hl-day--in');
+      if (start && ymd === start && (!end || end === start)) cls.push('hl-day--single');
+      cells += `<button type="button" class="${cls.join(' ')}" data-ymd="${ymd}"><span>${_num(d)}</span></button>`;
+    }
+    const canNext = new Date(viewY, viewM + 1, 1) <= new Date();
+    calEl.innerHTML = `
+      <div class="hl-cal-head">
+        <button type="button" class="hl-nav" data-nav="-1" aria-label="Previous month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="hl-cal-title">${escapeHtml(I18n.gregMonth(viewM))} ${_num(viewY)}</span>
+        <button type="button" class="hl-nav" data-nav="1" aria-label="Next month"${canNext ? '' : ' disabled'}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+      </div>
+      <div class="hl-grid">${cells}</div>`;
+
+    if (sumEl) {
+      let range = '', hint;
+      if (!start) {
+        hint = I18n.t('pickStartHint');
+      } else if (!end) {
+        range = `${_fmtYmd(start)} → …`;
+        hint = I18n.t('pickEndHint');
+      } else {
+        range = `${_fmtYmd(start)} → ${_fmtYmd(end)} · ${_num(_daysBetween(start, end) + 1)} ${I18n.t('days')}`;
+        hint = '';
+      }
+      sumEl.innerHTML = (range ? `<div class="hl-range">${escapeHtml(range)}</div>` : '') +
+                        (hint ? `<div class="hl-hint">${escapeHtml(hint)}</div>` : '');
+    }
+  }
+
+  function _onLogCalClick(e) {
+    if (!_logPick) return;
+    const nav = e.target.closest('[data-nav]');
+    if (nav) {
+      const d = new Date(_logPick.viewY, _logPick.viewM + Number(nav.dataset.nav), 1);
+      _logPick.viewY = d.getFullYear();
+      _logPick.viewM = d.getMonth();
+      _renderLogCal();
+      return;
+    }
+    const day = e.target.closest('.hl-day');
+    if (!day || day.classList.contains('hl-day--disabled')) return;
+    const ymd = day.dataset.ymd;
+    const p = _logPick;
+    // First tap (or a tap after a full range) starts over; a later day ends
+    // the range; an earlier day moves the start.
+    if (!p.start || p.end) { p.start = ymd; p.end = null; }
+    else if (ymd < p.start) { p.start = ymd; }
+    else if (ymd > p.start) { p.end = ymd; }
+    _renderLogCal();
   }
 
   function _closeLogPeriodModal() {
@@ -1192,7 +1900,7 @@ const KhCal = (() => {
     el.innerHTML = periods.slice(0, 12).map(p => `
       <div class="health-period-row" data-start="${escapeHtml(p.start)}" data-end="${escapeHtml(p.end || '')}">
         <span class="health-period-dot"></span>
-        <span class="health-period-dates">${escapeHtml(p.start)}${p.end ? '  →  ' + escapeHtml(p.end) : ''}</span>
+        <span class="health-period-dates">${escapeHtml(_fmtYmd(p.start, true))} → ${escapeHtml(p.end ? _fmtYmd(p.end) : I18n.t('ongoing'))}${p.end ? `<span class="health-period-len">${escapeHtml(_num(_daysBetween(p.start, p.end) + 1) + ' ' + I18n.t('days'))}</span>` : ''}</span>
         <button type="button" class="health-period-action" data-action="edit"   aria-label="${escapeHtml(editLabel)}">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -1343,7 +2051,6 @@ const KhCal = (() => {
     // users who saved language=en/zh in a previous session see Khmer fallback
     // text on first paint until they toggle language again.
     I18n.updateStaticTexts();
-    _renderTopBar();
     _renderWeekdays();
     _renderCalendar();
     _initSettings();
@@ -1368,14 +2075,30 @@ const KhCal = (() => {
     const todayFooter = document.getElementById('cal-today-footer');
     if (todayFooter) todayFooter.addEventListener('click', _goToday);
 
-    // Today popup: tap anywhere on it (or its close button) to dismiss early
-    const todayPopup = document.getElementById('cal-today-popup');
-    const todayPopupClose = document.getElementById('cal-today-popup-close');
-    if (todayPopupClose) todayPopupClose.addEventListener('click', _hideTodayPopup);
-    if (todayPopup) {
-      todayPopup.addEventListener('click', (e) => {
-        // Backdrop tap (anywhere outside the card) dismisses
-        if (e.target === todayPopup) _hideTodayPopup();
+    // Copy the full Khmer date from the day detail sheet
+    const detailContent = document.getElementById('cal-detail-content');
+    if (detailContent) {
+      detailContent.addEventListener('click', (e) => {
+        const shareBtn = e.target.closest('.detail-share-btn');
+        if (shareBtn) {
+          e.stopPropagation();
+          navigator.share({ text: shareBtn.dataset.share || '' }).catch(() => {});
+          return;
+        }
+        const btn = e.target.closest('.detail-copy-btn');
+        if (!btn) return;
+        e.stopPropagation();
+        _copyText(btn.dataset.copy || '');
+      });
+    }
+
+    // Tapping an event opens that day's detail sheet
+    const monthEventsBody = document.getElementById('month-events-body');
+    if (monthEventsBody) {
+      monthEventsBody.addEventListener('click', (e) => {
+        const row = e.target.closest('.ev-row');
+        if (!row) return;
+        _showDetail(+row.dataset.y, +row.dataset.m, +row.dataset.d);
       });
     }
 
@@ -1399,11 +2122,13 @@ const KhCal = (() => {
       _attachDetailSwipe(detail);
     }
 
-    // Click outside the detail sheet (but not on a calendar cell) closes it
+    // Click outside the detail sheet closes it — except on the controls that
+    // open it (a day cell, an event row, the Today buttons), or the same tap
+    // would open and immediately close the sheet.
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

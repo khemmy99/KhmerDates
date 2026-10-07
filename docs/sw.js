@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khmer-calendar-v55';
+const CACHE_NAME = 'khmer-calendar-v127';
 const ASSETS = [
   './',
   './index.html',
@@ -10,7 +10,16 @@ const ASSETS = [
   './js/health-tracker.js',
   './js/weather.js',
   './js/i18n.js',
+  './js/reminders.js',
   './js/khmer-calendar-ui.js',
+  // Office add-in files. Without these the task pane loads from cache but the
+  // insert buttons and the currency commands quietly do nothing offline.
+  './js/office-addin.js',
+  './js/khmer-currency.js',
+  './commands.html',
+  './icons/icon-16.png',
+  './icons/icon-32.png',
+  './icons/icon-64.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
