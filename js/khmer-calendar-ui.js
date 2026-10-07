@@ -960,7 +960,11 @@ const KhCal = (() => {
     try { localStorage.setItem(PLACE_KEY, v); } catch (e) {}
   }
 
-  function _showDetail(y, m, d) {
+  /**
+   * Open the day sheet. opts.overEvents lifts it above the events page (which
+   * stays open underneath) instead of sitting over the calendar.
+   */
+  function _showDetail(y, m, d, opts) {
     _selectedDate = { y, m, d };
     _renderCalendar();
 
@@ -968,6 +972,7 @@ const KhCal = (() => {
     const panel = document.getElementById('cal-detail');
     const content = document.getElementById('cal-detail-content');
     if (!panel || !content) return;
+    panel.classList.toggle('cal-detail--over-events', !!(opts && opts.overEvents));
 
     const lang = I18n.getLang();
     const khDate = KC.khmerDates(dt);
@@ -1307,15 +1312,13 @@ const KhCal = (() => {
         _resetEventsScroll();
       });
     }
-    // Tapping an event jumps the calendar to that day and opens its sheet
-    if (eventsListEl && eventsOverlay) {
+    // Tapping an event opens its day sheet on top of the events page, so
+    // closing the sheet lands back on the list where the user left it
+    if (eventsListEl) {
       eventsListEl.addEventListener('click', (e) => {
         const row = e.target.closest('.ev-row');
         if (!row) return;
-        eventsOverlay.classList.remove('open');
-        _year = +row.dataset.y;
-        _month = +row.dataset.m;
-        _showDetail(_year, _month, +row.dataset.d);
+        _showDetail(+row.dataset.y, +row.dataset.m, +row.dataset.d, { overEvents: true });
       });
     }
     if (eventsClose && eventsOverlay) {

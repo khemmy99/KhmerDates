@@ -3739,3 +3739,10 @@ body {
 [data-theme="light"] .ev-row--public     { --tone-bg: rgba(220,38,38,0.09); }
 [data-theme="light"] .ev-row--sil        { --tone: #C2410C; --tone-bg: rgba(194,65,12,0.09); }
 .dsec-icon svg { width: 18px; height: 18px; }
+
+/* Day sheet opened from the events page sits above it (the overlay is z 600),
+   so closing the sheet reveals the list again */
+.cal-detail.cal-detail--over-events { z-index: 700; }
+/* Closed, it parks just below the screen; above the events page its shadow
+   would show along the bottom edge */
+.cal-detail.cal-detail--over-events:not(.open) { box-shadow: none; }
