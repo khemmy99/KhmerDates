@@ -1312,6 +1312,10 @@ const KhCal = (() => {
         if (!btn) return;
         I18n.setLang(btn.dataset.lang);
         _setActiveToggle(langGroup, '[data-lang="' + btn.dataset.lang + '"]');
+        // Pending reminders on iOS carry finished text, so a language change
+        // has to rewrite them; Android words each one as it fires and ignores
+        // this.
+        if (typeof Reminders !== 'undefined') Reminders.syncSchedule();
         _refreshAll();
       });
     }

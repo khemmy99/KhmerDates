@@ -164,7 +164,7 @@ const I18n = (() => {
       notifSil: 'ថ្ងៃសីល (ល្ងាចមុន)',
       notifHoliday: 'ថ្ងៃបុណ្យ (ល្ងាចមុន)',
       notifEveningTime: 'ម៉ោងល្ងាច',
-      notifHint: 'បើមិនទទួលបានការជូនដំណឹង សូមអនុញ្ញាតវានៅក្នុងការកំណត់ Android។'
+      notifHint: 'បើមិនទទួលបានការជូនដំណឹង សូមអនុញ្ញាតវានៅក្នុងការកំណត់ទូរស័ព្ទ។'
     },
     en: {
       settings: 'Settings',
@@ -314,7 +314,7 @@ const I18n = (() => {
       notifSil: 'Holy day (evening before)',
       notifHoliday: 'Holidays (evening before)',
       notifEveningTime: 'Evening time',
-      notifHint: 'If nothing arrives, allow notifications for this app in Android settings.'
+      notifHint: 'If nothing arrives, allow notifications for this app in your device settings.'
     },
     zh: {
       settings: '设置',
@@ -464,7 +464,7 @@ const I18n = (() => {
       notifSil: '斋日（前一晚）',
       notifHoliday: '节日（前一晚）',
       notifEveningTime: '晚上时间',
-      notifHint: '若收不到提醒，请在 Android 设置中允许本应用发送通知。'
+      notifHint: '若收不到提醒，请在设备设置中允许本应用发送通知。'
     }
   };
 
