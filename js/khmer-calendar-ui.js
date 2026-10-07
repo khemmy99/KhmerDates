@@ -351,54 +351,22 @@ const KhCal = (() => {
 
     if (!HL) { bodyEl.innerHTML = ''; if (countEl) countEl.textContent = ''; return; }
 
-    const events = (_collectYearEvents(year)[month] || []);
+    // Everything that touches this month, including a festival that began
+    // the month before (Pchum Ben runs Sep -> Oct)
+    const first = new Date(year, month, 1);
+    const last  = new Date(year, month + 1, 0);
+    const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first);
 
-    if (countEl) {
-      countEl.textContent = events.length
-        ? (lang === 'km' ? KC.khmerNumber(events.length) : String(events.length))
-        : '';
-    }
+    if (countEl) countEl.textContent = rows.length ? _num(rows.length) : '';
 
-    if (!events.length) {
+    if (!rows.length) {
       bodyEl.innerHTML = `<div class="month-events-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
       return;
     }
 
     const now = new Date();
-    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const todayLabel = I18n.t('today') || 'Today';
-
-    bodyEl.innerHTML = events.map(ev => {
-      const name = ev.entry[lang] || ev.entry.km || '';
-      const dotCls = ev.isPublic ? 'events-dot--public' : 'events-dot--observance';
-
-      let dateStr = String(ev.startDay);
-      if (ev.startMonth === ev.endMonth && ev.startDay !== ev.endDay) {
-        dateStr = ev.startDay + '–' + ev.endDay;
-      } else if (ev.startMonth !== ev.endMonth) {
-        dateStr = ev.startDay + ' ' + I18n.gregMonthShort(ev.startMonth) +
-                  ' – ' + ev.endDay + ' ' + I18n.gregMonthShort(ev.endMonth);
-      }
-      if (lang === 'km') dateStr = dateStr.replace(/\d+/g, n => KC.khmerNumber(+n));
-
-      const evStart = new Date(year, ev.startMonth, ev.startDay).getTime();
-      const evEnd   = new Date(year, ev.endMonth,   ev.endDay  ).getTime();
-      let timeCls = '', badge = '';
-      if (todayMidnight >= evStart && todayMidnight <= evEnd) {
-        timeCls = ' events-row--today';
-        badge = `<span class="events-today-badge">${escapeHtml(todayLabel)}</span>`;
-      } else if (todayMidnight > evEnd) {
-        timeCls = ' events-row--past';
-      }
-
-      return `<div class="events-row${ev.isPublic ? '' : ' events-row--observance'}${timeCls}"
-                   data-m="${ev.startMonth}" data-d="${ev.startDay}">
-        <span class="events-dot ${dotCls}"></span>
-        <span class="events-date">${escapeHtml(dateStr)}</span>
-        <span class="events-name">${escapeHtml(name)}</span>
-        ${badge}
-      </div>`;
-    }).join('');
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    bodyEl.innerHTML = rows.map(r => _eventRowHtml(r, today, lang, month)).join('');
   }
 
   // ----- Events page -----
@@ -430,10 +398,10 @@ const KhCal = (() => {
         const span  = Math.round((end - start) / 86400000) + 1;
         let sub = I18n.t(ev.isPublic ? 'publicHoliday' : 'observanceDay');
         if (span > 1) {
-          const endStr = ev.endMonth === ev.startMonth
-            ? _num(ev.endDay)
-            : _num(ev.endDay) + ' ' + I18n.gregMonthShort(ev.endMonth);
-          sub += ` · ${_num(ev.startDay)}–${endStr} (${_num(span)} ${I18n.t('days')})`;
+          const range = ev.endMonth === ev.startMonth
+            ? `${_num(ev.startDay)}–${_num(ev.endDay)}`
+            : `${_num(ev.startDay)} ${I18n.gregMonthShort(ev.startMonth)} – ${_num(ev.endDay)} ${I18n.gregMonthShort(ev.endMonth)}`;
+          sub += ` · ${range} (${_num(span)} ${I18n.t('days')})`;
         }
         rows.push({ start, end, kind: ev.isPublic ? 'public' : 'observance',
                     name: ev.entry[lang] || ev.entry.km || '', sub });
@@ -448,6 +416,34 @@ const KhCal = (() => {
     }
     const order = { public: 0, observance: 1, sil: 2 };
     return rows.sort((x, y) => (x.start - y.start) || (order[x.kind] - order[y.kind]));
+  }
+
+  const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL });
+
+  /**
+   * One event row. The small label over the day number is the weekday, or
+   * the month when the event started outside refMonth (so "២៧" under the
+   * October card reads as 27 September, not 27 October).
+   */
+  function _eventRowHtml(r, today, lang, refMonth) {
+    const dow = r.start.getDay();
+    const label = r.start.getMonth() !== refMonth
+      ? I18n.gregMonthShort(r.start.getMonth())
+      : lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
+    const isToday = today >= r.start && today <= r.end;
+    const timeCls = isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '';
+    return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${r.start.getFullYear()}" data-m="${r.start.getMonth()}" data-d="${r.start.getDate()}">
+      <div class="ev-date">
+        <span class="ev-wd">${escapeHtml(label)}</span>
+        <span class="ev-day">${_num(r.start.getDate())}</span>
+      </div>
+      <span class="ev-icon">${_EVENT_ICONS()[r.kind]}</span>
+      <div class="ev-body">
+        <div class="ev-name">${escapeHtml(r.name)}</div>
+        <div class="ev-sub">${escapeHtml(r.sub)}</div>
+      </div>
+      ${isToday ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
+    </div>`;
   }
 
   function _renderEventChips() {
@@ -480,7 +476,6 @@ const KhCal = (() => {
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const icons = { public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL };
 
     const rows = _collectEventRows(_eventsYear, lang)
       .filter(r => _eventsFilter === 'all' || r.kind === _eventsFilter);
@@ -496,24 +491,7 @@ const KhCal = (() => {
       const km2 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, lastDay)).km;
       const lunarMonths = KC.khmerMonthNameFromKm(km1) + (km2 !== km1 ? ' · ' + KC.khmerMonthNameFromKm(km2) : '');
 
-      const items = inMonth.map(r => {
-        const dow = r.start.getDay();
-        const wd = lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
-        const isToday = today >= r.start && today <= r.end;
-        const timeCls = isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '';
-        return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${_eventsYear}" data-m="${m}" data-d="${r.start.getDate()}">
-          <div class="ev-date">
-            <span class="ev-wd">${escapeHtml(wd)}</span>
-            <span class="ev-day">${_num(r.start.getDate())}</span>
-          </div>
-          <span class="ev-icon">${icons[r.kind]}</span>
-          <div class="ev-body">
-            <div class="ev-name">${escapeHtml(r.name)}</div>
-            <div class="ev-sub">${escapeHtml(r.sub)}</div>
-          </div>
-          ${isToday ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
-        </div>`;
-      }).join('');
+      const items = inMonth.map(r => _eventRowHtml(r, today, lang, m)).join('');
 
       sections.push(`<section class="ev-month">
         <div class="ev-month-head">
@@ -1860,9 +1838,9 @@ const KhCal = (() => {
     const monthEventsBody = document.getElementById('month-events-body');
     if (monthEventsBody) {
       monthEventsBody.addEventListener('click', (e) => {
-        const row = e.target.closest('.events-row');
-        if (!row || row.dataset.d === undefined) return;
-        _showDetail(_year, +row.dataset.m, +row.dataset.d);
+        const row = e.target.closest('.ev-row');
+        if (!row) return;
+        _showDetail(+row.dataset.y, +row.dataset.m, +row.dataset.d);
       });
     }
 
@@ -1892,7 +1870,7 @@ const KhCal = (() => {
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .events-row, .ev-row, #cal-today-footer, #cal-today-btn')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

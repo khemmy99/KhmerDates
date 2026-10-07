@@ -1056,77 +1056,6 @@ body {
 .cal-footer-btn--weather:active,
 .cal-footer-btn--weather:hover { color: #f5b860; }
 
-.events-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--kh-text);
-  border-radius: 8px;
-  transition: background 0.15s;
-}
-.events-row--observance .events-name { color: #e8b25c; }
-
-/* Today — highlighted row with primary tint + a pulsing halo on the dot.
-   The halo is a positioned ::before pseudo-element so the animation uses
-   GPU-friendly opacity+transform instead of paint-heavy box-shadow. */
-.events-row--today {
-  background: linear-gradient(90deg, rgba(91,156,246,0.15) 0%, rgba(91,156,246,0.05) 100%);
-  border-left: 3px solid var(--kh-primary);
-  padding-left: 9px;
-}
-.events-row--today .events-dot { position: relative; }
-.events-row--today .events-dot::before {
-  content: '';
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  background: var(--kh-primary);
-  opacity: 0.35;
-  z-index: -1;
-  animation: events-today-pulse 2s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-@keyframes events-today-pulse {
-  0%, 100% { opacity: 0.25; transform: scale(1.0); }
-  50%      { opacity: 0.55; transform: scale(1.5); }
-}
-.events-today-badge {
-  flex-shrink: 0;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--kh-primary);
-  color: #ffffff;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-/* Past — dimmed */
-.events-row--past { opacity: 0.5; }
-.events-row--past .events-dot { box-shadow: none; }
-.events-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.events-dot--public      { background: #f04e7a; box-shadow: 0 0 4px rgba(240,78,122,0.5); }
-.events-dot--observance  { background: #e8b25c; box-shadow: 0 0 4px rgba(232,178,92,0.5); }
-.events-date {
-  flex-shrink: 0;
-  min-width: 60px;
-  font-family: ui-monospace, "SF Mono", Consolas, monospace;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--kh-text-secondary);
-}
-.events-name { flex: 1; }
-[data-theme="light"] .events-row--observance .events-name { color: #b48228; }
-
 /* Footer button: health (pink accent on hover/active state) */
 .cal-footer-btn--health:active,
 .cal-footer-btn--health:hover { color: #ff6b9d; }
@@ -2602,25 +2531,6 @@ body {
   border-color: rgba(59,125,230,0.20);
 }
 
-[data-theme="light"] .detail-holiday {
-  background: rgba(217,68,68,0.07);
-  border-color: rgba(217,68,68,0.30);
-}
-
-[data-theme="light"] .detail-holiday--observance {
-  background: rgba(180,130,40,0.08);
-  border-color: rgba(180,130,40,0.30);
-}
-
-[data-theme="light"] .detail-holiday--observance .detail-holiday-item {
-  color: #b48228;
-}
-
-[data-theme="light"] .events-row--observance .events-name {
-  color: #b48228;
-}
-
-
 [data-theme="light"] .cal-modal-field input[type="date"] {
   color-scheme: light;
 }
@@ -2863,26 +2773,6 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   flex: 1;
-}
-
-/* Rows reuse .events-row from the year panel; give them room to breathe
-   and a press state, since they're tappable here. */
-.month-events-body .events-row {
-  padding: 9px 6px;
-  border-radius: 10px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: background .15s var(--kh-transition);
-}
-.month-events-body .events-row:active {
-  background: var(--kh-primary-glow);
-}
-
-/* The 60px date column is sized for the year panel's "12 Apr – 14 Apr"
-   ranges; single-day rows here only need enough to stay aligned. */
-.month-events-body .events-date {
-  min-width: 34px;
-  font-size: 12.5px;
 }
 
 .month-events-empty {
@@ -3746,3 +3636,16 @@ body {
 /* Closed, it parks just below the screen; above the events page its shadow
    would show along the bottom edge */
 .cal-detail.cal-detail--over-events:not(.open) { box-shadow: none; }
+
+/* Month card under the grid: the events page rows, compact */
+.month-events-body { padding: 2px 0 6px; }
+.month-events-body .ev-row { padding: 6px 14px; gap: 10px; border-radius: 0; }
+.month-events-body .ev-date { width: 40px; }
+.month-events-body .ev-wd { font-size: 10px; }
+.month-events-body .ev-day { font-size: 16px; }
+.month-events-body .ev-icon { width: 28px; height: 28px; border-radius: 8px; }
+.month-events-body .ev-icon svg { width: 16px; height: 16px; }
+.month-events-body .ev-name { font-size: 14px; line-height: 1.4; }
+/* One-line subtitle so a month's list stays scannable */
+.month-events-body .ev-sub { font-size: 11.5px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.month-events-body .ev-today-badge { font-size: 10.5px; padding: 1px 8px; }
