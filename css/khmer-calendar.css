@@ -3539,3 +3539,13 @@ html { background-color: #0a0c14; }
 .ev-row--predicted .ev-icon { background: transparent; border: 1.5px dashed rgba(240,78,122,0.7); }
 [data-theme="light"] .ev-row--period .ev-name { color: #DB2777; }
 
+/* Fertile window (green sprout) and ovulation (orange) rows */
+.ev-row--fertile   { --tone: #16a34a; --tone-bg: rgba(34,197,94,0.12); }
+.ev-row--ovulation { --tone: #f59e0b; --tone-bg: rgba(245,158,11,0.13); }
+.ev-row--fertile .ev-name   { color: #16a34a; }
+.ev-row--ovulation .ev-name { color: #d97706; }
+
+/* Several events on one day read as one group: one date, no divider */
+.ev-row.ev-row--cont { border-top: 0; padding-top: 0; }
+.ev-row--cont .ev-date { visibility: hidden; }
+

@@ -370,7 +370,7 @@ const KhCal = (() => {
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    bodyEl.innerHTML = rows.map(r => _eventRowHtml(r, today, lang, month)).join('');
+    bodyEl.innerHTML = _eventRowsHtml(rows, today, lang, month);
   }
 
   // ----- Events page -----
@@ -444,8 +444,11 @@ const KhCal = (() => {
   }
 
   const _ICON_DROP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>';
+  const _ICON_SPROUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c0-4-3-6.5-7.5-6.5C4.5 10 7.5 12 12 12z"/><path d="M12 15c0-4 3-6.5 7.5-6.5 0 4.5-3 6.5-7.5 6.5z"/></svg>';
+  const _ICON_OVUM = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>';
   const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL,
-                                period: _ICON_DROP, predicted: _ICON_DROP });
+                                period: _ICON_DROP, predicted: _ICON_DROP,
+                                fertile: _ICON_SPROUT, ovulation: _ICON_OVUM });
 
   /**
    * Cycle-tracker rows for the month card: one per logged period and one per
@@ -457,27 +460,51 @@ const KhCal = (() => {
     if (!HT || !HT.isEnabled() || !HT.getActiveProfile()) return [];
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // Ovulation sits inside the fertile window, so it counts toward the
+    // window's run and also gets a row of its own
+    const runKind = k => k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted'
+                       : (k === 'fertile' || k === 'ovulation') ? 'fertile' : null;
     const runs = [];
     let run = null;
     for (let d = new Date(year, month, -9); d <= new Date(year, month + 1, 10);
          d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
       const k = HT.getDayInfo(d).kind;
-      const kind = k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted' : null;
+      if (k === 'ovulation') runs.push({ kind: 'ovulation', start: d, end: d });
+      const kind = runKind(k);
       if (run && kind === run.kind) { run.end = d; continue; }
       if (run) runs.push(run);
       run = kind ? { kind, start: d, end: d } : null;
     }
     if (run) runs.push(run);
 
-    return runs.filter(r => r.end >= first && r.start <= last).map(r => {
+    const NAME = { period: 'healthPeriod', predicted: 'healthPredictedPeriod',
+                   fertile: 'healthFertile', ovulation: 'healthOvulation' };
+    const out = [];
+    for (const r of runs) {
+      if (r.end < first || r.start > last) continue;
       const span = Math.round((r.end - r.start) / 86400000) + 1;
-      const range = r.start.getMonth() === r.end.getMonth()
-        ? `${_num(r.start.getDate())}–${_num(r.end.getDate())}`
-        : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
-      return { start: r.start, end: r.end, kind: r.kind,
-               name: I18n.t(r.kind === 'period' ? 'healthPeriod' : 'healthPredictedPeriod'),
-               sub: `${range} (${_num(span)} ${I18n.t('days')})` };
-    });
+      let sub = '';
+      if (span > 1) {
+        const range = r.start.getMonth() === r.end.getMonth()
+          ? `${_num(r.start.getDate())}–${_num(r.end.getDate())}`
+          : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
+        sub = `${range} (${_num(span)} ${I18n.t('days')})`;
+      }
+      const row = { start: r.start, end: r.end, kind: r.kind, name: I18n.t(NAME[r.kind]), sub };
+      out.push(row);
+      // Already under way today: repeat it on today's date ("day 3/6"),
+      // the same way a running festival is
+      if (span > 1 && r.start < today && r.end >= today &&
+          today >= first && today <= last) {
+        const n = Math.round((today - r.start) / 86400000) + 1;
+        out.push({ start: today, end: today, kind: r.kind, name: row.name, isTodayRow: true,
+                   sub: I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span)) });
+        row.hasTodayRow = true;
+      }
+    }
+    return out;
   }
 
   /**
@@ -485,13 +512,21 @@ const KhCal = (() => {
    * the month when the event started outside refMonth (so "២៧" under the
    * October card reads as 27 September, not 27 October).
    */
-  function _eventRowHtml(r, today, lang, refMonth) {
+  /** Render rows in order; a row on the same date as the one before it is a
+   *  continuation: its date is hidden and the Today badge shown once. */
+  function _eventRowsHtml(rows, today, lang, refMonth) {
+    return rows.map((r, i) => _eventRowHtml(r, today, lang, refMonth,
+      i > 0 && rows[i - 1].start.getTime() === r.start.getTime())).join('');
+  }
+
+  function _eventRowHtml(r, today, lang, refMonth, sameDay) {
     const dow = r.start.getDay();
     const label = r.start.getMonth() !== refMonth
       ? I18n.gregMonthShort(r.start.getMonth())
       : lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
     const isToday = !r.hasTodayRow && today >= r.start && today <= r.end;
-    const timeCls = isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '';
+    const timeCls = (isToday ? ' ev-row--today' : r.end < today ? ' ev-row--past' : '') +
+                    (sameDay ? ' ev-row--cont' : '');
     return `<div class="ev-row ev-row--${r.kind}${timeCls}" data-y="${r.start.getFullYear()}" data-m="${r.start.getMonth()}" data-d="${r.start.getDate()}">
       <div class="ev-date">
         <span class="ev-wd">${escapeHtml(label)}</span>
@@ -502,7 +537,7 @@ const KhCal = (() => {
         <div class="ev-name">${escapeHtml(r.name)}</div>
         <div class="ev-sub">${escapeHtml(r.sub)}</div>
       </div>
-      ${isToday ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
+      ${isToday && !sameDay ? `<span class="ev-today-badge">${escapeHtml(I18n.t('today'))}</span>` : ''}
     </div>`;
   }
 
@@ -551,7 +586,7 @@ const KhCal = (() => {
       const km2 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, lastDay)).km;
       const lunarMonths = KC.khmerMonthNameFromKm(km1) + (km2 !== km1 ? ' · ' + KC.khmerMonthNameFromKm(km2) : '');
 
-      const items = inMonth.map(r => _eventRowHtml(r, today, lang, m)).join('');
+      const items = _eventRowsHtml(inMonth, today, lang, m);
 
       sections.push(`<section class="ev-month">
         <div class="ev-month-head">
