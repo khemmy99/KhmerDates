@@ -4,3 +4,8 @@ android/
 .DS_Store
 Thumbs.db
 *.apk
+
+# Local build outputs and the copied Mac project (it holds signing config)
+release/
+KhmerDateCopy/
+KhmerCalendar.zip
