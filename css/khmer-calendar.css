@@ -3303,8 +3303,8 @@ body {
 .month-events-body .ev-today-badge { font-size: 10.5px; padding: 1px 8px; }
 
 /* Khmer day digits (Settings → លេខថ្ងៃ) are ~40% wider than Latin ones; at
-   14px a two-digit day still clears the holiday dot and the ថ្ងៃសីល mark */
-.cal-grid--km-digits .cal-gday { font-size: 14px; letter-spacing: -0.4px; }
+   13.5px a two-digit day still clears the holiday dot and the ថ្ងៃសីល mark */
+.cal-grid--km-digits .cal-gday { font-size: 13.5px; letter-spacing: -0.6px; }
 .cal-grid--km-digits .cal-sil { top: 2px; left: 2px; width: 8px; height: 8px; }
 @media (min-width: 480px) {
   .cal-grid--km-digits .cal-gday { font-size: 17px; }
@@ -3376,3 +3376,97 @@ body {
   border-color: rgba(0,0,0,0.08);
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
+
+
+/* =========================================================
+   PAGE BACKGROUND — a solid colour on <html> for each theme.
+   <body> is position:fixed, so <html> has no height and the
+   gradient on <body> paints nothing in Android's WebView; the
+   app window's dark #0f1117 showed through behind the light
+   theme. (Desktop browsers fall back to white, hiding it.)
+   ========================================================= */
+html { background-color: #0a0c14; }
+:root[data-theme="light"] { background-color: #F8FAFC; }
+
+/* =========================================================
+   LUNAR LINE + WEEKDAY ROW — one quiet centred line (moon icon,
+   lunar month bold, the rest muted, "·" separators) and plain
+   weekday labels with no band behind them.
+   ========================================================= */
+.cal-lunar-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 12px 4px;
+  border-bottom: 0;
+  font-size: 12.5px;
+  color: var(--kh-text-secondary);
+}
+.cal-lunar-info .lunar-icon { flex: none; color: var(--kh-gold); }
+.cal-lunar-info .lunar-sep,
+[data-theme="light"] .cal-lunar-info .lunar-sep { margin: 0; color: var(--kh-text-muted); opacity: 0.7; }
+.cal-lunar-info .lunar-month,
+[data-theme="light"] .cal-lunar-info .lunar-month { color: var(--kh-text); font-weight: 700; }
+.cal-lunar-info .lunar-sak,
+.cal-lunar-info .lunar-animal,
+.cal-lunar-info .lunar-be,
+[data-theme="light"] .cal-lunar-info .lunar-sak,
+[data-theme="light"] .cal-lunar-info .lunar-animal,
+[data-theme="light"] .cal-lunar-info .lunar-be { color: var(--kh-text-secondary); font-weight: 500; }
+
+.cal-weekdays,
+[data-theme="light"] .cal-weekdays {
+  background: transparent;
+  padding: 8px 0 4px;
+}
+.cal-wh {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 1;
+}
+
+/* =========================================================
+   CYCLE TRACKER DAYS — a ring and tint over the whole tile
+   instead of a 4px dot (which the white light-theme cells also
+   hid the tint behind). Text stays above the overlay.
+   ========================================================= */
+.cal-cell > span:not(.cal-sil) { position: relative; z-index: 1; }
+.cal-cell.health-period::before,
+.cal-cell.health-predicted::before,
+.cal-cell.health-ovulation::before,
+.cal-cell.health-fertile::before {
+  inset: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  border-radius: inherit;
+  opacity: 1;
+  pointer-events: none;
+}
+.cal-cell.health-period::before    { background: rgba(240,78,122,0.14); box-shadow: inset 0 0 0 2px #f04e7a; }
+.cal-cell.health-predicted::before { background: rgba(240,78,122,0.05); box-shadow: none; border: 1.5px dashed rgba(240,78,122,0.9); }
+.cal-cell.health-ovulation::before { background: rgba(245,158,11,0.12); box-shadow: inset 0 0 0 2px #f59e0b; }
+.cal-cell.health-fertile::before   { background: rgba(34,197,94,0.11); box-shadow: inset 0 0 0 1px rgba(34,197,94,0.55); }
+
+/* =========================================================
+   MONTH PICKER — the light theme's plain cell rule was
+   overriding the selected and current-month highlights.
+   ========================================================= */
+.pick-cell.selected,
+[data-theme="light"] .pick-cell.selected {
+  background: var(--kh-primary);
+  border-color: var(--kh-primary);
+  box-shadow: 0 2px 10px rgba(59,125,230,0.30);
+}
+.pick-cell.selected .pick-cell-km { color: #fff; }
+.pick-cell.selected .pick-cell-en { color: rgba(255,255,255,0.85); }
+.pick-cell.today:not(.selected),
+[data-theme="light"] .pick-cell.today:not(.selected) {
+  border: 1.5px solid var(--kh-primary);
+  background: var(--kh-primary-glow);
+}
+

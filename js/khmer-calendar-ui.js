@@ -815,8 +815,9 @@ const KhCal = (() => {
       const beText = (lang === 'km')
         ? `ព.ស.${KC.khmerNumber(be)}`
         : `${I18n.t('bePrefix')} ${be}`;
-      const sep = '<span class="lunar-sep">|</span>';
+      const sep = '<span class="lunar-sep">·</span>';
       infoEl.innerHTML =
+        '<svg class="lunar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.5 6.5 0 0 0 11 11z"/></svg>' +
         `<span class="lunar-month">${escapeHtml(kmName)}</span>` + sep +
         `<span class="lunar-sak">${escapeHtml(sak)}</span>` + sep +
         `<span class="lunar-animal">${escapeHtml(animal)}</span>` + sep +
