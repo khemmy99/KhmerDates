@@ -331,6 +331,37 @@ const KhmerCalendar = (() => {
     return { km, kd };
   }
 
+  // ---------- Buddhist observance days (ថ្ងៃសីល / uposatha) ----------
+  // Four per lunar month, counted from the new moon:
+  //   ៨ កើត  (kd 8)  — half moon, minor day
+  //   ១៥ កើត (kd 15) — full moon, major day (ថ្ងៃពេញបូណ៌មី)
+  //   ៨ រោច  (kd 23) — half moon, minor day
+  //   last day    — dark moon, major day (ថ្ងៃដាច់ខែ)
+  // The final waning day is ១៤ រោច in a 29-day lunar month and
+  // ១៥ រោច in a 30-day one, so it has to be read off the month length
+  // rather than hard-coded — which is why this takes the year: numDaysInKMonth()
+  // needs the same protetin (leap) type the day/month conversion walked with.
+  function silDayFromKhmer(km, kd, adYear) {
+    if (kd === 8 || kd === 23) {
+      return { kind: 'quarter', major: false, km: km, kd: kd };
+    }
+    if (kd === 15) {
+      return { kind: 'full', major: true, km: km, kd: kd };
+    }
+    if (kd === numDaysInKMonth(km, getProtetinLeap(adYear))) {
+      return { kind: 'new', major: true, km: km, kd: kd };
+    }
+    return null;
+  }
+
+  // Convenience wrapper. Prefer silDayFromKhmer() where the lunar date is
+  // already in hand — getKhmerDayMonthFromGregorian() walks year by year from
+  // 1900, and the month grid calls it once per cell already.
+  function silDayFromGregorian(gDate) {
+    const { km, kd } = getKhmerDayMonthFromGregorian(gDate);
+    return silDayFromKhmer(km, kd, gDate.getFullYear());
+  }
+
   // ---------- Main public functions ----------
 
   /**
@@ -404,6 +435,9 @@ const KhmerCalendar = (() => {
     khmerYearAnimalFromBE,
     sakNameFromAD,
     getKhmerDayMonthFromGregorian,
+    silDayFromKhmer,
+    silDayFromGregorian,
+    numDaysInKMonth,
     // Expose arrays/helpers for calendar grid
     KD7,
     ADM12,

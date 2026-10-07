@@ -40,7 +40,16 @@
       <div class="cal-topbar-glow"></div>
       <div class="cal-topbar-row">
         <img class="cal-topbar-icon" src="icons/icon-192.png" alt="" width="34" height="34">
+        <!-- Month arrows for pointer devices. Changing month was swipe-only,
+             which leaves a laptop or the Office task pane with no way to do it.
+             Hidden on touch screens, where the swipe already works. -->
+        <button type="button" class="cal-month-nav" id="cal-prev-month" aria-label="Previous month" title="Previous month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
         <button type="button" class="cal-month-title" id="cal-month-title" aria-label="Choose month and year"></button>
+        <button type="button" class="cal-month-nav" id="cal-next-month" aria-label="Next month" title="Next month">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
       </div>
     </header>
 
@@ -186,11 +195,73 @@
           </div>
 
           <div class="settings-section">
+            <!-- Khmer letters open with the place before the date. Saved per
+                 device, and used by the extra row in the day sheet. -->
+            <div class="settings-label" data-i18n="place">ទីកន្លែង</div>
+            <input type="text" class="settings-text-input" id="place-input"
+                   placeholder="ខេត្តព្រះសីហនុ" autocomplete="off" spellcheck="false">
+          </div>
+
+          <div class="settings-section">
             <div class="settings-label" data-i18n="startDay">ថ្ងៃចាប់ផ្តើមសប្តាហ៍</div>
             <div class="settings-toggle-group" id="startday-toggle">
               <button class="settings-toggle" data-start="sun" data-i18n="sunday">អាទិត្យ</button>
               <button class="settings-toggle active" data-start="mon" data-i18n="monday">ចន្ទ</button>
             </div>
+          </div>
+
+          <div class="settings-section">
+            <!-- ថ្ងៃសីល — the Buddha mark on the four observance days of each
+                 lunar month. On by default; the toggle is here for anyone who
+                 wants the grid bare. -->
+            <div class="settings-label" data-i18n="showSilDays">បង្ហាញថ្ងៃសីល</div>
+            <div class="settings-toggle-group" id="sil-toggle">
+              <button class="settings-toggle active" data-sil="on" data-i18n="on">បើក</button>
+              <button class="settings-toggle" data-sil="off" data-i18n="off">បិទ</button>
+            </div>
+          </div>
+
+          <!-- Daily reminders. Hidden on the web build: a plain PWA cannot wake
+               itself at 07:00, so the switches are only shown where the native
+               scheduler exists to honour them. -->
+          <div class="settings-section" id="reminders-section" hidden>
+            <div class="settings-label" data-i18n="reminders">ការជូនដំណឹង</div>
+
+            <div class="settings-row-header">
+              <label class="settings-label" for="notif-daily" data-i18n="notifDaily">ថ្ងៃនេះ រាល់ព្រឹក</label>
+              <label class="settings-switch settings-switch--gold" for="notif-daily">
+                <input type="checkbox" id="notif-daily" aria-label="Daily reminder">
+                <span class="settings-switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-row-header">
+              <label class="settings-label" for="notif-morning-time" data-i18n="notifMorningTime">ម៉ោងព្រឹក</label>
+              <input type="time" class="settings-time-input" id="notif-morning-time" value="07:00">
+            </div>
+
+            <div class="settings-row-header">
+              <label class="settings-label" for="notif-sil" data-i18n="notifSil">ថ្ងៃសីល (ល្ងាចមុន)</label>
+              <label class="settings-switch settings-switch--gold" for="notif-sil">
+                <input type="checkbox" id="notif-sil" aria-label="Holy day reminder">
+                <span class="settings-switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-row-header">
+              <label class="settings-label" for="notif-holiday" data-i18n="notifHoliday">ថ្ងៃបុណ្យ (ល្ងាចមុន)</label>
+              <label class="settings-switch settings-switch--gold" for="notif-holiday">
+                <input type="checkbox" id="notif-holiday" aria-label="Holiday reminder">
+                <span class="settings-switch-slider"></span>
+              </label>
+            </div>
+
+            <div class="settings-row-header">
+              <label class="settings-label" for="notif-evening-time" data-i18n="notifEveningTime">ម៉ោងល្ងាច</label>
+              <input type="time" class="settings-time-input" id="notif-evening-time" value="18:00">
+            </div>
+
+            <div class="settings-hint" data-i18n="notifHint">បើមិនទទួលបានការជូនដំណឹង សូមអនុញ្ញាតវានៅក្នុងការកំណត់ Android។</div>
           </div>
         </div>
       </div>
@@ -216,7 +287,7 @@
             <div class="about-hero-tagline" data-i18n="aboutTagline">ប្រតិទិនច័ន្ទគតិខ្មែរ ដំណើរការដោយគ្មានអ៊ីនធឺណេត</div>
             <div class="about-hero-version">
               <span class="about-version-label" data-i18n="version">កំណែ</span>
-              <span class="about-version-num" id="settings-app-version">1.4.6</span>
+              <span class="about-version-num" id="settings-app-version">1.5.4</span>
               <a id="about-update" class="about-update-pill"
                  href="https://play.google.com/store/apps/details?id=com.khmercalendar.app"
                  target="_blank" rel="noopener">
@@ -233,7 +304,7 @@
               <div class="about-person">
                 <div class="about-avatar">KM</div>
                 <div class="about-person-info">
-                  <div class="about-person-name">Khem My</div>
+                  <div class="about-person-name" data-i18n="devName">ខែម មី</div>
                   <div class="about-person-role" data-i18n="developer">អ្នកអភិវឌ្ឍ</div>
                 </div>
               </div>
@@ -276,16 +347,16 @@
             <div class="about-card about-team-card">
               <div class="about-team-row">
                 <span class="about-team-role" data-i18n="projectSupporter">អ្នកគ្រប់គ្រងគម្រោង</span>
-                <span class="about-team-name">Yuth Khemara</span>
+                <span class="about-team-name" data-i18n="pmName">យុត ខេមរា</span>
               </div>
               <div class="about-team-divider"></div>
               <div class="about-team-row about-team-row--list">
                 <span class="about-team-role" data-i18n="supporters">អ្នកគាំទ្រ</span>
                 <ul class="about-team-list">
-                  <li>Sao Sanath</li>
-                  <li>Yuth Nimorl</li>
-                  <li>Khem Channy</li>
-                  <li>Chhoeurn Maneth</li>
+                  <li data-i18n="supporter1">សៅ សាណាត</li>
+                  <li data-i18n="supporter2">យុត និមល់</li>
+                  <li data-i18n="supporter3">ខែម ចន្នី</li>
+                  <li data-i18n="supporter4">ឈឿន ម៉ាណែត</li>
                 </ul>
               </div>
             </div>
@@ -422,6 +493,15 @@
     <!-- Calendar grid -->
     <div class="cal-grid" id="cal-grid"></div>
 
+    <!-- Events for the month currently on screen -->
+    <section class="month-events" id="month-events" aria-live="polite">
+      <div class="month-events-head">
+        <span class="month-events-title" id="month-events-title">ព្រឹត្តិការណ៍</span>
+        <span class="month-events-count" id="month-events-count"></span>
+      </div>
+      <div class="month-events-body" id="month-events-body"></div>
+    </section>
+
     <!-- Today button -->
     <button class="cal-today-btn" id="cal-today-btn">ថ្ងៃនេះ</button>
 
@@ -436,7 +516,7 @@
         <span data-i18n="periodFooter">រដូវ</span>
       </button>
       <button class="cal-footer-btn" id="cal-events-btn" aria-label="Events">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 14.9 8.48 21.4 9.43 16.7 14.01 17.81 20.48 12 17.42 6.19 20.48 7.3 14.01 2.6 9.43 9.1 8.48 12 2.6"/></svg>
         <span data-i18n="eventsFooter">ព្រឹត្តិការណ៍</span>
       </button>
       <button class="cal-footer-btn cal-footer-btn--weather" id="cal-weather-btn" aria-label="Weather">
@@ -473,6 +553,7 @@
   <script src="js/health-tracker.js"></script>
   <script src="js/weather.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/reminders.js"></script>
   <script src="js/khmer-calendar-ui.js"></script>
   <script>
     // Configure Capacitor status bar to match the active theme
@@ -529,8 +610,87 @@
     );
   </script>
   <script>
+    /* Engine check — deliberately ES5 only, and first on the page.
+     *
+     * Office picks the browser it hosts a task pane in. On Windows without the
+     * WebView2 runtime it falls back to IE11, which cannot parse the arrow
+     * functions, const and template literals the calendar is written in. Every
+     * script then dies on a syntax error and the pane renders as an empty box:
+     * the CSS and the logo arrive, nothing else does.
+     *
+     * This block must therefore avoid all of those features itself, or it would
+     * fail in exactly the case it exists to report.
+     */
+    (function () {
+      var modern = false;
+      try {
+        // eval keeps the syntax out of this file's own parse step, so IE11
+        // reaches this line rather than choking on it.
+        eval('var f = function(){ return (x)=>x; };');
+        modern = (typeof Promise !== 'undefined') &&
+                 (typeof Map !== 'undefined') &&
+                 !!Array.prototype.indexOf;
+      } catch (e) { modern = false; }
+
+      if (modern) {
+        // Recorded either way: if the pane ever comes up blank on a modern
+        // engine, the cause is a script error rather than the browser, and
+        // knowing which is which saves a round of guessing.
+        window.__khEngine = navigator.userAgent;
+        return;
+      }
+
+      window.__khUnsupported = true;
+      var show = function () {
+        document.body.innerHTML =
+          '<div style="font-family:Segoe UI,Tahoma,sans-serif;padding:20px;' +
+          'line-height:1.6;color:#1E293B;background:#fff;height:100%">' +
+          '<div style="font-size:15px;font-weight:700;margin-bottom:10px">' +
+          '\u1780\u17BB\u17C6\u1796\u17B code\u17C0\u179A</div>' +
+          '<p style="font-size:13px">This add-in needs the <b>Microsoft Edge WebView2 Runtime</b>, ' +
+          'which is not installed on this PC. Office is using Internet Explorer for ' +
+          'the pane instead, and the calendar cannot run there.</p>' +
+          '<p style="font-size:13px">Install it once, free from Microsoft, then reopen Office:</p>' +
+          '<p style="font-size:13px;word-break:break-all">' +
+          '<b>https://go.microsoft.com/fwlink/p/?LinkId=2124703</b></p>' +
+          '<p style="font-size:11px;color:#64748B;word-break:break-all">' +
+          'Engine: ' + (navigator.userAgent || 'unknown') + '</p>' +
+          '<p style="font-size:12px;color:#64748B">' +
+          '\u1780\u17BB\u17C6\u1791\u17B6\u17C6\u1798\u17B6\u1793 WebView2 ' +
+          '\u1793\u17C5\u179B\u17BE\u1780\u17BB\u17C6\u1796\u17BB\u17D2\u1791\u17C1\u179A\u1793\u17C1\u17C7' +
+          '</p></div>';
+      };
+      if (document.body) { show(); }
+      else if (window.addEventListener) { window.addEventListener('load', show); }
+      else { window.attachEvent('onload', show); }
+    })();
+  </script>
+
+  <script>
+    // Office Add-in mode: the manifest points at this page with ?office=1.
+    // Everything below is inert in a normal browser and in the mobile apps.
+    const KH_OFFICE = /[?&]office=1(&|$)/.test(location.search);
+
+    // The worker runs in the add-in too, so the pane keeps working without a
+    // network. It was disabled here at first over a fear of pinning a stale
+    // build in storage the user cannot clear — but sw.js is network-first for
+    // the page itself and versions its cache, so an update always lands on the
+    // next launch. Cutting offline support to avoid a risk that strategy
+    // already handles was the wrong trade.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+    }
+
+    if (KH_OFFICE) {
+      document.documentElement.classList.add('office-addin');
+      const officeJs = document.createElement('script');
+      officeJs.src = 'https://appsforoffice.microsoft.com/lib/1/hosted/office.js';
+      officeJs.onload = () => {
+        const addin = document.createElement('script');
+        addin.src = 'js/office-addin.js';
+        document.head.appendChild(addin);
+      };
+      document.head.appendChild(officeJs);
     }
 
     // PWA install banner (suppressed when already installed or recently dismissed)
@@ -557,6 +717,23 @@
         localStorage.setItem(_bannerDismissedKey, '1');
         document.getElementById('install-banner').classList.add('is-hidden');
       }
+    });
+
+    // Month arrows (pointer devices) and keyboard navigation. Both go through
+    // the same KhCal._nav the swipe uses, so behaviour cannot drift.
+    document.getElementById('cal-prev-month').addEventListener('click', () => KhCal._nav(-1));
+    document.getElementById('cal-next-month').addEventListener('click', () => KhCal._nav(1));
+
+    document.addEventListener('keydown', (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Never steal keys from a field, and not while a dialog is up.
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      if (document.querySelector('.cal-modal-overlay.open, .cal-picker-overlay.open, .cal-settings-overlay.open')) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); KhCal._nav(-1); }
+      else if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); KhCal._nav(1); }
+      else if (e.key === 'Home' || e.key === 't' || e.key === 'T') { e.preventDefault(); KhCal._goToday(); }
     });
 
     // Esc closes any open overlay

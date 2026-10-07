@@ -46,6 +46,7 @@ const I18n = (() => {
       monthPrefix: 'ខែ',
       yearPrefix: 'ឆ្នាំ',
       startDay: 'ថ្ងៃចាប់ផ្តើមសប្តាហ៍',
+      place: 'ទីកន្លែង',
       sunday: 'អាទិត្យ',
       monday: 'ចន្ទ',
       about: 'អំពី',
@@ -61,9 +62,19 @@ const I18n = (() => {
       projectSupporter: 'អ្នកគ្រប់គ្រងគម្រោង',
       supporters: 'អ្នកគាំទ្រ',
       projectTeam: 'ក្រុមការងារគម្រោង',
+      // Credits. Khmer script for the Khmer UI, romanised for en/zh.
+      devName: 'ខែម មី',
+      pmName: 'យុត ខេមរា',
+      supporter1: 'សៅ សាណាត',
+      supporter2: 'យុត និមល់',
+      supporter3: 'ខែម ចន្នី',
+      supporter4: 'ឈឿន ម៉ាណែត',
       events: 'ព្រឹត្តិការណ៍',
       eventsFooter: 'ព្រឹត្តិការណ៍',
       noEvents: 'មិនមានព្រឹត្តិការណ៍',
+      copy: 'ចម្លង',
+      copied: 'បានចម្លង',
+      copyFailed: 'ចម្លងមិនបាន',
       weather: 'អាកាសធាតុ',
       weatherFooter: 'អាកាសធាតុ',
       useMyLocation: 'ប្រើទីតាំងរបស់ខ្ញុំ',
@@ -71,6 +82,9 @@ const I18n = (() => {
       loading: 'កំពុងផ្ទុក…',
       gpsRequesting: 'កំពុងស្នើទីតាំង…',
       gpsDenied: 'មិនអាចទទួលទីតាំង។ សូមជ្រើសរើសទីក្រុង។',
+      gpsOff: 'ទីតាំងត្រូវបានបិទ។ សូមបើកទីតាំងក្នុងការកំណត់ឧបករណ៍។',
+      gpsNoPermission: 'មិនបានអនុញ្ញាតទីតាំង។ សូមអនុញ្ញាតក្នុងការកំណត់កម្មវិធី។',
+      gpsTimeout: 'រកទីតាំងមិនទាន់ពេល។ សូមចុចម្តងទៀត។',
       weatherError: 'មិនអាចទាញយកទិន្នន័យអាកាសធាតុ។ សូមពិនិត្យការតភ្ជាប់។',
       hourly: 'ម៉ោងបន្ទាប់',
       daily: '៧ ថ្ងៃខាងមុខ',
@@ -126,7 +140,23 @@ const I18n = (() => {
       healthFertile: 'រយៈពេលអាចមានកូន',
       healthDayN: 'ថ្ងៃទី {n}',
       healthCycleDayN: 'ថ្ងៃវដ្តទី {n}',
-      healthDaysToNext: '~{n} ថ្ងៃទៀតដល់រដូវបន្ទាប់'
+      healthDaysToNext: '~{n} ថ្ងៃទៀតដល់រដូវបន្ទាប់',
+      // ថ្ងៃសីល — Buddhist observance days
+      silDay: 'ថ្ងៃសីល',
+      silFull: 'ថ្ងៃពេញបូណ៌មី',
+      silNew: 'ថ្ងៃដាច់ខែ',
+      silQuarter: 'ថ្ងៃសីលតូច',
+      showSilDays: 'បង្ហាញថ្ងៃសីល',
+      on: 'បើក',
+      off: 'បិទ',
+      // ការជូនដំណឹង — daily reminders
+      reminders: 'ការជូនដំណឹង',
+      notifDaily: 'ថ្ងៃនេះ រាល់ព្រឹក',
+      notifMorningTime: 'ម៉ោងព្រឹក',
+      notifSil: 'ថ្ងៃសីល (ល្ងាចមុន)',
+      notifHoliday: 'ថ្ងៃបុណ្យ (ល្ងាចមុន)',
+      notifEveningTime: 'ម៉ោងល្ងាច',
+      notifHint: 'បើមិនទទួលបានការជូនដំណឹង សូមអនុញ្ញាតវានៅក្នុងការកំណត់ Android។'
     },
     en: {
       settings: 'Settings',
@@ -159,6 +189,7 @@ const I18n = (() => {
       monthPrefix: '',
       yearPrefix: '',
       startDay: 'Week starts on',
+      place: 'Place',
       sunday: 'Sunday',
       monday: 'Monday',
       about: 'About',
@@ -174,9 +205,18 @@ const I18n = (() => {
       projectSupporter: 'Project Manager',
       supporters: 'Supporters',
       projectTeam: 'Project Team',
+      devName: 'Khem My',
+      pmName: 'Yuth Khemara',
+      supporter1: 'Sao Sanath',
+      supporter2: 'Yuth Nimorl',
+      supporter3: 'Khem Channy',
+      supporter4: 'Chhoeurn Maneth',
       events: 'Events',
       eventsFooter: 'Events',
       noEvents: 'No events',
+      copy: 'Copy',
+      copied: 'Copied',
+      copyFailed: 'Copy failed',
       weather: 'Weather',
       weatherFooter: 'Weather',
       useMyLocation: 'Use my location',
@@ -184,6 +224,9 @@ const I18n = (() => {
       loading: 'Loading…',
       gpsRequesting: 'Requesting location…',
       gpsDenied: 'Location unavailable. Pick a city above.',
+      gpsOff: 'Location is switched off. Turn it on in your device settings.',
+      gpsNoPermission: 'Location permission denied. Allow it in app settings.',
+      gpsTimeout: 'Could not get a fix in time. Tap to try again.',
       weatherError: 'Could not load weather. Check your connection.',
       hourly: 'Hourly',
       daily: '7-day forecast',
@@ -239,7 +282,23 @@ const I18n = (() => {
       healthFertile: 'Fertile window',
       healthDayN: 'Day {n}',
       healthCycleDayN: 'Cycle day {n}',
-      healthDaysToNext: '~{n} days to next period'
+      healthDaysToNext: '~{n} days to next period',
+      // ថ្ងៃសីល — Buddhist observance days
+      silDay: 'Buddhist holy day',
+      silFull: 'Full moon',
+      silNew: 'New moon',
+      silQuarter: 'Half moon',
+      showSilDays: 'Show holy days',
+      on: 'On',
+      off: 'Off',
+      // Daily reminders
+      reminders: 'Reminders',
+      notifDaily: 'Today, every morning',
+      notifMorningTime: 'Morning time',
+      notifSil: 'Holy day (evening before)',
+      notifHoliday: 'Holidays (evening before)',
+      notifEveningTime: 'Evening time',
+      notifHint: 'If nothing arrives, allow notifications for this app in Android settings.'
     },
     zh: {
       settings: '设置',
@@ -272,6 +331,7 @@ const I18n = (() => {
       monthPrefix: '',
       yearPrefix: '',
       startDay: '每周开始于',
+      place: '地点',
       sunday: '星期日',
       monday: '星期一',
       about: '关于',
@@ -287,9 +347,18 @@ const I18n = (() => {
       projectSupporter: '项目经理',
       supporters: '支持者',
       projectTeam: '项目团队',
+      devName: 'Khem My',
+      pmName: 'Yuth Khemara',
+      supporter1: 'Sao Sanath',
+      supporter2: 'Yuth Nimorl',
+      supporter3: 'Khem Channy',
+      supporter4: 'Chhoeurn Maneth',
       events: '事件',
       eventsFooter: '事件',
       noEvents: '暂无事件',
+      copy: '复制',
+      copied: '已复制',
+      copyFailed: '复制失败',
       weather: '天气',
       weatherFooter: '天气',
       useMyLocation: '使用我的位置',
@@ -297,6 +366,9 @@ const I18n = (() => {
       loading: '加载中…',
       gpsRequesting: '正在获取位置…',
       gpsDenied: '无法获取位置，请选择城市。',
+      gpsOff: '定位已关闭，请在系统设置中开启。',
+      gpsNoPermission: '定位权限被拒绝，请在应用设置中允许。',
+      gpsTimeout: '定位超时，请再试一次。',
       weatherError: '无法加载天气，请检查网络。',
       hourly: '逐小时',
       daily: '未来7天',
@@ -352,38 +424,78 @@ const I18n = (() => {
       healthFertile: '易孕期',
       healthDayN: '第{n}天',
       healthCycleDayN: '周期第{n}天',
-      healthDaysToNext: '距下次经期~{n}天'
+      healthDaysToNext: '距下次经期~{n}天',
+      // ថ្ងៃសីល — Buddhist observance days
+      silDay: '佛教斋日',
+      silFull: '满月',
+      silNew: '新月',
+      silQuarter: '弦月',
+      showSilDays: '显示斋日',
+      on: '开',
+      off: '关',
+      // 每日提醒
+      reminders: '提醒',
+      notifDaily: '每天早晨提醒今天',
+      notifMorningTime: '早晨时间',
+      notifSil: '斋日（前一晚）',
+      notifHoliday: '节日（前一晚）',
+      notifEveningTime: '晚上时间',
+      notifHint: '若收不到提醒，请在 Android 设置中允许本应用发送通知。'
     }
   };
 
   let _lang = localStorage.getItem('kh-cal-lang') || 'km';
   let _theme = localStorage.getItem('kh-cal-theme') || 'dark';
   let _startDay = localStorage.getItem('kh-cal-startday') || 'mon';
+  // ថ្ងៃសីល markers in the month grid. On by default — the Buddhist observance
+  // days are the reason most people reach for a Khmer lunar calendar at all.
+  let _silDays = localStorage.getItem('kh-cal-sildays') !== 'off';
 
   function getLang() { return _lang; }
   function getTheme() { return _theme; }
   function getStartDay() { return _startDay; }
+  function getSilDays() { return _silDays; }
+
+  function setSilDays(on) {
+    _silDays = !!on;
+    localStorage.setItem('kh-cal-sildays', _silDays ? 'on' : 'off');
+  }
+
+  // The Android widgets and the reminder scheduler are native code and cannot
+  // read localStorage, so anything they need is mirrored into Capacitor
+  // Preferences — which lands in the CapacitorStorage shared-preferences file
+  // they read by key. A no-op on the web build.
+  function mirrorToNative(key, value) {
+    const prefs = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences;
+    if (prefs) prefs.set({ key, value }).catch(() => {});
+  }
 
   function setStartDay(val) {
     _startDay = val;
     localStorage.setItem('kh-cal-startday', val);
-    // Also persist to Capacitor Preferences so the native Android widget can
-    // read the user's preference from SharedPreferences (key: kh-cal-startday).
-    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
-      window.Capacitor.Plugins.Preferences.set({ key: 'kh-cal-startday', value: val }).catch(() => {});
-    }
+    mirrorToNative('kh-cal-startday', val);
   }
 
   function setLang(lang) {
     if (!translations[lang]) return;
     _lang = lang;
     localStorage.setItem('kh-cal-lang', lang);
+    // The reminders are worded natively, so they need the language too.
+    mirrorToNative('kh-cal-lang', lang);
     document.documentElement.setAttribute('lang', lang);
   }
 
+  // The app's theme is chosen in-app and does not follow the system, so every
+  // theme-color meta has to be rewritten. querySelector would return only the
+  // first, and any left carrying a prefers-color-scheme media query would still
+  // win whenever the system happened to match it — which is how a dark app on a
+  // light phone ended up with a light strip behind the status bar.
   function _applyThemeColorMeta(theme) {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'light' ? '#f0f2f8' : '#0a0c14';
+    const colour = theme === 'light' ? '#f0f2f8' : '#0a0c14';
+    document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+      meta.content = colour;
+      meta.removeAttribute('media');
+    });
   }
 
   function setTheme(theme) {
@@ -441,5 +553,20 @@ const I18n = (() => {
 
   initTheme();
 
-  return { getLang, getTheme, getStartDay, setLang, setTheme, setStartDay, t, weekday, monthName, monthShort, gregMonth, gregMonthShort, updateStaticTexts, translations };
+  /**
+   * Pushes the settings the native side reads across to Preferences.
+   *
+   * An install that predates the mirror has them only in localStorage, so the
+   * scheduler and the widgets would read their defaults forever. Called again
+   * from the UI's startup because the Capacitor bridge is not guaranteed to be
+   * ready while this file is still being parsed.
+   */
+  function syncToNative() {
+    mirrorToNative('kh-cal-lang', _lang);
+    mirrorToNative('kh-cal-startday', _startDay);
+  }
+
+  syncToNative();
+
+  return { getLang, getTheme, getStartDay, getSilDays, setLang, setTheme, setStartDay, setSilDays, mirrorToNative, syncToNative, t, weekday, monthName, monthShort, gregMonth, gregMonthShort, updateStaticTexts, translations };
 })();

@@ -10,7 +10,7 @@ const KhCal = (() => {
   const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
-  const APP_VERSION = '1.4.6';
+  const APP_VERSION = '1.5.4';
 
   function escapeHtml(str) {
     const d = document.createElement('div');
@@ -49,9 +49,14 @@ const KhCal = (() => {
     WX.getCurrentPosition().then(pos => {
       WX.setLocation({ kind: 'gps', lat: pos.lat, lon: pos.lon });
       _loadWeather();
-    }).catch(() => {
+    }).catch(err => {
+      // Every failure used to read "Location unavailable. Pick a city above.",
+      // which sent people to the city list when the fix was to turn location on
+      // or grant the permission. getCurrentPosition() now says which it was.
+      const key = { disabled: 'gpsOff', denied: 'gpsNoPermission', timeout: 'gpsTimeout' }[err && err.code]
+                || 'gpsDenied';
       if (cur) cur.innerHTML =
-        `<div class="weather-error">${escapeHtml(I18n.t('gpsDenied') || 'Location unavailable. Pick a city above.')}</div>`;
+        `<div class="weather-error">${escapeHtml(I18n.t(key) || 'Location unavailable. Pick a city above.')}</div>`;
     });
   }
 
@@ -164,7 +169,12 @@ const KhCal = (() => {
    * Build a year-long list of unique holiday occurrences, grouped by month.
    * Consecutive days of the same holiday are collapsed into a date range.
    */
+  // Walking a whole year of holidays is expensive, and the month-events card
+  // asks for it on every render (i.e. every swipe). Memoise per year.
+  const _yearEventsCache = {};
+
   function _collectYearEvents(year) {
+    if (_yearEventsCache[year]) return _yearEventsCache[year];
     if (!HL) return [];
     const byMonth = {};
     for (let m = 0; m < 12; m++) byMonth[m] = [];
@@ -220,7 +230,168 @@ const KhCal = (() => {
 
     // Group by START month for the section headers
     for (const c of collapsed) byMonth[c.startMonth].push(c);
+    _yearEventsCache[year] = byMonth;
     return byMonth;
+  }
+
+  // ---------- Toast + clipboard ----------
+
+  /**
+   * Small transient message in the top-right corner.
+   * NOTE: _toast() was already being called by the period-log flow but had
+   * never been defined, which threw a ReferenceError there.
+   */
+  function _toast(msg, ms) {
+    const box = document.getElementById('toast-container');
+    if (!box) return;
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.textContent = msg;
+    box.appendChild(el);
+    setTimeout(() => {
+      el.style.transition = 'opacity .25s, transform .25s';
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(-8px)';
+      setTimeout(() => el.remove(), 280);
+    }, ms || 1500);
+  }
+
+  function _copyText(text) {
+    if (!text) return;
+
+    // 1. Native bridge (iOS app shell) — most reliable: execCommand('copy')
+    //    inside WKWebView is gated on user activation and often fails.
+    const bridge = window.webkit && window.webkit.messageHandlers &&
+                   window.webkit.messageHandlers.khmerCopy;
+    if (bridge) {
+      try {
+        bridge.postMessage(text);
+        _toast(I18n.t('copied'));
+        return;
+      } catch (e) { /* fall through to the web paths */ }
+    }
+
+    // 2. Async Clipboard API — needs a secure context (not file://).
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text)
+        .then(() => _toast(I18n.t('copied')))
+        .catch(() => _legacyCopy(text));
+      return;
+    }
+
+    // 3. Selection + execCommand fallback (plain browser / PWA).
+    _legacyCopy(text);
+  }
+
+  /**
+   * iOS WKWebView ignores textarea.select() for copy purposes; it needs a real
+   * Range selection over a contenteditable node, and the element must not be
+   * display:none / zero-opacity or the selection is dropped.
+   */
+  function _legacyCopy(text) {
+    const host = document.createElement('div');
+    host.textContent = text;
+    host.contentEditable = 'true';
+    host.setAttribute('readonly', '');
+    host.style.cssText =
+      'position:fixed;left:0;bottom:0;width:1px;height:1px;overflow:hidden;' +
+      'white-space:pre;color:transparent;background:transparent;border:0;' +
+      'padding:0;-webkit-user-select:text;user-select:text;';
+    document.body.appendChild(host);
+
+    const sel = window.getSelection();
+    const saved = sel.rangeCount ? sel.getRangeAt(0) : null;
+    const range = document.createRange();
+    range.selectNodeContents(host);
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+
+    sel.removeAllRanges();
+    if (saved) sel.addRange(saved);
+    document.body.removeChild(host);
+
+    _toast(ok ? I18n.t('copied') : I18n.t('copyFailed'));
+  }
+
+  /** One selectable date line in the detail sheet plus its copy button. */
+  function _copyRow(text, extraCls) {
+    const safe = escapeHtml(text);
+    const label = escapeHtml(I18n.t('copy'));
+    return `<div class="detail-full-row">
+      <div class="detail-full detail-selectable${extraCls ? ' ' + extraCls : ''}">${safe}</div>
+      <button type="button" class="detail-copy-btn" data-copy="${safe}"
+              aria-label="${label}" title="${label}">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+      </button>
+    </div>`;
+  }
+
+  /**
+   * Events card shown under the grid for whichever month is on screen.
+   * Reuses the same rows as the full-year panel so the two stay consistent.
+   */
+  function _renderMonthEvents(year, month) {
+    const bodyEl  = document.getElementById('month-events-body');
+    const titleEl = document.getElementById('month-events-title');
+    const countEl = document.getElementById('month-events-count');
+    if (!bodyEl) return;
+
+    const lang = I18n.getLang();
+    if (titleEl) titleEl.textContent = I18n.t('eventsFooter');
+
+    if (!HL) { bodyEl.innerHTML = ''; if (countEl) countEl.textContent = ''; return; }
+
+    const events = (_collectYearEvents(year)[month] || []);
+
+    if (countEl) {
+      countEl.textContent = events.length
+        ? (lang === 'km' ? KC.khmerNumber(events.length) : String(events.length))
+        : '';
+    }
+
+    if (!events.length) {
+      bodyEl.innerHTML = `<div class="month-events-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
+      return;
+    }
+
+    const now = new Date();
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const todayLabel = I18n.t('today') || 'Today';
+
+    bodyEl.innerHTML = events.map(ev => {
+      const name = ev.entry[lang] || ev.entry.km || '';
+      const dotCls = ev.isPublic ? 'events-dot--public' : 'events-dot--observance';
+
+      let dateStr = String(ev.startDay);
+      if (ev.startMonth === ev.endMonth && ev.startDay !== ev.endDay) {
+        dateStr = ev.startDay + '–' + ev.endDay;
+      } else if (ev.startMonth !== ev.endMonth) {
+        dateStr = ev.startDay + ' ' + I18n.gregMonthShort(ev.startMonth) +
+                  ' – ' + ev.endDay + ' ' + I18n.gregMonthShort(ev.endMonth);
+      }
+      if (lang === 'km') dateStr = dateStr.replace(/\d+/g, n => KC.khmerNumber(+n));
+
+      const evStart = new Date(year, ev.startMonth, ev.startDay).getTime();
+      const evEnd   = new Date(year, ev.endMonth,   ev.endDay  ).getTime();
+      let timeCls = '', badge = '';
+      if (todayMidnight >= evStart && todayMidnight <= evEnd) {
+        timeCls = ' events-row--today';
+        badge = `<span class="events-today-badge">${escapeHtml(todayLabel)}</span>`;
+      } else if (todayMidnight > evEnd) {
+        timeCls = ' events-row--past';
+      }
+
+      return `<div class="events-row${ev.isPublic ? '' : ' events-row--observance'}${timeCls}"
+                   data-m="${ev.startMonth}" data-d="${ev.startDay}">
+        <span class="events-dot ${dotCls}"></span>
+        <span class="events-date">${escapeHtml(dateStr)}</span>
+        <span class="events-name">${escapeHtml(name)}</span>
+        ${badge}
+      </div>`;
+    }).join('');
   }
 
   function _renderEventsList() {
@@ -307,6 +478,18 @@ const KhCal = (() => {
     const modCls = kind === 'observance' ? ' detail-holiday--observance' : '';
     const items = list.map(h => `<div class="detail-holiday-item">${escapeHtml(HL.nameFor(h, lang))}</div>`).join('');
     return `<div class="detail-holiday${modCls}">${items}</div>`;
+  }
+
+  // ថ្ងៃសីល row for the day sheet. Named after which moon the day falls on,
+  // which is how the observance is actually referred to.
+  function _renderSilBlock(dt) {
+    if (!I18n.getSilDays()) return '';
+    const sil = KC.silDayFromGregorian(dt);
+    if (!sil) return '';
+    const phaseKey = sil.kind === 'full' ? 'silFull' : sil.kind === 'new' ? 'silNew' : 'silQuarter';
+    const label = I18n.t('silDay') + ' · ' + I18n.t(phaseKey);
+    return `<div class="detail-sil"><span class="detail-sil-icon" aria-hidden="true"></span>`
+         + `<span>${escapeHtml(label)}</span></div>`;
   }
 
   function _renderHealthBlock(dt, lang) {
@@ -478,11 +661,7 @@ const KhCal = (() => {
     // the boundary (e.g. April).
     const infoEl = document.getElementById('cal-lunar-info');
     if (infoEl) {
-      const firstDayLunar = KC.getKhmerDayMonthFromGregorian(new Date(year, month, 1));
       const lastDay = new Date(year, month + 1, 0).getDate();
-      const lastDayLunar = KC.getKhmerDayMonthFromGregorian(new Date(year, month, lastDay));
-      const km1 = KC.khmerMonthNameFromKm(firstDayLunar.km);
-      const km2 = (lastDayLunar.km !== firstDayLunar.km) ? ' - ' + KC.khmerMonthNameFromKm(lastDayLunar.km) : '';
 
       let refDay;
       if (_selectedDate && _selectedDate.y === year && _selectedDate.m === month) {
@@ -494,15 +673,26 @@ const KhCal = (() => {
       }
 
       const refLun = KC.getKhmerDayMonthFromGregorian(new Date(year, month, refDay));
+      // Show the single lunar month the reference day actually falls in, not a
+      // "first - last" range. A Gregorian month usually straddles two lunar
+      // months (and in a Khmer leap year, បឋមាសាឍ then ទុតិយាសាឍ), so the range
+      // was always shown even though only one of them applies today.
+      const kmName = KC.khmerMonthNameFromKm(refLun.km);
       const be = KC.computeBEYear(year, month + 1, refLun.km, refLun.kd);
       // Animal & Sak follow Apr 14 boundary; BE follows lunar Pisakh boundary
       const animal = KC.khmerYearAnimalFromBE(year, month + 1, refDay);
       const sak = KC.sakNameFromAD(year, month + 1, refDay);
-      if (lang === 'km') {
-        infoEl.textContent = `${km1}${km2} | ${sak} | ${animal} | ព.ស.${KC.khmerNumber(be)}`;
-      } else {
-        infoEl.textContent = `${km1}${km2} | ${sak} | ${animal} | ${I18n.t('bePrefix')} ${be}`;
-      }
+      // Rendered as spans rather than one string so each part can carry its own
+      // colour — the line was a single flat grey before.
+      const beText = (lang === 'km')
+        ? `ព.ស.${KC.khmerNumber(be)}`
+        : `${I18n.t('bePrefix')} ${be}`;
+      const sep = '<span class="lunar-sep">|</span>';
+      infoEl.innerHTML =
+        `<span class="lunar-month">${escapeHtml(kmName)}</span>` + sep +
+        `<span class="lunar-sak">${escapeHtml(sak)}</span>` + sep +
+        `<span class="lunar-animal">${escapeHtml(animal)}</span>` + sep +
+        `<span class="lunar-be">${escapeHtml(beText)}</span>`;
     }
 
     // Build grid
@@ -528,11 +718,25 @@ const KhCal = (() => {
                          : holidayKind === 'observance' ? ' observance'
                          : '';
       const healthClass = _healthClassFor(dt);
-      return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
-        <span class="cal-gday">${d}</span>
+      const sil = _silFor(lun, dt);
+      return `<div class="cal-cell ${extra} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${dataY}" data-m="${dataM}" data-d="${d}">
+        ${sil.html}<span class="cal-gday">${d}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
+    }
+
+    // ថ្ងៃសីល marker. Takes the lunar date the caller already converted —
+    // KC.getKhmerDayMonthFromGregorian() walks year by year from 1900 and the
+    // grid pays for it once per cell as it is.
+    function _silFor(lun, dt) {
+      if (!I18n.getSilDays()) return { cls: '', html: '' };
+      const sil = KC.silDayFromKhmer(lun.km, lun.kd, dt.getFullYear());
+      if (!sil) return { cls: '', html: '' };
+      return {
+        cls: sil.major ? ' sil sil-major' : ' sil',
+        html: '<span class="cal-sil" aria-hidden="true"></span>'
+      };
     }
 
     function _healthClassFor(dt) {
@@ -574,8 +778,9 @@ const KhCal = (() => {
                          : holidayKind === 'observance' ? ' observance'
                          : '';
       const healthClass = _healthClassFor(dt);
-      html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}" data-y="${year}" data-m="${month}" data-d="${d}">
-        <span class="cal-gday">${d}</span>
+      const sil = _silFor(lun, dt);
+      html += `<div class="cal-cell${isToday ? ' today' : ''}${isSel ? ' selected' : ''} ${dayClass} ${waxClass}${holidayClass}${healthClass}${sil.cls}" data-y="${year}" data-m="${month}" data-d="${d}">
+        ${sil.html}<span class="cal-gday">${d}</span>
         <span class="cal-kday">${kdDisp} ${wax}</span>
         <span class="cal-cday${cnFirst}">${cnText}</span>
       </div>`;
@@ -592,15 +797,47 @@ const KhCal = (() => {
 
     gridEl.innerHTML = html;
 
-    // Today button
+    _renderMonthEvents(year, month);
+
+    // Today button — only shown when we're away from the current month.
+    // The button is position:fixed, so the app also gets a class that reserves
+    // room for it; otherwise it floats on top of the last row of days.
     const todayBtn = document.getElementById('cal-today-btn');
     if (todayBtn) {
+      const onCurrentMonth = (year === todayY && month === todayM);
       todayBtn.textContent = I18n.t('today');
-      todayBtn.style.display = (year === todayY && month === todayM) ? 'none' : 'block';
+      todayBtn.style.display = onCurrentMonth ? 'none' : 'block';
+      const app = document.querySelector('.cal-app');
+      if (app) app.classList.toggle('has-today-fab', !onCurrentMonth);
     }
   }
 
   // === Day detail panel ===
+  /* ===== Place prefix =====
+   * Khmer letters open with the place before the date:
+   *   ខេត្តព្រះសីហនុ, ថ្ងៃទី១៧ ខែសីហា ឆ្នាំ២០២៦
+   * gDatesPro() in khmer-calendar.js builds exactly this but hard-codes the
+   * province in ADH[3], so the place is a saved setting instead and the row is
+   * composed here from the Gregorian string the sheet already has.
+   *
+   * Deliberately rendered as part of _showDetail's own markup. A previous
+   * attempt appended this row from the Office add-in into the element its
+   * MutationObserver was watching, which fed itself endlessly and froze the
+   * task pane. As part of the normal render there is no observer involved.
+   */
+  const PLACE_KEY = 'kh-cal-place';
+  const PLACE_DEFAULT = 'ខេត្តព្រះសីហនុ';
+
+  function _getPlace() {
+    try {
+      const v = localStorage.getItem(PLACE_KEY);
+      return v === null ? PLACE_DEFAULT : v;
+    } catch (e) { return PLACE_DEFAULT; }
+  }
+  function _setPlace(v) {
+    try { localStorage.setItem(PLACE_KEY, v); } catch (e) {}
+  }
+
   function _showDetail(y, m, d) {
     _selectedDate = { y, m, d };
     _renderCalendar();
@@ -656,10 +893,12 @@ const KhCal = (() => {
         </div>
       </div>
       ${_renderHolidayBlock(dt, lang)}
+      ${_renderSilBlock(dt)}
       ${_renderHealthBlock(dt, lang)}
-      <div class="detail-full">${escapeHtml(khDate)}</div>
-      ${cnLine ? `<div class="detail-full detail-chinese">${cnLine}</div>` : ''}
-      <div class="detail-full detail-greg">${escapeHtml(grDate)}</div>
+      ${_copyRow(khDate)}
+      ${cnLine ? _copyRow(cnLine, 'detail-chinese') : ''}
+      ${_copyRow(grDate, 'detail-greg')}
+      ${(() => { const p = _getPlace().trim(); return p ? _copyRow(p + ', ' + grDate, 'detail-place') : ''; })()}
       ${_renderDailyBlock(dt, lang)}
     `;
 
@@ -983,6 +1222,16 @@ const KhCal = (() => {
     }
     // Start day toggle
     const startGroup = document.getElementById('startday-toggle');
+    const placeInput = document.getElementById('place-input');
+    if (placeInput) {
+      placeInput.value = _getPlace();
+      placeInput.addEventListener('input', () => {
+        _setPlace(placeInput.value);
+        // Refresh the open sheet so the row tracks the field as it is typed.
+        if (_selectedDate) _showDetail(_selectedDate.y, _selectedDate.m, _selectedDate.d);
+      });
+    }
+
     if (startGroup) {
       _setActiveToggle(startGroup, '[data-start="' + I18n.getStartDay() + '"]');
       startGroup.addEventListener('click', (e) => {
@@ -993,6 +1242,59 @@ const KhCal = (() => {
         _refreshAll();
       });
     }
+
+    _initReminders();
+
+    // ថ្ងៃសីល markers on/off
+    const silGroup = document.getElementById('sil-toggle');
+    if (silGroup) {
+      _setActiveToggle(silGroup, '[data-sil="' + (I18n.getSilDays() ? 'on' : 'off') + '"]');
+      silGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-sil]');
+        if (!btn) return;
+        I18n.setSilDays(btn.dataset.sil === 'on');
+        _setActiveToggle(silGroup, '[data-sil="' + btn.dataset.sil + '"]');
+        _refreshAll();
+      });
+    }
+  }
+
+  /**
+   * Reminder switches and the two times.
+   *
+   * Nothing is scheduled from here — the native side re-reads these settings
+   * when the app is next opened or backgrounded, which is why there is no
+   * "apply" step. The whole block stays hidden where no native scheduler
+   * exists, rather than offering switches that would do nothing.
+   */
+  function _initReminders() {
+    const section = document.getElementById('reminders-section');
+    if (!section || typeof Reminders === 'undefined') return;
+    if (!Reminders.isSupported()) return;
+
+    section.hidden = false;
+    Reminders.syncToNative();
+
+    [['notif-daily', 'daily'], ['notif-sil', 'sil'], ['notif-holiday', 'holiday']]
+      .forEach(([id, which]) => {
+        const box = document.getElementById(id);
+        if (!box) return;
+        box.checked = Reminders.isOn(which);
+        box.addEventListener('change', () => Reminders.setOn(which, box.checked));
+      });
+
+    [['notif-morning-time', 'morning'], ['notif-evening-time', 'evening']]
+      .forEach(([id, which]) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.value = Reminders.getTime(which);
+        // 'change' rather than 'input': a time field reports every partial edit,
+        // and half of "07:00" is a different alarm.
+        input.addEventListener('change', () => {
+          Reminders.setTime(which, input.value);
+          input.value = Reminders.getTime(which);
+        });
+      });
   }
 
   function _setActiveToggle(group, selector) {
@@ -1376,6 +1678,27 @@ const KhCal = (() => {
       todayPopup.addEventListener('click', (e) => {
         // Backdrop tap (anywhere outside the card) dismisses
         if (e.target === todayPopup) _hideTodayPopup();
+      });
+    }
+
+    // Copy the full Khmer date from the day detail sheet
+    const detailContent = document.getElementById('cal-detail-content');
+    if (detailContent) {
+      detailContent.addEventListener('click', (e) => {
+        const btn = e.target.closest('.detail-copy-btn');
+        if (!btn) return;
+        e.stopPropagation();
+        _copyText(btn.dataset.copy || '');
+      });
+    }
+
+    // Tapping an event opens that day's detail sheet
+    const monthEventsBody = document.getElementById('month-events-body');
+    if (monthEventsBody) {
+      monthEventsBody.addEventListener('click', (e) => {
+        const row = e.target.closest('.events-row');
+        if (!row || row.dataset.d === undefined) return;
+        _showDetail(_year, +row.dataset.m, +row.dataset.d);
       });
     }
 

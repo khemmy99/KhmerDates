@@ -89,33 +89,93 @@ const Weather = (() => {
   }
 
   /** Returns a Promise of GPS coords via browser/Capacitor geolocation. */
+  /**
+   * Why a location lookup failed, so the caller can say something the user can
+   * act on. Attached as `.code` on the rejected Error:
+   *   'denied'      — permission refused
+   *   'disabled'    — location is switched off on the device itself
+   *   'timeout'     — no fix in time, which is normal indoors on a coarse fix
+   *   'unavailable' — anything else, including no geolocation at all
+   */
+  function _geoError(code) {
+    const err = new Error('geolocation: ' + code);
+    err.code = code;
+    return err;
+  }
+
+  // The plugin rejects with OS-PLUG-GLOC-nnnn; the browser with numeric codes.
+  function _classifyGeoError(err) {
+    const code = err && err.code;
+    if (typeof code === 'string') {
+      if (code.endsWith('0003')) return 'denied';
+      // 0007 location services off, 0009 the enable request was refused,
+      // 0017 both network and GPS off.
+      if (code.endsWith('0007') || code.endsWith('0009') || code.endsWith('0017')) return 'disabled';
+      if (code.endsWith('0010')) return 'timeout';
+      return 'unavailable';
+    }
+    if (code === 1) return 'denied';
+    if (code === 3) return 'timeout';
+    return 'unavailable';
+  }
+
+  /**
+   * Asks for coarse location only.
+   *
+   * The alias matters. 'location' covers ACCESS_FINE_LOCATION as well, which
+   * this app deliberately does not declare — so that alias can never be
+   * granted, and asking for it was asking to be denied. 'coarseLocation' maps
+   * to ACCESS_COARSE_LOCATION alone, which is declared, and is all a city-level
+   * weather lookup needs.
+   */
+  function _ensureCoarsePermission(Geo) {
+    if (!Geo.requestPermissions) return Promise.resolve(null);
+    // Capacitor resolves straight away when the permission is already held, so
+    // this does not re-prompt on every use.
+    return Geo.requestPermissions({ permissions: ['coarseLocation'] });
+  }
+
+  function _isGranted(status) {
+    return !!status && (status.coarseLocation === 'granted' || status.location === 'granted');
+  }
+
   function getCurrentPosition() {
+    const Plugins = window.Capacitor && window.Capacitor.Plugins;
+    const Geo = Plugins && Plugins.Geolocation;
+
+    if (Geo) {
+      // Note there is no checkPermissions() call here any more. It rejects
+      // outright when location is switched off on the device, which took the
+      // whole chain down before it ever asked for a fix — and left the user
+      // told to "pick a city" when all they needed to do was turn location on.
+      return _ensureCoarsePermission(Geo)
+        .then(status => {
+          // status is null where the plugin predates requestPermissions; in
+          // that case fall through and let getCurrentPosition decide.
+          if (status !== null && !_isGranted(status)) throw _geoError('denied');
+          return Geo.getCurrentPosition({
+            enableHighAccuracy: false,
+            // A coarse fix comes from the network provider and can take a while
+            // on a cold start; 10s timed out often enough to look broken.
+            timeout: 15000,
+            maximumAge: 600000
+          });
+        })
+        .then(p => ({ lat: p.coords.latitude, lon: p.coords.longitude }))
+        .catch(err => {
+          if (err && typeof err.code === 'string' && err.code.indexOf('OS-PLUG') !== 0) {
+            throw err;                       // already one of ours
+          }
+          throw _geoError(_classifyGeoError(err));
+        });
+    }
+
     return new Promise((resolve, reject) => {
-      const Plugins = window.Capacitor && window.Capacitor.Plugins;
-      // Prefer the Capacitor Geolocation plugin on native (has proper runtime
-      // permission handling on Android 6+ and asks the user explicitly).
-      if (Plugins && Plugins.Geolocation) {
-        const Geo = Plugins.Geolocation;
-        // Step 1: check current permission state. Request if not granted yet.
-        const ensurePermission = (Geo.checkPermissions
-          ? Geo.checkPermissions().then(s => {
-              const granted = s && (s.location === 'granted' || s.coarseLocation === 'granted');
-              if (granted) return s;
-              if (!Geo.requestPermissions) return s;
-              return Geo.requestPermissions({ permissions: ['location'] });
-            })
-          : Promise.resolve());
-        ensurePermission
-          .then(() => Geo.getCurrentPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }))
-          .then(p => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }))
-          .catch(reject);
-        return;
-      }
-      if (!navigator.geolocation) { reject(new Error('geolocation unavailable')); return; }
+      if (!navigator.geolocation) { reject(_geoError('unavailable')); return; }
       navigator.geolocation.getCurrentPosition(
         (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
-        (e) => reject(e),
-        { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+        (e) => reject(_geoError(_classifyGeoError(e))),
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }
       );
     });
   }

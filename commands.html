@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Khmer Calendar commands</title>
+  <!--
+    Function file for the ribbon dropdown. Office loads this page invisibly and
+    calls the functions registered below when a menu item with an
+    ExecuteFunction action is clicked. It renders nothing.
+  -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <script src="js/khmer-calendar.js"></script>
+  <script src="js/khmer-currency.js"></script>
+</head>
+<body>
+<script>
+  Office.onReady(function () {
+    /* Writes today's full Khmer reading at the cursor without opening the pane. */
+    /* Number to Khmer words, ported from ReadKHR&USD.bas.
+     *
+     * In Excel the result goes into the cell to the RIGHT of the selection, so
+     * the number itself survives — the macro asked for a target cell, which a
+     * web add-in cannot do, and overwriting the source would lose data. The
+     * font matches what the macro applied. Elsewhere the selection is replaced,
+     * which is what you want mid-sentence in Word.
+     */
+    function readCurrency(kind, event) {
+      var convert = (kind === 'usd') ? KhmerCurrency.dollar : KhmerCurrency.riel;
+
+      if (Office.context.host === Office.HostType.Excel && window.Excel) {
+        Excel.run(function (ctx) {
+          var rng = ctx.workbook.getSelectedRange();
+          rng.load('values');
+          return ctx.sync().then(function () {
+            var words = convert(rng.values[0][0]);
+            if (!words) return ctx.sync();
+            var target = rng.getOffsetRange(0, 1);
+            target.values = [[words]];
+            target.format.font.name = 'Khmer OS Siemreap';
+            target.format.font.size = 11;
+            return ctx.sync();
+          });
+        }).catch(function () {}).then(function () { event.completed(); });
+        return;
+      }
+
+      Office.context.document.getSelectedDataAsync(
+        Office.CoercionType.Text,
+        function (res) {
+          if (res.status !== Office.AsyncResultStatus.Succeeded) { event.completed(); return; }
+          var words = convert(res.value);
+          if (!words) { event.completed(); return; }
+          Office.context.document.setSelectedDataAsync(
+            words, { coercionType: Office.CoercionType.Text },
+            function () { event.completed(); });
+        }
+      );
+    }
+
+    Office.actions.associate('readKhr', function (event) { readCurrency('khr', event); });
+    Office.actions.associate('readUsd', function (event) { readCurrency('usd', event); });
+
+    Office.actions.associate('insertToday', function (event) {
+      var text;
+      try {
+        text = KhmerCalendar.khmerDates(new Date());
+      } catch (e) {
+        event.completed();
+        return;
+      }
+      Office.context.document.setSelectedDataAsync(
+        text,
+        { coercionType: Office.CoercionType.Text },
+        function () { event.completed(); }
+      );
+    });
+  });
+</script>
+</body>
+</html>
