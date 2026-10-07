@@ -200,11 +200,14 @@ const KhCal = (() => {
       }
     }
 
-    // Collapse consecutive same-id rows into spans
+    // Collapse consecutive same-id rows into spans. A festival whose last
+    // days are a public holiday (Pchum Ben) splits where that starts, so
+    // the rest days get their own row and filter as days off.
     const collapsed = [];
     for (const r of rows) {
       const prev = collapsed[collapsed.length - 1];
-      if (prev && prev.id === r.id && r.month === prev.endMonth) {
+      const sameRun = prev && prev.id === r.id && prev.isPublic === r.isPublic;
+      if (sameRun && r.month === prev.endMonth) {
         // check day continuity (within same month)
         const prevDate = new Date(year, prev.endMonth, prev.endDay);
         const thisDate = new Date(year, r.month, r.day);
@@ -212,7 +215,7 @@ const KhCal = (() => {
         if (oneDay === 1) { prev.endDay = r.day; prev.endMonth = r.month; continue; }
       }
       // Or continuity across month boundary (e.g. Pchum Ben spans Sep→Oct)
-      if (prev && prev.id === r.id) {
+      if (sameRun) {
         const prevEnd = new Date(year, prev.endMonth, prev.endDay);
         const thisStart = new Date(year, r.month, r.day);
         if ((thisStart - prevEnd) / 86400000 === 1) {
