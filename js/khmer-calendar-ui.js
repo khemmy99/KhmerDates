@@ -447,11 +447,11 @@ const KhCal = (() => {
   }
 
   const _ICON_DROP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>';
-  const _ICON_SPROUT = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c0-4-3-6.5-7.5-6.5C4.5 10 7.5 12 12 12z"/><path d="M12 15c0-4 3-6.5 7.5-6.5 0 4.5-3 6.5-7.5 6.5z"/></svg>';
+  const _ICON_BABY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></svg>';
   const _ICON_OVUM = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>';
   const _EVENT_ICONS = () => ({ public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL,
                                 period: _ICON_DROP, predicted: _ICON_DROP,
-                                fertile: _ICON_SPROUT, ovulation: _ICON_OVUM });
+                                fertile: _ICON_BABY, ovulation: _ICON_OVUM });
 
   /**
    * Cycle-tracker rows for the month card: one per logged period and one per
@@ -504,6 +504,19 @@ const KhCal = (() => {
           ? `${_num(r.start.getDate())}–${_num(r.end.getDate())}`
           : `${_num(r.start.getDate())} ${I18n.gregMonthShort(r.start.getMonth())} – ${_num(r.end.getDate())} ${I18n.gregMonthShort(r.end.getMonth())}`;
         sub = `${range} (${_num(span)} ${I18n.t('days')})`;
+      }
+      // A period (logged or predicted) gets one row per day, "day 1/6" to
+      // "day 6/6", so every day of it reads in the list; the first also
+      // gives the range. Repeats are flagged so the card's count stays one.
+      if (span > 1 && (r.kind === 'period' || r.kind === 'predicted')) {
+        for (let n = 1; n <= span; n++) {
+          const day = new Date(r.start.getFullYear(), r.start.getMonth(), r.start.getDate() + n - 1);
+          if (day < from || day > to) continue;
+          const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span));
+          out.push({ start: day, end: day, kind: r.kind, name: I18n.t(NAME[r.kind]),
+                     sub: n === 1 ? `${dayPart} · ${sub}` : dayPart, isTodayRow: n > 1 });
+        }
+        continue;
       }
       const row = { start: r.start, end: r.end, kind: r.kind, name: I18n.t(NAME[r.kind]), sub };
       out.push(row);

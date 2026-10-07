@@ -3539,7 +3539,7 @@ html { background-color: #0a0c14; }
 .ev-row--predicted .ev-icon { background: transparent; border: 1.5px dashed rgba(240,78,122,0.7); }
 [data-theme="light"] .ev-row--period .ev-name { color: #DB2777; }
 
-/* Fertile window (green sprout) and ovulation (orange) rows */
+/* Fertile window (green baby icon) and ovulation (orange) rows */
 .ev-row--fertile   { --tone: #16a34a; --tone-bg: rgba(34,197,94,0.12); }
 .ev-row--ovulation { --tone: #f59e0b; --tone-bg: rgba(245,158,11,0.13); }
 .ev-row--fertile .ev-name   { color: #16a34a; }
