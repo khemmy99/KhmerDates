@@ -3555,3 +3555,29 @@ html { background-color: #0a0c14; }
 .ev-chips--five .ev-chip { flex: 1 1 auto; padding: 7px 4px; gap: 3px; font-size: 12.5px; }
 .ev-chip--cycle.is-active { background: #f04e7a; }
 
+
+/* =========================================================
+   FOOTER ICONS — each icon carries its feature's colour (the
+   same ones used across the app: today green, period pink,
+   events red, weather sky, settings slate); labels stay
+   neutral, and a press tints the button in that colour.
+   ========================================================= */
+#cal-today-footer  { --fc: #34d399; --fc-bg: rgba(52,211,153,0.14); }
+#cal-health-btn    { --fc: #f472b6; --fc-bg: rgba(244,114,182,0.14); }
+#cal-events-btn    { --fc: #f87171; --fc-bg: rgba(248,113,113,0.14); }
+#cal-weather-btn   { --fc: #38bdf8; --fc-bg: rgba(56,189,248,0.14); }
+#cal-settings-btn  { --fc: #94a3b8; --fc-bg: rgba(148,163,184,0.16); }
+[data-theme="light"] #cal-today-footer { --fc: #059669; --fc-bg: rgba(5,150,105,0.10); }
+[data-theme="light"] #cal-health-btn   { --fc: #DB2777; --fc-bg: rgba(219,39,119,0.09); }
+[data-theme="light"] #cal-events-btn   { --fc: #DC2626; --fc-bg: rgba(220,38,38,0.09); }
+[data-theme="light"] #cal-weather-btn  { --fc: #0284C7; --fc-bg: rgba(2,132,199,0.09); }
+[data-theme="light"] #cal-settings-btn { --fc: #475569; --fc-bg: rgba(71,85,105,0.10); }
+
+#cal-footer .cal-footer-btn { color: var(--kh-text-secondary); font-weight: 600; }
+#cal-footer .cal-footer-btn svg { color: var(--fc); opacity: 1; }
+#cal-footer .cal-footer-btn:hover,
+#cal-footer .cal-footer-btn:active {
+  color: var(--kh-text);
+  background: var(--fc-bg);
+}
+[data-theme="light"] #cal-footer .cal-footer-btn { color: #475569; }
