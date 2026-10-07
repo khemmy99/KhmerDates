@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khmer-calendar-v128';
+const CACHE_NAME = 'khmer-calendar-v129';
 const ASSETS = [
   './',
   './index.html',
@@ -20,16 +20,21 @@ const ASSETS = [
   './icons/icon-16.png',
   './icons/icon-32.png',
   './icons/icon-64.png',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './icons/apple-touch-icon.png',
-  './manifest.json'
+  // The app icons and manifest carry ?v=<build> in index.html/manifest.json
+  // so phones re-fetch them; cache them under the same URLs
+  './icons/icon-192.png?v=155',
+  './icons/icon-512.png?v=155',
+  './icons/apple-touch-icon.png?v=155',
+  './manifest.json?v=155'
 ];
 
-// Install: cache all assets
+// Install: cache all assets. cache:'reload' skips the browser's HTTP cache,
+// which can still hold the previous release's files for up to 10 minutes
+// (GitHub Pages max-age) and would otherwise be frozen into the new cache.
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) =>
+      cache.addAll(ASSETS.map((url) => new Request(url, { cache: 'reload' }))))
   );
   self.skipWaiting();
 });
