@@ -420,11 +420,14 @@ const KhCal = (() => {
     if (today.getFullYear() === year) {
       const todays = HL.getByDate(today) || [];
       for (const r of rows.slice()) {
-        if (!(r.start < today && r.end >= today)) continue;
+        if (!(r.start <= today && r.end >= today && r.end > r.start)) continue;
         const h = todays.find(x => (x.id || (x.km + '|' + x.en)) === r.key);
         const n = h && h.dayOfFestival ? h.dayOfFestival : Math.round((today - r.start) / 86400000) + 1;
         const t = h && h.totalDays ? h.totalDays : Math.round((r.end - r.start) / 86400000) + 1;
         const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(t));
+        // Starting today: its own row is already on today, so it just gains
+        // the day count
+        if (r.start.getTime() === today.getTime()) { r.sub += ' · ' + dayPart; continue; }
         rows.push({ start: today, end: today, kind: r.kind, name: r.name,
                     sub: I18n.t(r.kind === 'public' ? 'publicHoliday' : 'observanceDay') + ' · ' + dayPart,
                     isTodayRow: true });
@@ -457,9 +460,18 @@ const KhCal = (() => {
    * edge keeps its real start, end and length.
    */
   function _periodRowsFor(year, month) {
+    return _cycleRows(new Date(year, month, 1), new Date(year, month + 1, 0));
+  }
+
+  /**
+   * Cycle-tracker rows touching [from, to]: logged and predicted periods, the
+   * fertile window and the ovulation day. Runs come from HT.getDayInfo,
+   * scanned ten days past each end so a run crossing the edge keeps its real
+   * dates. A run under way today carries "day n/t": on its own row when it
+   * starts today, otherwise on an extra row on today's date.
+   */
+  function _cycleRows(from, to) {
     if (!HT || !HT.isEnabled() || !HT.getActiveProfile()) return [];
-    const first = new Date(year, month, 1);
-    const last  = new Date(year, month + 1, 0);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     // Ovulation sits inside the fertile window, so it counts toward the
@@ -468,7 +480,8 @@ const KhCal = (() => {
                        : (k === 'fertile' || k === 'ovulation') ? 'fertile' : null;
     const runs = [];
     let run = null;
-    for (let d = new Date(year, month, -9); d <= new Date(year, month + 1, 10);
+    const stop = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 10);
+    for (let d = new Date(from.getFullYear(), from.getMonth(), from.getDate() - 10); d <= stop;
          d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
       const k = HT.getDayInfo(d).kind;
       if (k === 'ovulation') runs.push({ kind: 'ovulation', start: d, end: d });
@@ -483,7 +496,7 @@ const KhCal = (() => {
                    fertile: 'healthFertile', ovulation: 'healthOvulation' };
     const out = [];
     for (const r of runs) {
-      if (r.end < first || r.start > last) continue;
+      if (r.end < from || r.start > to) continue;
       const span = Math.round((r.end - r.start) / 86400000) + 1;
       let sub = '';
       if (span > 1) {
@@ -494,14 +507,15 @@ const KhCal = (() => {
       }
       const row = { start: r.start, end: r.end, kind: r.kind, name: I18n.t(NAME[r.kind]), sub };
       out.push(row);
-      // Already under way today: repeat it on today's date ("day 3/6"),
-      // the same way a running festival is
-      if (span > 1 && r.start < today && r.end >= today &&
-          today >= first && today <= last) {
+      if (span > 1 && r.start <= today && r.end >= today) {
         const n = Math.round((today - r.start) / 86400000) + 1;
-        out.push({ start: today, end: today, kind: r.kind, name: row.name, isTodayRow: true,
-                   sub: I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span)) });
-        row.hasTodayRow = true;
+        const dayPart = I18n.t('dayOfN').replace('{n}', _num(n)).replace('{t}', _num(span));
+        if (n === 1) {
+          row.sub += ' · ' + dayPart;
+        } else if (today >= from && today <= to) {
+          out.push({ start: today, end: today, kind: r.kind, name: row.name, isTodayRow: true, sub: dayPart });
+          row.hasTodayRow = true;
+        }
       }
     }
     return out;
@@ -550,7 +564,9 @@ const KhCal = (() => {
       ['observance', 'filterObservance', _ICON_FLAG],
     ];
     if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) chips.push(['cycle', 'healthPeriod', _ICON_DROP]);
     if (!chips.some(c => c[0] === _eventsFilter)) _eventsFilter = 'all';
+    el.classList.toggle('ev-chips--five', chips.length > 4);
     el.innerHTML = chips.map(([id, key, icon]) =>
       `<button type="button" class="ev-chip ev-chip--${id}${id === _eventsFilter ? ' is-active' : ''}" data-filter="${id}">
         <span class="ev-chip-icon">${icon}</span>${escapeHtml(I18n.t(key))}
@@ -572,8 +588,12 @@ const KhCal = (() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const rows = _collectEventRows(_eventsYear, lang)
-      .filter(r => _eventsFilter === 'all' || r.kind === _eventsFilter);
+    const cycle = _cycleRows(new Date(_eventsYear, 0, 1), new Date(_eventsYear, 11, 31))
+      .filter(r => r.start.getFullYear() === _eventsYear);  // grouped by start month below
+    const rows = _collectEventRows(_eventsYear, lang).concat(cycle)
+      .sort((a, b) => a.start - b.start)
+      .filter(r => _eventsFilter === 'all' ||
+                   (_eventsFilter === 'cycle' ? ['period', 'predicted', 'fertile', 'ovulation'].includes(r.kind) : r.kind === _eventsFilter));
 
     const sections = [];
     for (let m = 0; m < 12; m++) {

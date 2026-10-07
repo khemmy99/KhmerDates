@@ -3549,3 +3549,9 @@ html { background-color: #0a0c14; }
 .ev-row.ev-row--cont { border-top: 0; padding-top: 0; }
 .ev-row--cont .ev-date { visibility: hidden; }
 
+/* Five filter chips (period tracker on): chips size to their label and
+   tighten so all five still fit a 360px phone */
+.ev-chips--five { gap: 4px; padding-left: 10px; padding-right: 10px; }
+.ev-chips--five .ev-chip { flex: 1 1 auto; padding: 7px 4px; gap: 3px; font-size: 12.5px; }
+.ev-chip--cycle.is-active { background: #f04e7a; }
+
