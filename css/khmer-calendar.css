@@ -739,14 +739,6 @@ body {
   border-color: rgba(59,125,230,0.2);
 }
 
-.detail-sil-icon {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  background-color: var(--kh-gold);
-  -webkit-mask: var(--kh-sil-icon) center / contain no-repeat;
-  mask: var(--kh-sil-icon) center / contain no-repeat;
-}
 
 /* ===== Toast ===== */
 .toast-container {
@@ -3440,13 +3432,12 @@ body {
 }
 .dsec-icon {
   flex: none;
-  width: 18px;
+  width: 20px;
   display: inline-flex;
   justify-content: center;
   color: var(--tone);
   font-size: 14px;
 }
-.dsec-icon .detail-sil-icon { background-color: var(--tone); }
 .dsec-text { flex: 1; min-width: 0; }
 .dsec-health-kind { font-weight: 600; color: var(--tone); margin-right: 6px; }
 .dsec-sub { color: var(--kh-text-secondary); font-size: 13px; }
@@ -3652,7 +3643,6 @@ body {
 }
 .ev-chip-icon { flex: none; display: inline-flex; width: 14px; height: 14px; align-items: center; justify-content: center; }
 .ev-chip-icon svg { width: 14px; height: 14px; }
-.ev-chip-icon .detail-sil-icon { width: 14px; height: 14px; background-color: currentColor; }
 .ev-chip.is-active { background: var(--kh-red); color: #fff; }
 
 .events-list {
@@ -3686,11 +3676,12 @@ body {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   --tone: var(--kh-gold);
+  --tone-bg: rgba(212,168,74,0.14);
 }
 .ev-row + .ev-row { border-top: 1px solid var(--kh-border); }
 .ev-row:active { background: var(--kh-primary-glow); }
-.ev-row--public { --tone: var(--kh-red); }
-.ev-row--sil    { --tone: #c2410c; }
+.ev-row--public { --tone: var(--kh-red); --tone-bg: rgba(248,113,113,0.14); }
+.ev-row--sil    { --tone: #fb923c; --tone-bg: rgba(251,146,60,0.14); }
 .ev-date {
   flex: none;
   width: 54px;
@@ -3707,13 +3698,16 @@ body {
 .ev-day { font-size: 19px; font-weight: 800; color: var(--kh-text); }
 .ev-icon {
   flex: none;
-  width: 24px;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
   display: inline-flex;
+  align-items: center;
   justify-content: center;
   color: var(--tone);
+  background: var(--tone-bg);
 }
-.ev-icon svg { width: 22px; height: 22px; }
-.ev-icon .detail-sil-icon { width: 22px; height: 22px; background-color: var(--tone); }
+.ev-icon svg { width: 21px; height: 21px; }
 .ev-body { flex: 1; min-width: 0; }
 .ev-name { font-size: 15px; font-weight: 600; color: var(--kh-text); line-height: 1.45; }
 .ev-row--public .ev-name { color: var(--kh-red); }
@@ -3741,4 +3735,7 @@ body {
 [data-theme="light"] .ev-chip:not(.is-active) { background: #F1F1F3; color: #3F3F46; }
 [data-theme="light"] .ev-icon-btn { background: #fff; border-color: rgba(0,0,0,0.08); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 [data-theme="light"] .ev-row--observance .ev-name { color: #9A6B12; }
-[data-theme="light"] .ev-row--sil { --tone: #C2410C; }
+[data-theme="light"] .ev-row             { --tone-bg: rgba(184,137,46,0.12); }
+[data-theme="light"] .ev-row--public     { --tone-bg: rgba(220,38,38,0.09); }
+[data-theme="light"] .ev-row--sil        { --tone: #C2410C; --tone-bg: rgba(194,65,12,0.09); }
+.dsec-icon svg { width: 18px; height: 18px; }

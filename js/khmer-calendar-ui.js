@@ -402,7 +402,6 @@ const KhCal = (() => {
   }
 
   // ----- Events page -----
-  const _ICON_PARTY = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01M22 8h.01M15 2h.01M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10"/><path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11-.11.7-.72 1.22-1.43 1.22H17"/><path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7"/><path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z"/></svg>';
   const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
 
   let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil'
@@ -456,7 +455,7 @@ const KhCal = (() => {
     if (!el) return;
     const chips = [
       ['all', 'filterAll', _ICON_GRID],
-      ['public', 'filterPublic', _ICON_PARTY],
+      ['public', 'filterPublic', _ICON_DAYOFF],
       ['observance', 'filterObservance', _ICON_FLAG],
     ];
     if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
@@ -481,7 +480,7 @@ const KhCal = (() => {
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const icons = { public: _ICON_PARTY, observance: _ICON_FLAG, sil: _ICON_SIL };
+    const icons = { public: _ICON_DAYOFF, observance: _ICON_FLAG, sil: _ICON_SIL };
 
     const rows = _collectEventRows(_eventsYear, lang)
       .filter(r => _eventsFilter === 'all' || r.kind === _eventsFilter);
@@ -545,8 +544,12 @@ const KhCal = (() => {
   }
 
   // ----- Day sheet sections -----
-  const _ICON_FLAG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22V4"/><path d="M5 4h12l-2.5 4.5L17 13H5"/></svg>';
-  const _ICON_SIL  = '<span class="detail-sil-icon" aria-hidden="true"></span>';
+  // One line-icon set for holidays (calendar + star), observances (flag) and
+  // ថ្ងៃសីល (lotus). Shared by the day sheet and the events page; CSS sizes them.
+  const _SVG_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
+  const _ICON_DAYOFF = _SVG_OPEN + '<rect x="3" y="4.5" width="18" height="16.5" rx="3"/><path d="M8 2.5v4M16 2.5v4M3 9.5h18"/><path fill="currentColor" stroke-width="1.2" d="m12 11.6 1.18 2.39 2.64.38-1.91 1.86.45 2.63L12 17.62l-2.36 1.24.45-2.63-1.91-1.86 2.64-.38z"/></svg>';
+  const _ICON_FLAG = _SVG_OPEN + '<path d="M4 22V4a1 1 0 0 1 .4-.8A6 6 0 0 1 8 2c3 0 5 2 7.33 2q2 0 3.07-.8A1 1 0 0 1 20 4v10a1 1 0 0 1-.4.8A6 6 0 0 1 16 16c-3 0-5-2-8-2a6 6 0 0 0-4 1.53"/></svg>';
+  const _ICON_SIL = _SVG_OPEN + '<path d="M12 21c-2.3-1.4-4-4-4-7.3 0-3.1 1.7-6 4-8.2 2.3 2.2 4 5.1 4 8.2 0 3.3-1.7 5.9-4 7.3z"/><path d="M12 21c-4.3 0-8.3-2.4-9.7-6.8 2.1-.7 4.3-.7 6.2.1"/><path d="M12 21c4.3 0 8.3-2.4 9.7-6.8-2.1-.7-4.3-.7-6.2.1"/><path d="M8.4 10.1C7 9 5.6 8.6 4.4 8.6c0 1.6.4 3.1 1.2 4.6"/><path d="M15.6 10.1C17 9 18.4 8.6 19.6 8.6c0 1.6-.4 3.1-1.2 4.6"/></svg>';
 
   /** Titled card; the title sits between two rules above the card. */
   function _sheetSection(title, body, extraCls) {
@@ -623,7 +626,8 @@ const KhCal = (() => {
     const rows = [];
     const list = HL ? HL.getByDate(dt) : null;
     (list || []).forEach(h => {
-      rows.push(_sheetRow(h.observance === true ? 'gold' : 'red', _ICON_FLAG, escapeHtml(HL.nameFor(h, lang))));
+      const obs = h.observance === true;
+      rows.push(_sheetRow(obs ? 'gold' : 'red', obs ? _ICON_FLAG : _ICON_DAYOFF, escapeHtml(HL.nameFor(h, lang))));
     });
     if (I18n.getSilDays()) {
       const sil = KC.silDayFromGregorian(dt);
@@ -673,7 +677,8 @@ const KhCal = (() => {
         if (holidays >= UPCOMING_MAX_HOLIDAYS || prevKeys.has(key) || seenHolidays.has(base)) continue;
         seenHolidays.add(base);
         holidays++;
-        found.push(_sheetRow(h.observance === true ? 'gold' : 'red', _ICON_FLAG,
+        const obs = h.observance === true;
+        found.push(_sheetRow(obs ? 'gold' : 'red', obs ? _ICON_FLAG : _ICON_DAYOFF,
                              escapeHtml(h[lang] || h.km || ''), escapeHtml(_countdown(i))));
       }
       prevKeys = keys;
