@@ -91,7 +91,9 @@ const BabyGender = (() => {
       ['ភក្ដី', 'Pheakdey', 'ភក្ដីភាព', 'loyalty'],
       ['មុនី', 'Mony', 'អ្នកប្រាជ្ញ', 'sage'],
       ['សុផល', 'Sophal', 'ផលល្អ', 'good fortune'],
-      ['សំណាង', 'Samnang', 'សំណាងល្អ', 'luck']
+      ['សំណាង', 'Samnang', 'សំណាងល្អ', 'luck'],
+      ['ធនា', 'Thona', 'ទ្រព្យ', 'wealth'],
+      ['ទេវា', 'Tevea', 'ទេវតា', 'angel']
     ],
     G: [
       ['បុប្ផា', 'Bopha', 'ផ្កា', 'flower'],
@@ -118,7 +120,9 @@ const BabyGender = (() => {
       ['ចិន្តា', 'Chenda', 'គំនិត', 'thought'],
       ['ផល្លា', 'Phalla', 'ផលផ្កា', 'blossom and fruit'],
       ['កល្យាណ', 'Kalyan', 'ល្អថ្លៃថ្នូរ', 'virtuous'],
-      ['រចនា', 'Rachana', 'ស្នាដៃ', 'creation']
+      ['រចនា', 'Rachana', 'ស្នាដៃ', 'creation'],
+      ['ណារី', 'Nary', 'ស្ត្រី', 'woman'],
+      ['តារា', 'Dara', 'ផ្កាយ', 'star']
     ]
   };
 
@@ -234,6 +238,36 @@ const BabyGender = (() => {
 
   const ORIGINS = ['km', 'zh', 'ja', 'ko', 'eu'];
 
+  // ក្បួនដាក់ឈ្មោះតាមថ្ងៃកំណើត: the letters a name should start with for each
+  // birth weekday (0 = Sunday). Wednesday has a separate night group.
+  // Same table in Koh Santepheap and two Sabay articles.
+  const SUNDAY_INITIALS = /^[អ-ឳ]/; // អ and the independent vowels អា ឥ ឧ ឯ ឱ …
+  const DAY_LETTERS = {
+    0: ['អ', 'អា', 'ឥ', 'ឧ', 'ឯ', 'ឱ'],
+    1: ['ក', 'ខ', 'គ', 'ឃ', 'ង'],
+    2: ['ច', 'ឆ', 'ជ', 'ឈ', 'ញ'],
+    3: ['ដ', 'ឋ', 'ឌ', 'ឍ', 'ណ'],
+    wedNight: ['យ', 'រ', 'ល', 'វ'],
+    4: ['ប', 'ផ', 'ព', 'ភ', 'ម'],
+    5: ['ស', 'ហ', 'ឡ'],
+    6: ['ត', 'ថ', 'ទ', 'ធ', 'ន']
+  };
+
+  /** Letter group for a birth date; `night` only matters on a Wednesday. */
+  function lettersFor(date, night) {
+    const dow = date.getDay();
+    const key = dow === 3 && night ? 'wedNight' : dow;
+    return { dow, key, letters: DAY_LETTERS[key] };
+  }
+
+  /** Does a name (or its Khmer pronunciation) start with one of the group's letters? */
+  function suits(khmerText, group) {
+    const first = (khmerText || '').trim();
+    if (!first) return false;
+    if (group.key === 0) return SUNDAY_INITIALS.test(first);
+    return group.letters.includes(first[0]);
+  }
+
   /**
    * Names for an origin and gender as objects:
    *   { name, latin, sound, km, en }
@@ -248,5 +282,5 @@ const BabyGender = (() => {
     return set ? set[gender].map(n => ({ name: n[0], latin: n[1], sound: n[2], km: n[3], en: n[4] })) : [];
   }
 
-  return { CHART, MIN_AGE, MAX_AGE, NAMES, WORLD_NAMES, ORIGINS, names, predict, planMonths };
+  return { CHART, MIN_AGE, MAX_AGE, NAMES, WORLD_NAMES, ORIGINS, DAY_LETTERS, names, lettersFor, suits, predict, planMonths };
 })();

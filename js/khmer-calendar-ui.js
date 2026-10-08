@@ -383,6 +383,18 @@ const KhCal = (() => {
   let _babyNameQuery = '';
   const BABY_FAVS_KEY = 'kh-cal-baby-favs';
   const BABY_ORIGIN_KEY = 'kh-cal-baby-origin';
+  const CHILD_BIRTH_KEY = 'kh-cal-child-birth';
+  const CHILD_NIGHT_KEY = 'kh-cal-child-night';
+  let _babyMatchDay = true;
+  const _lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  const _lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
+
+  /** The child's birth-day letter group, or null when no birth date is set. */
+  function _childGroup() {
+    const b = _lsGet(CHILD_BIRTH_KEY, '');
+    if (!b || !BG) return null;
+    return BG.lettersFor(_parseYmd(b), _lsGet(CHILD_NIGHT_KEY, '0') === '1');
+  }
   const _ORIGIN_KEYS = { km: 'originKm', zh: 'originZh', ja: 'originJa', ko: 'originKo', eu: 'originEu' };
   let _babyNameOrigin = (() => { try { return localStorage.getItem(BABY_ORIGIN_KEY) || 'km'; } catch (e) { return 'km'; } })();
   // Favourites are stored as "origin:name"; a bare name is from the Khmer list
@@ -398,8 +410,11 @@ const KhCal = (() => {
     const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
     const isFav = n => favs.includes(_favKey(n.name));
     const q = _babyNameQuery.trim().toLowerCase();
+    const group = _childGroup();
+    const suits = n => group && BG.suits(_babyNameOrigin === 'km' ? n.name : n.sound, group);
     const list = BG.names(_babyNameOrigin, _babyNameGender || 'B')
       .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)))
+      .filter(n => !group || !_babyMatchDay || suits(n))
       .sort((a, b) => isFav(b) - isFav(a));
     document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
     document.querySelectorAll('.baby-origin').forEach(t => t.classList.toggle('is-active', t.dataset.origin === _babyNameOrigin));
@@ -408,13 +423,13 @@ const KhCal = (() => {
       // Second line: how to read it — Latin spelling, plus the Khmer
       // pronunciation in the Khmer UI
       const read = [n.latin, lang === 'km' ? n.sound : ''].filter(Boolean).join(' · ');
-      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}" data-name="${escapeHtml(n.name)}" aria-pressed="${fav}">
+      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}${suits(n) ? ' is-suited' : ''}" data-name="${escapeHtml(n.name)}" aria-pressed="${fav}">
         <span class="baby-name-km">${escapeHtml(n.name)}</span>
         ${read ? `<span class="baby-name-latin">${escapeHtml(read)}</span>` : ''}
         <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n.km : n.en)}</span>
         <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
       </button>`;
-    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t('babyNoMatch'))}</div>`;
+    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t(group && _babyMatchDay && !q ? 'noMatchLetters' : 'babyNoMatch'))}</div>`;
   }
 
   const _ymdOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -508,6 +523,18 @@ const KhCal = (() => {
       </div>
       <div class="settings-section">
         <div class="settings-label">${escapeHtml(I18n.t('babyNames'))}</div>
+        ${(() => {
+          const birthChild = _lsGet(CHILD_BIRTH_KEY, '');
+          const g = _childGroup();
+          const dayName = g ? (I18n.getLang() === 'km' ? 'ថ្ងៃ' + KC.KD7[g.dow] : _weekdayName(g.dow)) : '';
+          const letters = g ? (g.key === 0 ? g.letters.join(' ') + ' …' : g.letters.join(' ')) : '';
+          return `<div class="baby-sub">${escapeHtml(I18n.t('childBirth'))}</div>
+            ${_dateSelects('child', birthChild, now.getFullYear() - 18, now.getFullYear() + 2)}
+            ${g && g.dow === 3 ? `<label class="baby-check"><input type="checkbox" id="baby-wed-night"${g.key === 'wedNight' ? ' checked' : ''}> ${escapeHtml(I18n.t('wedNight'))}</label>` : ''}
+            ${g ? `<div class="baby-letters"><span>${escapeHtml(I18n.t('dayLetters').replace('{day}', dayName))}</span><b>${escapeHtml(letters)}</b></div>
+              <label class="baby-check"><input type="checkbox" id="baby-match-day"${_babyMatchDay ? ' checked' : ''}> ${escapeHtml(I18n.t('matchBirthday'))}</label>`
+              : `<div class="baby-hint">${escapeHtml(I18n.t('childBirthHint'))}</div>`}`;
+        })()}
         <div class="baby-origins">${BG.ORIGINS.map(o => `<button type="button" class="baby-origin" data-origin="${o}">${escapeHtml(I18n.t(_ORIGIN_KEYS[o]))}</button>`).join('')}</div>
         <div class="baby-name-tabs">
           <button type="button" class="baby-name-tab baby-name-tab--boy" data-g="B">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</button>
@@ -2581,11 +2608,15 @@ const KhCal = (() => {
         _renderBabyNames();
       });
       babyEl.addEventListener('change', (e) => {
+        if (e.target.id === 'baby-wed-night') { _lsSet(CHILD_NIGHT_KEY, e.target.checked ? '1' : '0'); _renderBaby(); return; }
+        if (e.target.id === 'baby-match-day') { _babyMatchDay = e.target.checked; _renderBabyNames(); return; }
         const wrap = e.target.closest('.baby-date');
         if (!wrap) return;
         const v = _readDateSelects(wrap);
         if (!v) return;
-        if (wrap.dataset.date === 'birth') _setMotherBirth(v); else _babyCheck = v;
+        if (wrap.dataset.date === 'birth') _setMotherBirth(v);
+        else if (wrap.dataset.date === 'child') _lsSet(CHILD_BIRTH_KEY, v);
+        else _babyCheck = v;
         _renderBaby();
       });
     }

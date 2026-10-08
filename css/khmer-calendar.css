@@ -3976,3 +3976,16 @@ html { background-color: #0a0c14; }
 [data-theme="light"] .baby-origin { border-color: rgba(0,0,0,0.12); color: #475569; }
 .baby-origin.is-active { background: #6366F1; border-color: #6366F1; color: #fff; }
 
+/* Naming by birth day */
+.baby-sub { font-size: 13px; font-weight: 700; color: var(--kh-text-secondary); margin-top: 6px; }
+.baby-letters {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 10px;
+  padding: 10px 12px; border-radius: 12px; background: rgba(99,102,241,0.10);
+  font-size: 13px; color: var(--kh-text-secondary);
+}
+.baby-letters b { font-size: 19px; font-weight: 800; color: #6366F1; letter-spacing: 2px; }
+.baby-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13.5px; color: var(--kh-text); }
+.baby-check input { width: 18px; height: 18px; accent-color: #6366F1; }
+.baby-name.is-suited .baby-name-km { color: #6366F1; }
+.baby-origins { margin-top: 12px; }
+
