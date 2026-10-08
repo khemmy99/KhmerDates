@@ -1051,7 +1051,7 @@ const KhCal = (() => {
    * week edge); bars stack in lanes, and a "+n" note marks days with more
    * than fit. ថ្ងៃសីល and ovulation are small marks beside the day number.
    */
-  const _FULL_LANES = 3;
+  const _FULL_LANES = 2; // thin strips at the foot of each square tile
 
   function _fullSegments(from, to, lang) {
     const segs = [];
