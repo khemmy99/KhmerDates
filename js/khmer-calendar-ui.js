@@ -844,6 +844,17 @@ const KhCal = (() => {
   let _yearPageBase = 0; // base year for year grid
   let _eventsYear = new Date().getFullYear(); // year shown in events panel
 
+  // Calendar view: 'month' (grid + events card), 'full' (grid fills the
+  // screen, event names in the cells), 'week' (7-day list), 'year' (12 months)
+  const VIEWS = ['month', 'full', 'week', 'year'];
+  const VIEW_KEY = 'kh-cal-view';
+  let _view = (() => {
+    try { const v = localStorage.getItem(VIEW_KEY); return VIEWS.includes(v) ? v : 'month'; }
+    catch (e) { return 'month'; }
+  })();
+  let _lastMonthView = _view === 'full' ? 'full' : 'month'; // where a year-view tap lands
+  let _weekAnchor = null; // a Date inside the week on screen; null = derive
+
   // === Number display: Khmer digits for km, normal for en/zh ===
   function _num(n) {
     return I18n.getLang() === 'km' ? KC.khmerNumber(n) : String(n);
@@ -873,8 +884,193 @@ const KhCal = (() => {
     }).join('');
   }
 
+  // ===== Views =====
+  const _VIEW_ICONS = {
+    month: '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+    full:  '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9h18M3 15h18M9 9v12M15 9v12"/>',
+    week:  '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M7 13.5h10M7 17h10"/>',
+    year:  '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>'
+  };
+  const _VIEW_KEYS = { month: 'viewMonth', full: 'viewFull', week: 'viewWeek', year: 'viewYear' };
+  const _viewSvg = (v, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${_VIEW_ICONS[v]}</svg>`;
+
+  function _setView(v) {
+    if (!VIEWS.includes(v)) return;
+    _view = v;
+    if (v === 'month' || v === 'full') _lastMonthView = v;
+    if (v === 'week') { _weekAnchor = null; const w = document.getElementById('cal-week'); if (w) delete w.dataset.week; }
+    try { localStorage.setItem(VIEW_KEY, v); } catch (e) { /* private mode */ }
+    _closeViewMenu();
+    _renderCalendar();
+  }
+
+  function _renderViewButton() {
+    const btn = document.getElementById('cal-view-btn');
+    if (btn) {
+      btn.innerHTML = _viewSvg(_view, 16) +
+        `<span>${escapeHtml(I18n.t(_VIEW_KEYS[_view]))}</span>` +
+        '<svg class="cal-view-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+      btn.setAttribute('aria-label', I18n.t('viewLabel'));
+    }
+    const app = document.querySelector('.cal-app');
+    if (app) VIEWS.forEach(v => app.classList.toggle('view-' + v, v === _view));
+  }
+
+  function _openViewMenu() {
+    const btn = document.getElementById('cal-view-btn');
+    const menu = document.getElementById('cal-view-menu');
+    if (!btn || !menu) return;
+    menu.innerHTML = VIEWS.map(v => `<button type="button" class="cal-view-item${v === _view ? ' is-active' : ''}" data-view="${v}" role="menuitemradio" aria-checked="${v === _view}">
+        ${_viewSvg(v, 18)}<span>${escapeHtml(I18n.t(_VIEW_KEYS[v]))}</span>
+        <svg class="cal-view-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </button>`).join('');
+    const r = btn.getBoundingClientRect();
+    menu.style.top = Math.round(r.bottom + 6) + 'px';
+    menu.style.right = Math.round(document.documentElement.clientWidth - r.right) + 'px';
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function _closeViewMenu() {
+    const menu = document.getElementById('cal-view-menu');
+    const btn = document.getElementById('cal-view-btn');
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function _weekStartOf(d) {
+    const first = I18n.getStartDay() === 'sun' ? 0 : 1;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() - first + 7) % 7));
+  }
+
+  function _weekdayName(dow) {
+    const lang = I18n.getLang();
+    return lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
+  }
+
+  /** Each item a day carries in the week list: holidays, ថ្ងៃសីល, cycle day. */
+  function _dayItems(dt, lun, lang) {
+    const out = [];
+    ((HL && HL.getByDate(dt)) || []).forEach(h => out.push({
+      kind: h.observance === true ? 'observance' : 'public', text: HL.nameFor(h, lang)
+    }));
+    if (I18n.getSilDays()) {
+      const sil = KC.silDayFromKhmer(lun.km, lun.kd, dt.getFullYear());
+      if (sil) out.push({ kind: 'sil', text: _silLabel(sil) });
+    }
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) {
+      const info = HT.getDayInfo(dt);
+      const dayN = n => ' · ' + (I18n.t('healthDayN') || 'Day {n}').replace('{n}', _num(n));
+      if (info.kind === 'period') out.push({ kind: 'period', text: I18n.t('healthPeriod') + dayN(info.dayInPeriod) });
+      else if (info.kind === 'predicted-period') out.push({ kind: 'predicted', text: I18n.t('healthPredictedPeriod') + dayN(info.dayInPeriod) });
+      else if (info.kind === 'ovulation') out.push({ kind: 'ovulation', text: I18n.t('healthOvulation') });
+      else if (info.kind === 'fertile') out.push({ kind: 'fertile', text: I18n.t('healthFertile') });
+    }
+    return out;
+  }
+
+  function _renderWeek() {
+    const el = document.getElementById('cal-week');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const start = _weekStartOf(_weekAnchor);
+    const todayStr = new Date().toDateString();
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const dow = d.getDay();
+      const lun = KC.getKhmerDayMonthFromGregorian(d);
+      const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+      const wax = lun.kd <= 15 ? (lang === 'km' ? KC.RK[0] : I18n.t('waxing')) : (lang === 'km' ? KC.RK[1] : I18n.t('waning'));
+      const lunar = lang === 'km'
+        ? `${KC.khmerNumber(kd)} ${wax} ខែ${KC.khmerMonthNameFromKm(lun.km)}`
+        : `${wax} ${kd} · ${KC.khmerMonthNameFromKm(lun.km)}`;
+      const cn = CC.fromDate(d);
+      const items = _dayItems(d, lun, lang);
+      const icons = _EVENT_ICONS();
+      const isSel = _selectedDate && _selectedDate.y === d.getFullYear() && _selectedDate.m === d.getMonth() && _selectedDate.d === d.getDate();
+      const cls = ['wk-day',
+        d.toDateString() === todayStr ? 'is-today' : '',
+        isSel ? 'is-selected' : '',
+        dow === 0 ? 'is-sun' : dow === 6 ? 'is-sat' : '',
+        items.some(x => x.kind === 'public') ? 'is-holiday' : ''].filter(Boolean).join(' ');
+      html += `<button type="button" class="${cls}" data-y="${d.getFullYear()}" data-m="${d.getMonth()}" data-d="${d.getDate()}">
+        <span class="wk-date"><span class="wk-wd">${escapeHtml(_weekdayName(dow))}</span><span class="wk-num">${_gday(d.getDate())}</span></span>
+        <span class="wk-main">
+          <span class="wk-lunar">${escapeHtml(lunar)}${cn ? ` <span class="wk-cn">${escapeHtml(cn.cellText)}</span>` : ''}</span>
+          ${items.map(x => `<span class="wk-ev ev-row--${x.kind}"><span class="wk-ic">${icons[x.kind]}</span><span class="wk-ev-text">${escapeHtml(x.text)}</span></span>`).join('')}
+        </span>
+      </button>`;
+    }
+    el.innerHTML = html;
+    // A new week opens at today's row (or the top); re-renders of the same
+    // week, e.g. after tapping a day, keep the scroll position
+    const key = start.toDateString();
+    if (el.dataset.week !== key) {
+      el.dataset.week = key;
+      const t = el.querySelector('.wk-day.is-today');
+      el.scrollTop = t ? Math.max(0, t.offsetTop - el.offsetTop - 8) : 0;
+    }
+  }
+
+  function _renderYear() {
+    const el = document.getElementById('cal-year');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const T = I18n.translations[lang] || I18n.translations.km;
+    const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+    const now = new Date();
+    const wd = order.map(d => `<span class="yr-wd${d === 0 ? ' is-sun' : ''}">${escapeHtml(T.weekdaysShort[d])}</span>`).join('');
+    let html = '';
+    for (let m = 0; m < 12; m++) {
+      const lead = (new Date(_year, m, 1).getDay() - order[0] + 7) % 7;
+      const days = new Date(_year, m + 1, 0).getDate();
+      let cells = '<span></span>'.repeat(lead);
+      for (let d = 1; d <= days; d++) {
+        const dt = new Date(_year, m, d);
+        const kind = HL ? HL.classifyDate(dt) : null;
+        const cls = ['yr-d',
+          kind === 'public' ? 'is-hol' : kind === 'observance' ? 'is-obs' : '',
+          dt.getDay() === 0 ? 'is-sun' : '',
+          dt.toDateString() === now.toDateString() ? 'is-today' : ''].filter(Boolean).join(' ');
+        cells += `<span class="${cls}">${_gday(d)}</span>`;
+      }
+      const isCur = _year === now.getFullYear() && m === now.getMonth();
+      html += `<button type="button" class="yr-month${isCur ? ' is-current' : ''}" data-m="${m}">
+        <span class="yr-name">${escapeHtml(I18n.gregMonth(m))}</span>
+        <span class="yr-grid">${wd}${cells}</span>
+      </button>`;
+    }
+    el.innerHTML = html;
+  }
+
+  /** Full-month view: write each day's event names into its cell. */
+  function _addCellTags(gridEl, lang) {
+    if (!HL) return;
+    gridEl.querySelectorAll('.cal-cell').forEach(cell => {
+      const list = HL.getByDate(new Date(+cell.dataset.y, +cell.dataset.m, +cell.dataset.d)) || [];
+      if (!list.length) return;
+      const tags = list.slice(0, 2).map(h =>
+        `<span class="cal-tag cal-tag--${h.observance === true ? 'obs' : 'pub'}">${escapeHtml(h[lang] || h.km || '')}</span>`).join('');
+      cell.insertAdjacentHTML('beforeend', `<span class="cal-tags">${tags}</span>`);
+    });
+  }
+
   // === Render main calendar grid ===
   function _renderCalendar() {
+    _renderViewButton();
+    let weekStart = null;
+    if (_view === 'week') {
+      if (!_weekAnchor) {
+        const t = new Date();
+        _weekAnchor = _selectedDate ? new Date(_selectedDate.y, _selectedDate.m, _selectedDate.d)
+                    : (t.getFullYear() === _year && t.getMonth() === _month) ? t
+                    : new Date(_year, _month, 1);
+      }
+      weekStart = _weekStartOf(_weekAnchor);
+      _year = weekStart.getFullYear();
+      _month = weekStart.getMonth();
+    }
     const year = _year, month = _month;
     const today = new Date();
     const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
@@ -892,6 +1088,16 @@ const KhCal = (() => {
       if (lang === 'en')      { main = `${enName} ${year}`;  sub = `${kmName} · ${zhName}`; }
       else if (lang === 'zh') { main = `${year}年${zhName}`; sub = `${kmName} · ${enName}`; }
       else                    { main = `${kmName} ${KC.khmerNumber(year)}`; sub = `${enName} · ${zhName}`; }
+      if (_view === 'year') {
+        main = lang === 'km' ? `ឆ្នាំ ${KC.khmerNumber(year)}` : lang === 'zh' ? `${year}年` : String(year);
+        sub  = lang === 'km' ? String(year) : `ឆ្នាំ ${KC.khmerNumber(year)}`;
+      } else if (weekStart) {
+        const end = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+        const mName = (mm) => lang === 'km' ? I18n.gregMonth(mm) : I18n.gregMonthShort(mm);
+        sub = end.getMonth() === weekStart.getMonth()
+          ? `${_num(weekStart.getDate())}–${_num(end.getDate())} ${mName(end.getMonth())}`
+          : `${_num(weekStart.getDate())} ${mName(weekStart.getMonth())} – ${_num(end.getDate())} ${mName(end.getMonth())}`;
+      }
       titleEl.innerHTML =
         `<span class="cal-title-main">${escapeHtml(main)}` +
         `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>` +
@@ -1043,6 +1249,9 @@ const KhCal = (() => {
     }
 
     gridEl.innerHTML = html;
+    if (_view === 'full') _addCellTags(gridEl, lang);
+    if (_view === 'week') _renderWeek();
+    if (_view === 'year') _renderYear();
 
     _renderMonthEvents(year, month);
 
@@ -1051,7 +1260,9 @@ const KhCal = (() => {
     // room for it; otherwise it floats on top of the last row of days.
     const todayBtn = document.getElementById('cal-today-btn');
     if (todayBtn) {
-      const onCurrentMonth = (year === todayY && month === todayM);
+      const onCurrentMonth = _view === 'year' ? year === todayY
+        : _view === 'week' ? (today >= weekStart && today < new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7))
+        : (year === todayY && month === todayM);
       todayBtn.textContent = I18n.t('today');
       todayBtn.style.display = onCurrentMonth ? 'none' : 'block';
       const app = document.querySelector('.cal-app');
@@ -1271,6 +1482,7 @@ const KhCal = (() => {
     if (action === 'pick-month') {
       _month = +el.dataset.m;
       _year = _pickerYear;
+      _weekAnchor = null;
       _selectedDate = null;
       _closePicker();
       _renderCalendar();
@@ -1302,9 +1514,16 @@ const KhCal = (() => {
 
   // === Navigation ===
   function _nav(dir) {
-    _month += dir;
-    if (_month > 11) { _month = 0; _year++; }
-    if (_month < 0) { _month = 11; _year--; }
+    if (_view === 'week') {
+      const a = _weekAnchor || new Date(_year, _month, 1);
+      _weekAnchor = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 7 * dir);
+    } else if (_view === 'year') {
+      _year += dir;
+    } else {
+      _month += dir;
+      if (_month > 11) { _month = 0; _year++; }
+      if (_month < 0) { _month = 11; _year--; }
+    }
     _selectedDate = null;
     const panel = document.getElementById('cal-detail');
     if (panel) panel.classList.remove('open');
@@ -1315,6 +1534,7 @@ const KhCal = (() => {
     const today = new Date();
     _year = today.getFullYear();
     _month = today.getMonth();
+    _weekAnchor = today;
     _selectedDate = null;
     _renderCalendar();
     _showDetail(today.getFullYear(), today.getMonth(), today.getDate());
@@ -2082,6 +2302,43 @@ const KhCal = (() => {
     // (Horizontal swipe to change month is already wired below via
     //  _onTouchStart / _onTouchEnd on the calendar grid.)
 
+    // View switch
+    const viewBtn = document.getElementById('cal-view-btn');
+    const viewMenu = document.getElementById('cal-view-menu');
+    if (viewBtn && viewMenu) {
+      viewBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (viewMenu.hidden) _openViewMenu(); else _closeViewMenu();
+      });
+      viewMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = e.target.closest('[data-view]');
+        if (item) _setView(item.dataset.view);
+      });
+      document.addEventListener('click', () => { if (!viewMenu.hidden) _closeViewMenu(); });
+      window.addEventListener('resize', _closeViewMenu);
+    }
+    const weekEl = document.getElementById('cal-week');
+    if (weekEl) {
+      weekEl.addEventListener('click', (e) => {
+        const day = e.target.closest('.wk-day');
+        if (day) _showDetail(+day.dataset.y, +day.dataset.m, +day.dataset.d);
+      });
+      weekEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      weekEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
+    const yearEl = document.getElementById('cal-year');
+    if (yearEl) {
+      yearEl.addEventListener('click', (e) => {
+        const m = e.target.closest('.yr-month');
+        if (!m) return;
+        _month = +m.dataset.m;
+        _setView(_lastMonthView);
+      });
+      yearEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      yearEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
+
     const pickerOverlay = document.getElementById('cal-picker-overlay');
     if (pickerOverlay) {
       pickerOverlay.addEventListener('click', (e) => {
@@ -2149,7 +2406,7 @@ const KhCal = (() => {
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, #cal-today-footer, #cal-today-btn')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, .wk-day, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }
