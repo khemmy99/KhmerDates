@@ -3814,3 +3814,38 @@ html { background-color: #0a0c14; }
 /* Buttons centre their content vertically; months with five weeks floated
    lower than six-week ones, so pin the content to the top */
 .yr-month { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
+
+/* =========================================================
+   FULL MONTH TILES — the same rounded day tiles as the month
+   view (gaps, soft fill, weekend tint, solid green today),
+   with the event bars inside them.
+   ========================================================= */
+.cal-full { gap: 4px; margin: 2px 0 8px; border-top: 0; }
+.fm-week { border-bottom: 0; }
+.fm-days { gap: 4px; }
+.fm-day,
+.fm-day:first-child {
+  border: 0; border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  padding-top: 5px;
+}
+[data-theme="light"] .fm-day {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04);
+}
+[data-theme="light"] .fm-day.is-blue { background: linear-gradient(135deg, rgba(59,130,246,0.07), rgba(37,99,235,0.04)); }
+[data-theme="light"] .fm-day.is-red  { background: linear-gradient(135deg, rgba(220,38,38,0.065), rgba(185,28,28,0.035)); }
+.fm-day.is-out { opacity: 0.4; }
+.fm-day.is-today,
+[data-theme="light"] .fm-day.is-today { background: #059669; box-shadow: 0 2px 8px rgba(5,150,105,0.35); }
+.fm-day.is-today .fm-num { background: transparent; color: #fff; }
+.fm-day.is-today .fm-lunar { color: rgba(255,255,255,0.85); }
+.fm-day.is-selected:not(.is-today) { box-shadow: inset 0 0 0 1.5px var(--kh-primary), 0 2px 8px rgba(59,125,230,0.18); }
+.fm-day.is-selected:not(.is-today) .fm-num { box-shadow: none; }
+.fm-day:active { filter: brightness(0.96); }
+/* Bars sit inside the tiles: inset from the tile edge, flush across gaps */
+.fm-bars { top: 44px; column-gap: 4px; }
+.fm-bar { margin: 0 3px; }
+.fm-bar.cut-l,
+.fm-bar.cut-r { margin: 0 3px; }
