@@ -4035,3 +4035,19 @@ html { background-color: #0a0c14; }
 .ev-chips--five .ev-chip,
 .ev-chips--card .ev-chip { flex: 1 0 auto; white-space: nowrap; }
 
+/* Type-in row at the top of the date picker */
+.dp-type { display: flex; gap: 8px; margin-bottom: 4px; }
+.dp-type input {
+  flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; font: inherit; font-size: 16px; font-weight: 700;
+  letter-spacing: 1px; border: 1.5px solid var(--kh-border-strong); background: var(--kh-card-elevated); color: var(--kh-text);
+  -webkit-user-select: text; user-select: text;
+}
+[data-theme="light"] .dp-type input { background: #fff; border-color: rgba(0,0,0,0.14); }
+.dp-type input:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+.dp-type input.is-bad { border-color: var(--kh-red); box-shadow: none; }
+.dp-ok {
+  flex: none; padding: 0 16px; border-radius: 12px; border: 0;
+  background: #6366F1; color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.dp-msg { min-height: 18px; font-size: 12px; color: var(--kh-red); margin: 2px 2px 4px; }
+

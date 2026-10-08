@@ -448,12 +448,68 @@ const KhCal = (() => {
     </button>`;
   }
 
+  /**
+   * Parse a typed date: day/month/year in Khmer or Latin digits, any
+   * separator (/ - . space), or eight digits run together (ddmmyyyy).
+   * A two-digit year means 19xx from 50 up, else 20xx.
+   * Returns 'YYYY-MM-DD', or '' when it is not a real date.
+   */
+  function _parseTypedDate(text) {
+    const latin = String(text).replace(/[០-៩]/g, c => String(c.charCodeAt(0) - 0x17E0));
+    let parts = latin.split(/[^0-9]+/).filter(Boolean);
+    if (parts.length === 1 && parts[0].length === 8) parts = [parts[0].slice(0, 2), parts[0].slice(2, 4), parts[0].slice(4)];
+    if (parts.length !== 3) return '';
+    const d = +parts[0], m = +parts[1];
+    let y = +parts[2];
+    if (parts[2].length <= 2) y += y >= 50 ? 1900 : 2000;
+    if (parts[2].length === 3 || m < 1 || m > 12 || d < 1) return '';
+    const dt = new Date(y, m - 1, d);
+    return dt.getMonth() === m - 1 && dt.getDate() === d ? _ymdOf(dt) : '';
+  }
+
+  /** dd/mm/yyyy in the UI's digits, for the type-in box. */
+  function _typedText(ymd) {
+    if (!ymd) return '';
+    const [y, m, d] = ymd.split('-');
+    const t = `${d}/${m}/${y}`;
+    return I18n.getLang() === 'km' ? t.replace(/[0-9]/g, n => KC.khmerNumber(+n)) : t;
+  }
+
   function _openDatePick(opts) {
     const start = opts.value ? _parseYmd(opts.value) : (opts.initial || new Date());
     _dp = { y: start.getFullYear(), m: start.getMonth(), sel: opts.value || '', mode: 'days',
             base: start.getFullYear() - 5, min: opts.min, max: opts.max, onPick: opts.onPick };
+    const panel = document.getElementById('date-pick-panel');
+    panel.innerHTML = `<div class="dp-type">
+        <input type="text" id="dp-input" inputmode="numeric" autocomplete="off" spellcheck="false"
+               placeholder="${escapeHtml(I18n.t('dpTypeHint'))}" value="${escapeHtml(_typedText(_dp.sel))}" aria-label="${escapeHtml(I18n.t('dpTypeHint'))}">
+        <button type="button" class="dp-ok" data-dp="ok">${escapeHtml(I18n.t('dpOk'))}</button>
+      </div>
+      <div class="dp-msg" id="dp-msg" aria-live="polite"></div>
+      <div id="dp-body"></div>`;
     _renderDatePick();
     document.getElementById('date-pick-overlay').classList.add('open');
+  }
+
+  /** Typing moves the calendar to the date; returns the date or ''. */
+  function _onDateTyped(confirm) {
+    if (!_dp) return '';
+    const input = document.getElementById('dp-input');
+    const msg = document.getElementById('dp-msg');
+    const raw = input ? input.value.trim() : '';
+    const ymd = _parseTypedDate(raw);
+    let err = '';
+    if (raw && !ymd) err = confirm || raw.replace(/[^0-9\u17E0-\u17E9]/g, '').length >= 6 ? I18n.t('dpInvalid') : '';
+    else if (ymd && (_parseYmd(ymd) < _dp.min || _parseYmd(ymd) > _dp.max)) err = I18n.t('dpOutOfRange');
+    if (msg) msg.textContent = err;
+    if (input) input.classList.toggle('is-bad', !!err);
+    if (ymd && !err) {
+      const d = _parseYmd(ymd);
+      _dp.y = d.getFullYear(); _dp.m = d.getMonth(); _dp.sel = ymd; _dp.mode = 'days';
+      _renderDatePick();
+      return ymd;
+    }
+    return '';
   }
 
   function _closeDatePick() {
@@ -463,7 +519,7 @@ const KhCal = (() => {
   }
 
   function _renderDatePick() {
-    const el = document.getElementById('date-pick-panel');
+    const el = document.getElementById('dp-body');
     if (!el || !_dp) return;
     const lang = I18n.getLang();
     const minY = _dp.min.getFullYear(), maxY = _dp.max.getFullYear();
@@ -510,6 +566,11 @@ const KhCal = (() => {
     }
     el.innerHTML = head(title, prevOk, nextOk) + body +
       `<div class="dp-foot"><button type="button" class="cal-modal-btn" data-dp="cancel">${escapeHtml(I18n.t('cancel'))}</button></div>`;
+    // Language may have changed while open: keep the type-in row's words current
+    const input = document.getElementById('dp-input');
+    if (input) input.placeholder = I18n.t('dpTypeHint');
+    const ok = document.querySelector('.dp-ok');
+    if (ok) ok.textContent = I18n.t('dpOk');
   }
 
   function _onDatePickClick(e) {
@@ -521,6 +582,11 @@ const KhCal = (() => {
     if (t.dataset.dpYear) { _dp.y = +t.dataset.dpYear; _dp.mode = 'months'; return _renderDatePick(); }
     const act = t.dataset.dp;
     if (act === 'cancel') return _closeDatePick();
+    if (act === 'ok') {
+      const v = _onDateTyped(true) || (!document.getElementById('dp-input').value.trim() && _dp.sel);
+      if (v) { const cb = _dp.onPick; _closeDatePick(); cb(v); }
+      return;
+    }
     if (act === 'title') {
       _dp.mode = _dp.mode === 'days' ? 'years' : 'days';
       _dp.base = _dp.y - 5;
@@ -2665,6 +2731,13 @@ const KhCal = (() => {
 
     const dpOverlay = document.getElementById('date-pick-overlay');
     if (dpOverlay) {
+      dpOverlay.addEventListener('input', (e) => { if (e.target.id === 'dp-input') _onDateTyped(false); });
+      dpOverlay.addEventListener('keydown', (e) => {
+        if (e.target.id !== 'dp-input' || e.key !== 'Enter') return;
+        e.preventDefault();
+        const v = _onDateTyped(true);
+        if (v) { const cb = _dp.onPick; _closeDatePick(); cb(v); }
+      });
       dpOverlay.addEventListener('click', (e) => {
         if (e.target === dpOverlay) { _closeDatePick(); return; }
         _onDatePickClick(e);
