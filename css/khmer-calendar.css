@@ -3966,3 +3966,13 @@ html { background-color: #0a0c14; }
 .baby-name.is-fav { border-color: #F59E0B; box-shadow: 0 0 0 1px #F59E0B; }
 .baby-name.is-fav .baby-name-star { color: #F59E0B; }
 
+/* Name origin chips */
+.baby-origins { display: flex; gap: 5px; margin-top: 6px; }
+.baby-origin {
+  flex: 1 1 auto; padding: 6px 4px; border-radius: 999px; border: 1px solid var(--kh-border-strong);
+  background: transparent; color: var(--kh-text-secondary); font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+[data-theme="light"] .baby-origin { border-color: rgba(0,0,0,0.12); color: #475569; }
+.baby-origin.is-active { background: #6366F1; border-color: #6366F1; color: #fff; }
+

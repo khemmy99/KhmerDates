@@ -382,26 +382,36 @@ const KhCal = (() => {
   let _babyNameGender = null; // 'B' | 'G' — follows the prediction until picked
   let _babyNameQuery = '';
   const BABY_FAVS_KEY = 'kh-cal-baby-favs';
+  const BABY_ORIGIN_KEY = 'kh-cal-baby-origin';
+  const _ORIGIN_KEYS = { km: 'originKm', zh: 'originZh', ja: 'originJa', ko: 'originKo', eu: 'originEu' };
+  let _babyNameOrigin = (() => { try { return localStorage.getItem(BABY_ORIGIN_KEY) || 'km'; } catch (e) { return 'km'; } })();
+  // Favourites are stored as "origin:name"; a bare name is from the Khmer list
+  const _favKey = n => _babyNameOrigin + ':' + n;
   function _getBabyFavs() { try { return JSON.parse(localStorage.getItem(BABY_FAVS_KEY) || '[]'); } catch (e) { return []; } }
   function _setBabyFavs(a) { try { localStorage.setItem(BABY_FAVS_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } }
 
-  /** Name cards for the chosen gender, favourites first, filtered by the search box. */
+  /** Name cards for the chosen origin and gender, favourites first, filtered by the search box. */
   function _renderBabyNames() {
     const el = document.getElementById('baby-names-list');
     if (!el || !BG) return;
     const lang = I18n.getLang();
-    const favs = _getBabyFavs();
+    const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
+    const isFav = n => favs.includes(_favKey(n.name));
     const q = _babyNameQuery.trim().toLowerCase();
-    const list = BG.NAMES[_babyNameGender || 'B']
-      .filter(n => !q || n[0].includes(q) || n[1].toLowerCase().includes(q) || n[2].includes(q) || n[3].toLowerCase().includes(q))
-      .sort((a, b) => (favs.includes(b[0]) - favs.includes(a[0])));
+    const list = BG.names(_babyNameOrigin, _babyNameGender || 'B')
+      .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)))
+      .sort((a, b) => isFav(b) - isFav(a));
     document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
+    document.querySelectorAll('.baby-origin').forEach(t => t.classList.toggle('is-active', t.dataset.origin === _babyNameOrigin));
     el.innerHTML = list.length ? list.map(n => {
-      const fav = favs.includes(n[0]);
-      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}" data-name="${escapeHtml(n[0])}" aria-pressed="${fav}">
-        <span class="baby-name-km">${escapeHtml(n[0])}</span>
-        <span class="baby-name-latin">${escapeHtml(n[1])}</span>
-        <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n[2] : n[3])}</span>
+      const fav = isFav(n);
+      // Second line: how to read it — Latin spelling, plus the Khmer
+      // pronunciation in the Khmer UI
+      const read = [n.latin, lang === 'km' ? n.sound : ''].filter(Boolean).join(' · ');
+      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}" data-name="${escapeHtml(n.name)}" aria-pressed="${fav}">
+        <span class="baby-name-km">${escapeHtml(n.name)}</span>
+        ${read ? `<span class="baby-name-latin">${escapeHtml(read)}</span>` : ''}
+        <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n.km : n.en)}</span>
         <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
       </button>`;
     }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t('babyNoMatch'))}</div>`;
@@ -498,6 +508,7 @@ const KhCal = (() => {
       </div>
       <div class="settings-section">
         <div class="settings-label">${escapeHtml(I18n.t('babyNames'))}</div>
+        <div class="baby-origins">${BG.ORIGINS.map(o => `<button type="button" class="baby-origin" data-origin="${o}">${escapeHtml(I18n.t(_ORIGIN_KEYS[o]))}</button>`).join('')}</div>
         <div class="baby-name-tabs">
           <button type="button" class="baby-name-tab baby-name-tab--boy" data-g="B">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</button>
           <button type="button" class="baby-name-tab baby-name-tab--girl" data-g="G">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</button>
@@ -2545,14 +2556,21 @@ const KhCal = (() => {
     const babyEl = document.getElementById('health-baby');
     if (babyEl) {
       babyEl.addEventListener('click', (e) => {
+        const origin = e.target.closest('.baby-origin');
+        if (origin) {
+          _babyNameOrigin = origin.dataset.origin;
+          try { localStorage.setItem(BABY_ORIGIN_KEY, _babyNameOrigin); } catch (err) { /* private mode */ }
+          _renderBabyNames();
+          return;
+        }
         const tab = e.target.closest('.baby-name-tab');
         if (tab) { _babyNameGender = tab.dataset.g; _renderBabyNames(); return; }
         const card = e.target.closest('.baby-name');
         if (card) {
-          const favs = _getBabyFavs();
-          const name = card.dataset.name;
-          const i = favs.indexOf(name);
-          if (i >= 0) favs.splice(i, 1); else favs.push(name);
+          const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
+          const key = _favKey(card.dataset.name);
+          const i = favs.indexOf(key);
+          if (i >= 0) favs.splice(i, 1); else favs.push(key);
           _setBabyFavs(favs);
           _renderBabyNames();
         }
