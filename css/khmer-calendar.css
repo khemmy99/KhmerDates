@@ -3611,3 +3611,11 @@ html { background-color: #0a0c14; }
   .cal-title-nav { display: flex; }
 }
 
+/* Filter chips inside the month card — a size down from the events page so
+   five fit the card's narrower width */
+.ev-chips--card,
+.ev-chips--card.ev-chips--five { gap: 4px; padding: 8px 10px 8px; flex: none; border-bottom: 1px solid var(--kh-border); }
+.ev-chips--card .ev-chip { flex: 1 1 auto; padding: 5px 4px; gap: 3px; font-size: 12px; }
+.ev-chips--card .ev-chip-icon,
+.ev-chips--card .ev-chip-icon svg { width: 12px; height: 12px; }
+

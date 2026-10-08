@@ -355,8 +355,10 @@ const KhCal = (() => {
     // the month before (Pchum Ben runs Sep -> Oct)
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
+    _monthFilter = _renderChipRow(document.getElementById('month-events-chips'), _monthFilter);
     const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first)
       .concat(_periodRowsFor(year, month))
+      .filter(r => _matchFilter(r, _monthFilter))
       .sort((a, b) => a.start - b.start);
 
     // The extra "today" row repeats a festival already counted
@@ -376,7 +378,11 @@ const KhCal = (() => {
   // ----- Events page -----
   const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
 
-  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil'
+  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil' | 'cycle'
+  let _monthFilter = 'all';  // same values, for the card under the grid
+
+  const _CYCLE_KINDS = ['period', 'predicted', 'fertile', 'ovulation'];
+  const _matchFilter = (r, f) => f === 'all' || (f === 'cycle' ? _CYCLE_KINDS.includes(r.kind) : r.kind === f);
 
   /** Lunar reading for a row subtitle, e.g. "១៥ កើត ខែស្រាពណ៍". */
   function _lunarReading(lun) {
@@ -568,9 +574,9 @@ const KhCal = (() => {
     </div>`;
   }
 
-  function _renderEventChips() {
-    const el = document.getElementById('events-chips');
-    if (!el) return;
+  /** Fill a chip row and return the filter, reset to 'all' if its chip is gone. */
+  function _renderChipRow(el, current) {
+    if (!el) return current;
     const chips = [
       ['all', 'filterAll', _ICON_GRID],
       ['public', 'filterPublic', _ICON_DAYOFF],
@@ -578,12 +584,17 @@ const KhCal = (() => {
     ];
     if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
     if (HT && HT.isEnabled() && HT.getActiveProfile()) chips.push(['cycle', 'healthPeriod', _ICON_DROP]);
-    if (!chips.some(c => c[0] === _eventsFilter)) _eventsFilter = 'all';
+    if (!chips.some(c => c[0] === current)) current = 'all';
     el.classList.toggle('ev-chips--five', chips.length > 4);
     el.innerHTML = chips.map(([id, key, icon]) =>
-      `<button type="button" class="ev-chip ev-chip--${id}${id === _eventsFilter ? ' is-active' : ''}" data-filter="${id}">
+      `<button type="button" class="ev-chip ev-chip--${id}${id === current ? ' is-active' : ''}" data-filter="${id}">
         <span class="ev-chip-icon">${icon}</span>${escapeHtml(I18n.t(key))}
       </button>`).join('');
+    return current;
+  }
+
+  function _renderEventChips() {
+    _eventsFilter = _renderChipRow(document.getElementById('events-chips'), _eventsFilter);
   }
 
   function _renderEventsList() {
@@ -605,8 +616,7 @@ const KhCal = (() => {
       .filter(r => r.start.getFullYear() === _eventsYear);  // grouped by start month below
     const rows = _collectEventRows(_eventsYear, lang).concat(cycle)
       .sort((a, b) => a.start - b.start)
-      .filter(r => _eventsFilter === 'all' ||
-                   (_eventsFilter === 'cycle' ? ['period', 'predicted', 'fertile', 'ovulation'].includes(r.kind) : r.kind === _eventsFilter));
+      .filter(r => _matchFilter(r, _eventsFilter));
 
     const sections = [];
     for (let m = 0; m < 12; m++) {
@@ -1419,6 +1429,17 @@ const KhCal = (() => {
       if (_eventsYear === new Date().getFullYear()) _scrollEventsToToday();
       else if (eventsListEl) eventsListEl.scrollTop = 0;
     };
+    const monthChips = document.getElementById('month-events-chips');
+    if (monthChips) {
+      monthChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ev-chip');
+        if (!chip || chip.dataset.filter === _monthFilter) return;
+        _monthFilter = chip.dataset.filter;
+        _renderMonthEvents(_year, _month);
+        const body = document.getElementById('month-events-body');
+        if (body) body.scrollTop = 0;
+      });
+    }
     const eventsChips = document.getElementById('events-chips');
     if (eventsChips) {
       eventsChips.addEventListener('click', (e) => {
