@@ -379,6 +379,33 @@ const KhCal = (() => {
   const BG = (typeof BabyGender !== 'undefined') ? BabyGender : null;
   const MOTHER_BIRTH_KEY = 'kh-cal-mother-birth';
   let _babyCheck = null; // conception date being checked (YYYY-MM-DD)
+  let _babyNameGender = null; // 'B' | 'G' — follows the prediction until picked
+  let _babyNameQuery = '';
+  const BABY_FAVS_KEY = 'kh-cal-baby-favs';
+  function _getBabyFavs() { try { return JSON.parse(localStorage.getItem(BABY_FAVS_KEY) || '[]'); } catch (e) { return []; } }
+  function _setBabyFavs(a) { try { localStorage.setItem(BABY_FAVS_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } }
+
+  /** Name cards for the chosen gender, favourites first, filtered by the search box. */
+  function _renderBabyNames() {
+    const el = document.getElementById('baby-names-list');
+    if (!el || !BG) return;
+    const lang = I18n.getLang();
+    const favs = _getBabyFavs();
+    const q = _babyNameQuery.trim().toLowerCase();
+    const list = BG.NAMES[_babyNameGender || 'B']
+      .filter(n => !q || n[0].includes(q) || n[1].toLowerCase().includes(q) || n[2].includes(q) || n[3].toLowerCase().includes(q))
+      .sort((a, b) => (favs.includes(b[0]) - favs.includes(a[0])));
+    document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
+    el.innerHTML = list.length ? list.map(n => {
+      const fav = favs.includes(n[0]);
+      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}" data-name="${escapeHtml(n[0])}" aria-pressed="${fav}">
+        <span class="baby-name-km">${escapeHtml(n[0])}</span>
+        <span class="baby-name-latin">${escapeHtml(n[1])}</span>
+        <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n[2] : n[3])}</span>
+        <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
+      </button>`;
+    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t('babyNoMatch'))}</div>`;
+  }
 
   const _ymdOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   const _parseYmd = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
@@ -428,6 +455,7 @@ const KhCal = (() => {
     let plan = '';
     if (birth) {
       const r = BG.predict(_parseYmd(birth), _parseYmd(_babyCheck));
+      if (!_babyNameGender && r.gender) _babyNameGender = r.gender;
       result = r.gender
         ? `<div class="baby-result">${_babyPill(r.gender)}
              <div class="baby-meta">${escapeHtml(fill('babyAgeMonth', { age: _num(r.age), month: _num(r.month) }))}</div></div>`
@@ -468,12 +496,23 @@ const KhCal = (() => {
         ${_dateSelects('check', _babyCheck, now.getFullYear() - 2, now.getFullYear() + 3)}
         ${result}
       </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('babyNames'))}</div>
+        <div class="baby-name-tabs">
+          <button type="button" class="baby-name-tab baby-name-tab--boy" data-g="B">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</button>
+          <button type="button" class="baby-name-tab baby-name-tab--girl" data-g="G">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</button>
+        </div>
+        <input type="search" class="baby-name-search" id="baby-name-search" placeholder="${escapeHtml(I18n.t('babySearch'))}" value="${escapeHtml(_babyNameQuery)}" autocomplete="off" spellcheck="false">
+        <div class="baby-hint">${escapeHtml(I18n.t('babyNamesHint'))}</div>
+        <div class="baby-names" id="baby-names-list"></div>
+      </div>
       ${plan ? `<div class="settings-section">
         <div class="settings-label">${escapeHtml(I18n.t('babyPlan'))}</div>
         <div class="baby-hint">${escapeHtml(I18n.t('babyPlanHint'))}</div>
         <div class="baby-plan">${plan}</div>
       </div>` : ''}
       <div class="settings-section"><div class="health-privacy-note">${escapeHtml(I18n.t('babyNote'))}</div></div>`;
+    _renderBabyNames();
   }
 
   function _setHealthTab(tab) {
@@ -2505,6 +2544,24 @@ const KhCal = (() => {
       b.addEventListener('click', () => _setHealthTab(b.dataset.healthTab)));
     const babyEl = document.getElementById('health-baby');
     if (babyEl) {
+      babyEl.addEventListener('click', (e) => {
+        const tab = e.target.closest('.baby-name-tab');
+        if (tab) { _babyNameGender = tab.dataset.g; _renderBabyNames(); return; }
+        const card = e.target.closest('.baby-name');
+        if (card) {
+          const favs = _getBabyFavs();
+          const name = card.dataset.name;
+          const i = favs.indexOf(name);
+          if (i >= 0) favs.splice(i, 1); else favs.push(name);
+          _setBabyFavs(favs);
+          _renderBabyNames();
+        }
+      });
+      babyEl.addEventListener('input', (e) => {
+        if (e.target.id !== 'baby-name-search') return;
+        _babyNameQuery = e.target.value;
+        _renderBabyNames();
+      });
       babyEl.addEventListener('change', (e) => {
         const wrap = e.target.closest('.baby-date');
         if (!wrap) return;

@@ -60,5 +60,67 @@ const BabyGender = (() => {
     return out.slice(0, count).map(m => Object.assign(m, predict(birth, m.start)));
   }
 
-  return { CHART, MIN_AGE, MAX_AGE, predict, planMonths };
+  // Common Khmer names: [Khmer, Latin spelling, meaning (km), meaning (en)]
+  const NAMES = {
+    B: [
+      ['ដារ៉ា', 'Dara', 'ផ្កាយ', 'star'],
+      ['សុវណ្ណ', 'Sovann', 'មាស', 'gold'],
+      ['វិចិត្រ', 'Vichet', 'ស្រស់ស្អាតប្លែក', 'wonderful'],
+      ['វិសាល', 'Visal', 'ធំទូលាយ', 'vast'],
+      ['បញ្ញា', 'Panha', 'ប្រាជ្ញា', 'wisdom'],
+      ['សម្បត្តិ', 'Sambath', 'ទ្រព្យសម្បត្តិ', 'wealth'],
+      ['វិបុល', 'Vibol', 'បរិបូណ៌', 'abundant'],
+      ['កុសល', 'Kosal', 'អំពើល្អ', 'good deeds'],
+      ['ពិសិដ្ឋ', 'Piseth', 'ពិសេសខ្ពង់ខ្ពស់', 'sacred, special'],
+      ['រិទ្ធី', 'Rithy', 'ឫទ្ធានុភាព', 'power'],
+      ['ចំរើន', 'Chamroeun', 'ការរីកចម្រើន', 'prosperity'],
+      ['វុទ្ធី', 'Vuthy', 'ការលូតលាស់', 'growth'],
+      ['បូរ៉ា', 'Bora', 'ប្រសើរ', 'excellent'],
+      ['វីរៈ', 'Vireak', 'ក្លាហាន', 'brave'],
+      ['ឧត្តម', 'Udom', 'ខ្ពង់ខ្ពស់បំផុត', 'supreme'],
+      ['អរុណ', 'Arun', 'ពេលអរុណរះ', 'dawn'],
+      ['សុរិយា', 'Soriya', 'ព្រះអាទិត្យ', 'sun'],
+      ['រតនៈ', 'Ratanak', 'កែវមណី', 'gem'],
+      ['សុខា', 'Sokha', 'សេចក្ដីសុខ', 'happiness'],
+      ['វឌ្ឍនា', 'Vathana', 'ការចម្រើន', 'progress'],
+      ['សុធា', 'Sothea', 'ទឹកអម្រឹត', 'nectar'],
+      ['ពេជ្រ', 'Pich', 'ត្បូងពេជ្រ', 'diamond'],
+      ['សុវត្ថិ', 'Sovath', 'សុវត្ថិភាព', 'well-being'],
+      ['សីហា', 'Seyha', 'តោ', 'lion'],
+      ['វិទូ', 'Vitou', 'អ្នកប្រាជ្ញ', 'scholar'],
+      ['ភក្ដី', 'Pheakdey', 'ភក្ដីភាព', 'loyalty'],
+      ['មុនី', 'Mony', 'អ្នកប្រាជ្ញ', 'sage'],
+      ['សុផល', 'Sophal', 'ផលល្អ', 'good fortune'],
+      ['សំណាង', 'Samnang', 'សំណាងល្អ', 'luck']
+    ],
+    G: [
+      ['បុប្ផា', 'Bopha', 'ផ្កា', 'flower'],
+      ['សោភា', 'Sophea', 'សម្រស់', 'beauty'],
+      ['ធីតា', 'Thida', 'បុត្រី', 'daughter'],
+      ['ចរិយា', 'Charya', 'ចរិតល្អ', 'good conduct'],
+      ['រតនា', 'Ratana', 'កែវ', 'gem'],
+      ['លក្ខិណា', 'Leakena', 'លក្ខណៈល្អ', 'fine qualities'],
+      ['សុជាតា', 'Socheata', 'កើតក្នុងត្រកូលល្អ', 'well-born'],
+      ['រស្មី', 'Raksmey', 'ពន្លឺ', 'ray of light'],
+      ['មាលា', 'Mealea', 'កម្រងផ្កា', 'garland'],
+      ['កុលាប', 'Kolab', 'ផ្កាកុលាប', 'rose'],
+      ['សុគន្ធា', 'Sokunthea', 'ក្លិនក្រអូប', 'fragrant'],
+      ['នារី', 'Neary', 'ស្ត្រី', 'woman'],
+      ['ទេវី', 'Tevy', 'ទេពធីតា', 'goddess'],
+      ['អប្សរា', 'Apsara', 'ទេពអប្សរា', 'celestial dancer'],
+      ['ច័ន្ទរស្មី', 'Chanraksmey', 'រស្មីព្រះចន្ទ', 'moonlight'],
+      ['ស្រីពេជ្រ', 'Sreypich', 'ត្បូងពេជ្រ', 'diamond'],
+      ['វណ្ណា', 'Vanna', 'សម្បុរល្អ', 'fair complexion'],
+      ['កញ្ញា', 'Kanha', 'នារីក្រមុំ', 'maiden'],
+      ['សុភាព', 'Sopheap', 'សុភាពរាបសា', 'gentle'],
+      ['មរកត', 'Morokot', 'ត្បូងមរកត', 'emerald'],
+      ['សុវណ្ណារី', 'Sovannary', 'នារីដូចមាស', 'golden lady'],
+      ['ចិន្តា', 'Chenda', 'គំនិត', 'thought'],
+      ['ផល្លា', 'Phalla', 'ផលផ្កា', 'blossom and fruit'],
+      ['កល្យាណ', 'Kalyan', 'ល្អថ្លៃថ្នូរ', 'virtuous'],
+      ['រចនា', 'Rachana', 'ស្នាដៃ', 'creation']
+    ]
+  };
+
+  return { CHART, MIN_AGE, MAX_AGE, NAMES, predict, planMonths };
 })();
