@@ -1042,18 +1042,105 @@ const KhCal = (() => {
       </button>`;
     }
     el.innerHTML = html;
+    el.classList.toggle('cal-year--km-digits', I18n.getDayDigits() === 'khmer');
   }
 
-  /** Full-month view: write each day's event names into its cell. */
-  function _addCellTags(gridEl, lang) {
-    if (!HL) return;
-    gridEl.querySelectorAll('.cal-cell').forEach(cell => {
-      const list = HL.getByDate(new Date(+cell.dataset.y, +cell.dataset.m, +cell.dataset.d)) || [];
-      if (!list.length) return;
-      const tags = list.slice(0, 2).map(h =>
-        `<span class="cal-tag cal-tag--${h.observance === true ? 'obs' : 'pub'}">${escapeHtml(h[lang] || h.km || '')}</span>`).join('');
-      cell.insertAdjacentHTML('beforeend', `<span class="cal-tags">${tags}</span>`);
-    });
+  /**
+   * Full-month view: week rows of day cells with event bars laid over them.
+   * A multi-day event is one bar across the days it covers (split at the
+   * week edge); bars stack in lanes, and a "+n" note marks days with more
+   * than fit. ថ្ងៃសីល and ovulation are small marks beside the day number.
+   */
+  const _FULL_LANES = 3;
+
+  function _fullSegments(from, to, lang) {
+    const segs = [];
+    const years = new Set([from.getFullYear(), to.getFullYear()]);
+    years.forEach(y => _collectEventRows(y, lang).forEach(r => {
+      if (r.isTodayRow || r.kind === 'sil' || r.end < from || r.start > to) return;
+      segs.push({ kind: r.kind, name: r.name, start: r.start, end: r.end });
+    }));
+    // Cycle runs straight from the tracker
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) {
+      const runOf = k => k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted'
+                       : (k === 'fertile' || k === 'ovulation') ? 'fertile' : null;
+      const NAME = { period: 'healthPeriod', predicted: 'healthPredictedPeriod', fertile: 'healthFertile' };
+      let run = null;
+      for (let d = new Date(from); d <= to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+        const kind = runOf(HT.getDayInfo(d).kind);
+        if (run && kind === run.kind) { run.end = d; continue; }
+        if (run) segs.push(run);
+        run = kind ? { kind, name: I18n.t(NAME[kind]), start: d, end: d } : null;
+      }
+      if (run) segs.push(run);
+    }
+    return segs;
+  }
+
+  function _renderFull() {
+    const el = document.getElementById('cal-full');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const year = _year, month = _month;
+    const order0 = I18n.getStartDay() === 'sun' ? 0 : 1;
+    const lead = (new Date(year, month, 1).getDay() - order0 + 7) % 7;
+    const first = new Date(year, month, 1 - lead);
+    const days = new Date(year, month + 1, 0).getDate();
+    const weeks = Math.ceil((lead + days) / 7);
+    const last = new Date(first.getFullYear(), first.getMonth(), first.getDate() + weeks * 7 - 1);
+    const segs = _fullSegments(first, last, lang);
+    const todayStr = new Date().toDateString();
+    const dayIdx = d => Math.round((d - first) / 86400000);
+
+    let html = '';
+    for (let w = 0; w < weeks; w++) {
+      const w0 = w * 7, w1 = w0 + 6;
+      // Segments clipped to this week, longest first, packed into lanes
+      const parts = segs.map(sg => ({ sg, a: Math.max(dayIdx(sg.start), w0), b: Math.min(dayIdx(sg.end), w1) }))
+        .filter(p => p.a <= p.b)
+        .sort((x, y) => (x.a - y.a) || ((y.b - y.a) - (x.b - x.a)));
+      const lanes = [];
+      const hidden = new Array(7).fill(0);
+      parts.forEach(p => {
+        let lane = lanes.findIndex(end => end < p.a);
+        if (lane === -1) { lane = lanes.length; lanes.push(-1); }
+        lanes[lane] = p.b;
+        p.lane = lane;
+        if (lane >= _FULL_LANES) for (let i = p.a; i <= p.b; i++) hidden[i - w0]++;
+      });
+
+      let cells = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w0 + i);
+        const lun = KC.getKhmerDayMonthFromGregorian(d);
+        const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+        const wax = lun.kd <= 15 ? (lang === 'km' ? KC.RK[0] : I18n.t('waxingShort')) : (lang === 'km' ? KC.RK[1] : I18n.t('waningShort'));
+        const dow = d.getDay();
+        const kind = HL ? HL.classifyDate(d) : null;
+        const sil = I18n.getSilDays() && KC.silDayFromKhmer(lun.km, lun.kd, d.getFullYear());
+        const ovu = HT && HT.isEnabled() && HT.getActiveProfile() && HT.getDayInfo(d).kind === 'ovulation';
+        const isSel = _selectedDate && _selectedDate.y === d.getFullYear() && _selectedDate.m === d.getMonth() && _selectedDate.d === d.getDate();
+        const cls = ['fm-day',
+          d.getMonth() !== month ? 'is-out' : '',
+          d.toDateString() === todayStr ? 'is-today' : '',
+          isSel ? 'is-selected' : '',
+          dow === 0 || kind === 'public' ? 'is-red' : dow === 6 ? 'is-blue' : ''].filter(Boolean).join(' ');
+        const marks = (sil ? `<i class="fm-mark fm-mark--sil${sil.major ? '' : ' is-minor'}"></i>` : '') +
+                      (ovu ? '<i class="fm-mark fm-mark--ovu"></i>' : '');
+        cells += `<button type="button" class="${cls}" data-y="${d.getFullYear()}" data-m="${d.getMonth()}" data-d="${d.getDate()}">
+          <span class="fm-num">${_gday(d.getDate())}</span>
+          <span class="fm-lunar">${_num(kd)} ${escapeHtml(wax)}</span>
+          ${marks ? `<span class="fm-marks">${marks}</span>` : ''}
+          ${hidden[i] ? `<span class="fm-more">+${_num(hidden[i])}</span>` : ''}
+        </button>`;
+      }
+      const bars = parts.filter(p => p.lane < _FULL_LANES).map(p => {
+        const cut = (dayIdx(p.sg.start) < p.a ? ' cut-l' : '') + (dayIdx(p.sg.end) > p.b ? ' cut-r' : '');
+        return `<span class="fm-bar fm-bar--${p.sg.kind}${cut}" style="grid-column:${p.a - w0 + 1} / span ${p.b - p.a + 1};grid-row:${p.lane + 1}">${escapeHtml(p.sg.name)}</span>`;
+      }).join('');
+      html += `<div class="fm-week"><div class="fm-days">${cells}</div><div class="fm-bars">${bars}</div></div>`;
+    }
+    el.innerHTML = html;
   }
 
   // === Render main calendar grid ===
@@ -1249,7 +1336,7 @@ const KhCal = (() => {
     }
 
     gridEl.innerHTML = html;
-    if (_view === 'full') _addCellTags(gridEl, lang);
+    if (_view === 'full') _renderFull();
     if (_view === 'week') _renderWeek();
     if (_view === 'year') _renderYear();
 
@@ -2318,6 +2405,15 @@ const KhCal = (() => {
       document.addEventListener('click', () => { if (!viewMenu.hidden) _closeViewMenu(); });
       window.addEventListener('resize', _closeViewMenu);
     }
+    const fullEl = document.getElementById('cal-full');
+    if (fullEl) {
+      fullEl.addEventListener('click', (e) => {
+        const day = e.target.closest('.fm-day');
+        if (day) _showDetail(+day.dataset.y, +day.dataset.m, +day.dataset.d);
+      });
+      fullEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      fullEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
     const weekEl = document.getElementById('cal-week');
     if (weekEl) {
       weekEl.addEventListener('click', (e) => {
@@ -2406,7 +2502,7 @@ const KhCal = (() => {
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, .wk-day, #cal-today-footer, #cal-today-btn')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, .wk-day, .fm-day, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

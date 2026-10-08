@@ -3662,7 +3662,10 @@ html { background-color: #0a0c14; }
 
 /* Which blocks each view shows */
 .cal-week, .cal-year { display: none; }
-.cal-app.view-full .month-events { display: none; }
+.cal-full { display: none; }
+.cal-app.view-full .month-events,
+.cal-app.view-full .cal-grid { display: none; }
+.cal-app.view-full .cal-full { display: flex; }
 .cal-app.view-week .cal-weekdays,
 .cal-app.view-week .cal-grid,
 .cal-app.view-week .month-events,
@@ -3671,28 +3674,6 @@ html { background-color: #0a0c14; }
 .cal-app.view-year .month-events { display: none; }
 .cal-app.view-week .cal-week,
 .cal-app.view-year .cal-year { display: block; }
-
-/* ---------- Full month: tall cells with event names ---------- */
-.cal-app.view-full .cal-grid {
-  flex: 1 1 auto; min-height: 0;
-  grid-auto-rows: minmax(0, 1fr); align-content: stretch;
-  padding-bottom: 10px;
-}
-.cal-app.view-full .cal-cell {
-  aspect-ratio: auto; min-height: 0;
-  justify-content: flex-start; padding: 5px 2px 3px; overflow: hidden;
-}
-.cal-tags { display: flex; flex-direction: column; gap: 2px; width: 100%; margin-top: 3px; position: relative; z-index: 1; }
-.cal-tag {
-  display: block; width: 100%; padding: 0 3px; border-radius: 4px;
-  font-size: 8.5px; font-weight: 600; line-height: 1.55;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left;
-}
-.cal-tag--pub { background: rgba(220,38,38,0.12); color: #DC2626; }
-.cal-tag--obs { background: rgba(184,137,46,0.14); color: #9A6B12; }
-.cal-cell.today .cal-tag { background: rgba(255,255,255,0.22); color: #fff; }
-:root:not([data-theme="light"]) .cal-tag--pub { color: #F87171; }
-:root:not([data-theme="light"]) .cal-tag--obs { color: #E8B25C; }
 
 /* ---------- Week: one row per day ---------- */
 .cal-week {
@@ -3729,27 +3710,107 @@ html { background-color: #0a0c14; }
 .wk-ev.ev-row--observance { --tone: var(--kh-gold); --tone-bg: rgba(212,168,74,0.14); color: #9A6B12; }
 :root:not([data-theme="light"]) .wk-ev.ev-row--observance { color: #E8B25C; }
 
-/* ---------- Year: 12 mini months ---------- */
+
+/* =========================================================
+   FULL MONTH — hairline grid, number + lunar day at the top of
+   each cell, events as bars across the days they cover.
+   ========================================================= */
+.cal-full {
+  flex: 1 1 auto; min-height: 0; flex-direction: column;
+  margin: 0 -2px 8px; border-top: 1px solid var(--kh-border-strong);
+  touch-action: pan-y;
+}
+.fm-week { position: relative; flex: 1 1 0; min-height: 64px; border-bottom: 1px solid var(--kh-border); }
+.fm-days { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.fm-day {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding: 4px 0 0; border: 0; border-left: 1px solid var(--kh-border);
+  background: transparent; color: var(--kh-text); font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fm-day:first-child { border-left: 0; }
+.fm-day:active { background: var(--kh-primary-glow); }
+.fm-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14.5px; font-weight: 700; line-height: 1;
+}
+.fm-day.is-red .fm-num { color: var(--kh-red); }
+.fm-day.is-blue .fm-num { color: var(--kh-primary); }
+.fm-day.is-today .fm-num { background: #059669; color: #fff; }
+.fm-day.is-selected:not(.is-today) .fm-num { box-shadow: inset 0 0 0 1.5px var(--kh-primary); }
+.fm-lunar { font-size: 8.5px; color: var(--kh-text-muted); line-height: 1.3; white-space: nowrap; }
+.fm-day.is-out { opacity: 0.35; }
+.fm-marks { position: absolute; top: 5px; right: 3px; display: flex; flex-direction: column; gap: 2px; }
+.fm-mark { display: block; width: 8px; height: 8px; }
+.fm-mark--sil { background-color: var(--kh-gold); -webkit-mask: var(--kh-sil-icon) center / contain no-repeat; mask: var(--kh-sil-icon) center / contain no-repeat; }
+.fm-mark--sil.is-minor { opacity: 0.45; }
+.fm-mark--ovu { border-radius: 50%; background: #f59e0b; width: 6px; height: 6px; margin: 1px; }
+.fm-more {
+  position: absolute; bottom: 2px; left: 0; right: 0; text-align: center;
+  font-size: 9px; font-weight: 700; color: var(--kh-text-muted);
+}
+.fm-bars {
+  position: absolute; left: 0; right: 0; top: 42px;
+  display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 15px; row-gap: 2px;
+  pointer-events: none;
+}
+.fm-bar {
+  margin: 0 2px; padding: 0 4px; border-radius: 4px; min-width: 0;
+  font-size: 9px; font-weight: 700; line-height: 15px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--bar-bg); color: var(--bar-fg);
+}
+.fm-bar.cut-l { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.fm-bar.cut-r { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fm-bar--public     { --bar-bg: #EF4444; --bar-fg: #fff; }
+.fm-bar--observance { --bar-bg: rgba(184,137,46,0.16); --bar-fg: #8A6410; }
+.fm-bar--period     { --bar-bg: #F472B6; --bar-fg: #fff; }
+.fm-bar--predicted  { --bar-bg: transparent; --bar-fg: #DB2777; box-shadow: inset 0 0 0 1px rgba(219,39,119,0.6); }
+.fm-bar--fertile    { --bar-bg: rgba(34,197,94,0.15); --bar-fg: #15803D; }
+:root:not([data-theme="light"]) .fm-bar--observance { --bar-bg: rgba(232,178,92,0.18); --bar-fg: #E8B25C; }
+:root:not([data-theme="light"]) .fm-bar--fertile    { --bar-bg: rgba(74,222,128,0.16); --bar-fg: #4ADE80; }
+:root:not([data-theme="light"]) .fm-bar--predicted  { --bar-fg: #F472B6; }
+
+/* =========================================================
+   YEAR — twelve open mini months (no boxes); month name bold,
+   the current month in green; today a filled circle, public
+   holidays red, observances gold.
+   ========================================================= */
 .cal-year {
   flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  margin-top: 10px; padding-bottom: 12px;
+  margin-top: 6px; padding: 4px 2px 12px; touch-action: pan-y;
 }
-.cal-app.view-year .cal-year { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; }
+.cal-app.view-year .cal-year {
+  display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 14px; row-gap: 14px; align-content: start;
+}
 .yr-month {
-  padding: 8px 6px 7px; border-radius: 14px; text-align: center;
-  background: var(--kh-card-bg); border: 1px solid var(--kh-border-strong);
-  color: var(--kh-text); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  padding: 4px 2px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--kh-text); font: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
-[data-theme="light"] .yr-month { background: #fff; border-color: rgba(0,0,0,0.07); }
-.yr-month.is-current { border-color: #059669; box-shadow: 0 0 0 1px #059669; }
-.yr-name { display: block; font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.yr-month:active { background: var(--kh-primary-glow); }
+.yr-name { display: block; font-size: 15px; font-weight: 800; padding: 0 2px 4px; line-height: 1.5; }
 .yr-month.is-current .yr-name { color: #059669; }
-.yr-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 1px; }
-.yr-wd { font-size: 6.5px; color: var(--kh-text-muted); line-height: 1.6; overflow: hidden; white-space: nowrap; }
+.yr-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; text-align: center; }
+.yr-wd { font-size: 7.5px; font-weight: 600; color: var(--kh-text-muted); line-height: 1.7; overflow: hidden; white-space: nowrap; }
 .yr-wd.is-sun { color: var(--kh-red); }
-.yr-d { font-size: 8.5px; line-height: 13px; height: 13px; border-radius: 50%; color: var(--kh-text-secondary); }
-.yr-d.is-sun { color: var(--kh-red); }
-.yr-d.is-obs { color: #B8892E; font-weight: 700; }
-.yr-d.is-hol { color: #fff; background: #EF4444; font-weight: 700; border-radius: 4px; }
-.yr-d.is-today { color: #fff; background: #059669; font-weight: 800; border-radius: 4px; }
+.yr-d {
+  justify-self: center; width: 13px; height: 13px; border-radius: 50%;
+  font-size: 8px; font-weight: 600; line-height: 13px; color: var(--kh-text-secondary);
+}
+.yr-d.is-sun { color: rgba(220,38,38,0.75); }
+.yr-d.is-obs { color: #B8892E; font-weight: 800; }
+.yr-d.is-hol { color: #DC2626; font-weight: 800; }
+.yr-d.is-today { background: #059669; color: #fff; font-weight: 800; }
+:root:not([data-theme="light"]) .yr-d.is-hol { color: #F87171; }
+:root:not([data-theme="light"]) .yr-d.is-obs { color: #E8B25C; }
+.cal-app.view-year .cal-year { column-gap: 10px; }
+.yr-d { width: 100%; max-width: 15px; border-radius: 7px; }
+/* Khmer digits run ~40% wider; at 8px two of them touched the next date */
+.cal-year--km-digits .yr-d { font-size: 7.2px; letter-spacing: -0.4px; max-width: none; }
+.cal-year--km-digits .yr-d.is-today { justify-self: center; width: 15px; }
 
+/* Buttons centre their content vertically; months with five weeks floated
+   lower than six-week ones, so pin the content to the top */
+.yr-month { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
