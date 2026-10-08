@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khmer-calendar-v148';
+const CACHE_NAME = 'khmer-calendar-v149';
 const ASSETS = [
   './',
   './index.html',
@@ -23,10 +23,10 @@ const ASSETS = [
   './icons/icon-64.png',
   // The app icons and manifest carry ?v=<build> in index.html/manifest.json
   // so phones re-fetch them; cache them under the same URLs
-  './icons/icon-192.png?v=155',
-  './icons/icon-512.png?v=155',
-  './icons/apple-touch-icon.png?v=155',
-  './manifest.json?v=155'
+  './icons/icon-192.png?v=156',
+  './icons/icon-512.png?v=156',
+  './icons/apple-touch-icon.png?v=156',
+  './manifest.json?v=156'
 ];
 
 // Install: cache all assets. cache:'reload' skips the browser's HTTP cache,
