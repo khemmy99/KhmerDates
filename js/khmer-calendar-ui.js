@@ -10,7 +10,7 @@ const KhCal = (() => {
   const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
-  const APP_VERSION = '1.5.5';
+  const APP_VERSION = '1.5.6';
 
   function escapeHtml(str) {
     const d = document.createElement('div');
