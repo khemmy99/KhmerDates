@@ -3989,3 +3989,49 @@ html { background-color: #0a0c14; }
 .baby-name.is-suited .baby-name-km { color: #6366F1; }
 .baby-origins { margin-top: 12px; }
 
+/* =========================================================
+   DATE PICKER — field button + calendar modal
+   ========================================================= */
+.dp-field {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated);
+  color: var(--kh-text); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-align: left;
+}
+[data-theme="light"] .dp-field { background: #fff; border-color: rgba(0,0,0,0.12); }
+.dp-field svg { flex: none; color: #6366F1; }
+.dp-field.is-empty { color: var(--kh-text-muted); font-weight: 500; }
+.dp-overlay { z-index: 1200; }
+.dp-panel { padding: 14px 14px 10px; }
+.dp-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+.dp-title {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 10px;
+  border: 0; background: transparent; color: var(--kh-text); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer;
+}
+.dp-title:active { background: var(--kh-primary-glow); }
+.dp-days { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; }
+.dp-wd { text-align: center; font-size: 11px; color: var(--kh-text-muted); padding: 2px 0 6px; }
+.dp-wd.is-sun { color: var(--kh-red); }
+.dp-day { height: 40px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; font: inherit; color: var(--kh-text); cursor: pointer; padding: 0; }
+.dp-day span { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14.5px; }
+.dp-day.is-sun span { color: var(--kh-red); }
+.dp-day.is-today span { box-shadow: inset 0 0 0 1.5px #6366F1; }
+.dp-day.is-sel span { background: #6366F1; color: #fff; font-weight: 800; box-shadow: none; }
+.dp-day.is-off, .dp-cell.is-off { opacity: 0.3; cursor: default; }
+.dp-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 0; }
+.dp-cell {
+  padding: 13px 4px; border-radius: 12px; border: 1px solid var(--kh-border-strong);
+  background: transparent; color: var(--kh-text); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+[data-theme="light"] .dp-cell { border-color: rgba(0,0,0,0.10); }
+.dp-cell.is-sel { background: #6366F1; border-color: #6366F1; color: #fff; }
+.dp-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* Chips keep their natural width; a row that is too long for the screen
+   (longer labels in English) scrolls sideways instead of overlapping */
+.ev-chips { overflow-x: auto; scrollbar-width: none; }
+.ev-chips::-webkit-scrollbar { display: none; }
+.ev-chips .ev-chip,
+.ev-chips--five .ev-chip,
+.ev-chips--card .ev-chip { flex: 1 0 auto; white-space: nowrap; }
+

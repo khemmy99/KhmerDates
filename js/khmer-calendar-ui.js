@@ -437,29 +437,100 @@ const KhCal = (() => {
   function _getMotherBirth() { try { return localStorage.getItem(MOTHER_BIRTH_KEY) || ''; } catch (e) { return ''; } }
   function _setMotherBirth(v) { try { localStorage.setItem(MOTHER_BIRTH_KEY, v); } catch (e) { /* private mode */ } }
 
-  /** Day / month / year selects (Khmer-friendly, no US-ordered native picker). */
-  function _dateSelects(id, ymd, minY, maxY) {
-    const [y, m, d] = ymd ? ymd.split('-').map(Number) : [0, 0, 0];
-    const opt = (v, label, sel) => `<option value="${v}"${sel ? ' selected' : ''}>${escapeHtml(label)}</option>`;
-    let days = opt('', I18n.getLang() === 'km' ? 'ថ្ងៃ' : I18n.getLang() === 'zh' ? '日' : 'Day', !d);
-    for (let i = 1; i <= 31; i++) days += opt(i, _num(i), i === d);
-    let months = opt('', I18n.getLang() === 'km' ? 'ខែ' : I18n.getLang() === 'zh' ? '月' : 'Month', !m);
-    for (let i = 1; i <= 12; i++) months += opt(i, I18n.gregMonth(i - 1), i === m);
-    let years = opt('', I18n.getLang() === 'km' ? 'ឆ្នាំ' : I18n.getLang() === 'zh' ? '年' : 'Year', !y);
-    for (let i = maxY; i >= minY; i--) years += opt(i, _num(i), i === y);
-    return `<div class="baby-date" data-date="${id}">
-      <select data-part="d" aria-label="day">${days}</select>
-      <select data-part="m" aria-label="month">${months}</select>
-      <select data-part="y" aria-label="year">${years}</select>
-    </div>`;
+  // ----- Date picker: one calendar for every date field in the baby tab -----
+  const _ICON_CAL_SM = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
+  let _dp = null; // { y, m, sel, mode: 'days'|'months'|'years', base, min, max, onPick }
+
+  /** A button showing the date (or a prompt); opens the picker. */
+  function _dateField(id, ymd) {
+    return `<button type="button" class="dp-field${ymd ? '' : ' is-empty'}" data-date="${id}">
+      <span>${escapeHtml(ymd ? _fmtYmd(ymd, true) : I18n.t('pickDate'))}</span>${_ICON_CAL_SM}
+    </button>`;
   }
 
-  function _readDateSelects(wrap) {
-    const v = p => +wrap.querySelector(`[data-part="${p}"]`).value;
-    const y = v('y'), m = v('m'), d = v('d');
-    if (!y || !m || !d) return '';
-    const last = new Date(y, m, 0).getDate();
-    return _ymdOf(new Date(y, m - 1, Math.min(d, last)));
+  function _openDatePick(opts) {
+    const start = opts.value ? _parseYmd(opts.value) : (opts.initial || new Date());
+    _dp = { y: start.getFullYear(), m: start.getMonth(), sel: opts.value || '', mode: 'days',
+            base: start.getFullYear() - 5, min: opts.min, max: opts.max, onPick: opts.onPick };
+    _renderDatePick();
+    document.getElementById('date-pick-overlay').classList.add('open');
+  }
+
+  function _closeDatePick() {
+    const ov = document.getElementById('date-pick-overlay');
+    if (ov) ov.classList.remove('open');
+    _dp = null;
+  }
+
+  function _renderDatePick() {
+    const el = document.getElementById('date-pick-panel');
+    if (!el || !_dp) return;
+    const lang = I18n.getLang();
+    const minY = _dp.min.getFullYear(), maxY = _dp.max.getFullYear();
+    const chev = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const head = (title, prevOk, nextOk) => `<div class="dp-head">
+        <button type="button" class="hl-nav" data-dp="prev"${prevOk ? '' : ' disabled'} aria-label="Previous">${chev('M15 18l-6-6 6-6')}</button>
+        <button type="button" class="dp-title" data-dp="title">${escapeHtml(title)}${_dp.mode === 'days' ? chev('m6 9 6 6 6-6') : ''}</button>
+        <button type="button" class="hl-nav" data-dp="next"${nextOk ? '' : ' disabled'} aria-label="Next">${chev('M9 18l6-6-6-6')}</button>
+      </div>`;
+    let body = '', title = '', prevOk = true, nextOk = true;
+
+    if (_dp.mode === 'years') {
+      title = `${_num(_dp.base)} – ${_num(_dp.base + 11)}`;
+      prevOk = _dp.base > minY; nextOk = _dp.base + 11 < maxY;
+      for (let y = _dp.base; y < _dp.base + 12; y++) {
+        const off = y < minY || y > maxY;
+        body += `<button type="button" class="dp-cell${y === _dp.y ? ' is-sel' : ''}${off ? ' is-off' : ''}" data-dp-year="${y}"${off ? ' disabled' : ''}>${_num(y)}</button>`;
+      }
+      body = `<div class="dp-grid3">${body}</div>`;
+    } else if (_dp.mode === 'months') {
+      title = _num(_dp.y);
+      prevOk = _dp.y > minY; nextOk = _dp.y < maxY;
+      for (let m = 0; m < 12; m++) {
+        const off = new Date(_dp.y, m + 1, 0) < _dp.min || new Date(_dp.y, m, 1) > _dp.max;
+        body += `<button type="button" class="dp-cell${m === _dp.m ? ' is-sel' : ''}${off ? ' is-off' : ''}" data-dp-month="${m}"${off ? ' disabled' : ''}>${escapeHtml(lang === 'km' ? I18n.gregMonth(m) : I18n.gregMonthShort(m))}</button>`;
+      }
+      body = `<div class="dp-grid3">${body}</div>`;
+    } else {
+      title = lang === 'zh' ? `${_dp.y}年${_dp.m + 1}月` : `${I18n.gregMonth(_dp.m)} ${_num(_dp.y)}`;
+      prevOk = new Date(_dp.y, _dp.m, 1) > _dp.min;
+      nextOk = new Date(_dp.y, _dp.m + 1, 1) <= _dp.max;
+      const T = I18n.translations[lang] || I18n.translations.km;
+      const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+      const todayYmd = _ymdOf(new Date());
+      body = order.map(d => `<span class="dp-wd${d === 0 ? ' is-sun' : ''}">${escapeHtml(T.weekdaysShort[d])}</span>`).join('');
+      body += '<span></span>'.repeat((new Date(_dp.y, _dp.m, 1).getDay() - order[0] + 7) % 7);
+      for (let d = 1, n = new Date(_dp.y, _dp.m + 1, 0).getDate(); d <= n; d++) {
+        const dt = new Date(_dp.y, _dp.m, d), ymd = _ymdOf(dt);
+        const off = dt < _dp.min || dt > _dp.max;
+        const cls = ['dp-day', ymd === _dp.sel ? 'is-sel' : '', ymd === todayYmd ? 'is-today' : '', off ? 'is-off' : '', dt.getDay() === 0 ? 'is-sun' : ''].filter(Boolean).join(' ');
+        body += `<button type="button" class="${cls}" data-dp-day="${ymd}"${off ? ' disabled' : ''}><span>${_num(d)}</span></button>`;
+      }
+      body = `<div class="dp-days">${body}</div>`;
+    }
+    el.innerHTML = head(title, prevOk, nextOk) + body +
+      `<div class="dp-foot"><button type="button" class="cal-modal-btn" data-dp="cancel">${escapeHtml(I18n.t('cancel'))}</button></div>`;
+  }
+
+  function _onDatePickClick(e) {
+    if (!_dp) return;
+    const t = e.target.closest('[data-dp], [data-dp-day], [data-dp-month], [data-dp-year]');
+    if (!t || t.disabled) return;
+    if (t.dataset.dpDay) { const cb = _dp.onPick, v = t.dataset.dpDay; _closeDatePick(); cb(v); return; }
+    if (t.dataset.dpMonth) { _dp.m = +t.dataset.dpMonth; _dp.mode = 'days'; return _renderDatePick(); }
+    if (t.dataset.dpYear) { _dp.y = +t.dataset.dpYear; _dp.mode = 'months'; return _renderDatePick(); }
+    const act = t.dataset.dp;
+    if (act === 'cancel') return _closeDatePick();
+    if (act === 'title') {
+      _dp.mode = _dp.mode === 'days' ? 'years' : 'days';
+      _dp.base = _dp.y - 5;
+      return _renderDatePick();
+    }
+    const dir = act === 'next' ? 1 : -1;
+    if (_dp.mode === 'years') _dp.base += 12 * dir;
+    else if (_dp.mode === 'months') _dp.y += dir;
+    else { const d = new Date(_dp.y, _dp.m + dir, 1); _dp.y = d.getFullYear(); _dp.m = d.getMonth(); }
+    _renderDatePick();
   }
 
   const _ICON_MALE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="6"/><path d="M14.5 9.5 20 4M15 4h5v5"/></svg>';
@@ -514,11 +585,11 @@ const KhCal = (() => {
       </div>
       <div class="settings-section">
         <div class="settings-label">${escapeHtml(I18n.t('motherBirth'))}</div>
-        ${_dateSelects('birth', birth, 1940, now.getFullYear() - 10)}
+        ${_dateField('birth', birth)}
       </div>
       <div class="settings-section">
         <div class="settings-label">${escapeHtml(I18n.t('conceptionDate'))}</div>
-        ${_dateSelects('check', _babyCheck, now.getFullYear() - 2, now.getFullYear() + 3)}
+        ${_dateField('check', _babyCheck)}
         ${result}
       </div>
       <div class="settings-section">
@@ -526,10 +597,12 @@ const KhCal = (() => {
         ${(() => {
           const birthChild = _lsGet(CHILD_BIRTH_KEY, '');
           const g = _childGroup();
-          const dayName = g ? (I18n.getLang() === 'km' ? 'ថ្ងៃ' + KC.KD7[g.dow] : _weekdayName(g.dow)) : '';
+          const dayName = g ? (I18n.getLang() === 'km' ? 'ថ្ងៃ' + KC.KD7[g.dow]
+            : I18n.getLang() === 'zh' ? '星期' + I18n.weekday(g.dow)
+            : new Date(2026, 9, 11 + g.dow).toLocaleDateString('en-US', { weekday: 'long' })) : '';
           const letters = g ? (g.key === 0 ? g.letters.join(' ') + ' …' : g.letters.join(' ')) : '';
           return `<div class="baby-sub">${escapeHtml(I18n.t('childBirth'))}</div>
-            ${_dateSelects('child', birthChild, now.getFullYear() - 18, now.getFullYear() + 2)}
+            ${_dateField('child', birthChild)}
             ${g && g.dow === 3 ? `<label class="baby-check"><input type="checkbox" id="baby-wed-night"${g.key === 'wedNight' ? ' checked' : ''}> ${escapeHtml(I18n.t('wedNight'))}</label>` : ''}
             ${g ? `<div class="baby-letters"><span>${escapeHtml(I18n.t('dayLetters').replace('{day}', dayName))}</span><b>${escapeHtml(letters)}</b></div>
               <label class="baby-check"><input type="checkbox" id="baby-match-day"${_babyMatchDay ? ' checked' : ''}> ${escapeHtml(I18n.t('matchBirthday'))}</label>`
@@ -768,9 +841,9 @@ const KhCal = (() => {
     const chips = [
       ['all', 'filterAll', _ICON_GRID],
       ['public', 'filterPublic', _ICON_DAYOFF],
-      ['observance', 'filterObservance', _ICON_FLAG],
+      ['observance', 'chipObservance', _ICON_FLAG],
     ];
-    if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
+    if (I18n.getSilDays()) chips.push(['sil', 'chipSil', _ICON_SIL]);
     if (HT && HT.isEnabled() && HT.getActiveProfile()) chips.push(['cycle', 'healthPeriod', _ICON_DROP]);
     if (!chips.some(c => c[0] === current)) current = 'all';
     el.classList.toggle('ev-chips--five', chips.length > 4);
@@ -2121,8 +2194,15 @@ const KhCal = (() => {
 
   function _refreshAll() {
     I18n.updateStaticTexts();
+    _closeViewMenu();
     _renderWeekdays();
     _renderCalendar();
+    // Panels that build their text in JS follow the language change too
+    if (HT) { _refreshHealthSummary(); _refreshPeriodHistory(); }
+    if (document.querySelector('.health-tab.is-active[data-health-tab="baby"]')) _renderBaby();
+    const evOverlay = document.getElementById('cal-events-overlay');
+    if (evOverlay && evOverlay.classList.contains('open')) _renderEventsList();
+    if (_dp) _renderDatePick();
     if (_selectedDate) {
       _showDetail(_selectedDate.y, _selectedDate.m, _selectedDate.d);
     }
@@ -2142,7 +2222,13 @@ const KhCal = (() => {
     const healthOverlay = document.getElementById('cal-health-overlay');
     const healthClose   = document.getElementById('health-overlay-close');
     if (healthBtn && healthOverlay) {
-      healthBtn.addEventListener('click', () => healthOverlay.classList.add('open'));
+      healthBtn.addEventListener('click', () => {
+        // Repaint the active tab, so dates and labels follow the current
+        // language and today's date
+        const babyOn = document.querySelector('.health-tab.is-active[data-health-tab="baby"]');
+        if (babyOn) _renderBaby();
+        healthOverlay.classList.add('open');
+      });
     }
     if (healthClose && healthOverlay) {
       healthClose.addEventListener('click', () => healthOverlay.classList.remove('open'));
@@ -2577,12 +2663,39 @@ const KhCal = (() => {
     // (Horizontal swipe to change month is already wired below via
     //  _onTouchStart / _onTouchEnd on the calendar grid.)
 
+    const dpOverlay = document.getElementById('date-pick-overlay');
+    if (dpOverlay) {
+      dpOverlay.addEventListener('click', (e) => {
+        if (e.target === dpOverlay) { _closeDatePick(); return; }
+        _onDatePickClick(e);
+      });
+    }
+
     // Health panel: period / boy-or-girl tabs
     document.querySelectorAll('.health-tab').forEach(b =>
       b.addEventListener('click', () => _setHealthTab(b.dataset.healthTab)));
     const babyEl = document.getElementById('health-baby');
     if (babyEl) {
       babyEl.addEventListener('click', (e) => {
+        const field = e.target.closest('.dp-field');
+        if (field) {
+          const now = new Date();
+          const y = now.getFullYear();
+          const which = field.dataset.date;
+          const ranges = {
+            birth: [new Date(1940, 0, 1), new Date(y - 10, 11, 31), new Date(y - 28, 0, 1)],
+            check: [new Date(y - 2, 0, 1), new Date(y + 3, 11, 31), now],
+            child: [new Date(y - 18, 0, 1), new Date(y + 2, 11, 31), now]
+          }[which];
+          const current = which === 'birth' ? _getMotherBirth() : which === 'child' ? _lsGet(CHILD_BIRTH_KEY, '') : _babyCheck;
+          _openDatePick({ value: current, min: ranges[0], max: ranges[1], initial: ranges[2], onPick: (v) => {
+            if (which === 'birth') _setMotherBirth(v);
+            else if (which === 'child') _lsSet(CHILD_BIRTH_KEY, v);
+            else _babyCheck = v;
+            _renderBaby();
+          } });
+          return;
+        }
         const origin = e.target.closest('.baby-origin');
         if (origin) {
           _babyNameOrigin = origin.dataset.origin;
@@ -2610,14 +2723,6 @@ const KhCal = (() => {
       babyEl.addEventListener('change', (e) => {
         if (e.target.id === 'baby-wed-night') { _lsSet(CHILD_NIGHT_KEY, e.target.checked ? '1' : '0'); _renderBaby(); return; }
         if (e.target.id === 'baby-match-day') { _babyMatchDay = e.target.checked; _renderBabyNames(); return; }
-        const wrap = e.target.closest('.baby-date');
-        if (!wrap) return;
-        const v = _readDateSelects(wrap);
-        if (!v) return;
-        if (wrap.dataset.date === 'birth') _setMotherBirth(v);
-        else if (wrap.dataset.date === 'child') _lsSet(CHILD_BIRTH_KEY, v);
-        else _babyCheck = v;
-        _renderBaby();
       });
     }
 
