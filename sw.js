@@ -1,10 +1,11 @@
-const CACHE_NAME = 'khmer-calendar-v139';
+const CACHE_NAME = 'khmer-calendar-v141';
 const ASSETS = [
   './',
   './index.html',
   './css/khmer-calendar.css',
   './js/khmer-calendar.js',
   './js/chinese-calendar.js',
+  './js/baby-gender.js',
   './js/holidays.js',
   './js/daily-block.js',
   './js/health-tracker.js',

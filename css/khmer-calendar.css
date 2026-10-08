@@ -3877,3 +3877,60 @@ html { background-color: #0a0c14; }
 .fm-lunar { font-size: 8px; line-height: 1.3; }
 .fm-bars { bottom: 4px; grid-auto-rows: 3px; row-gap: 2px; }
 .fm-bar { border-radius: 2px; }
+
+
+/* =========================================================
+   HEALTH PANEL TABS + ផ្សំផ្គុំកូនប្រុសស្រី
+   ========================================================= */
+.health-tabs {
+  display: flex; gap: 6px; padding: 10px 16px 4px;
+  position: sticky; top: 57px; z-index: 2; background: var(--kh-card-bg);
+}
+.health-tab {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 8px; border-radius: 12px; border: 0;
+  background: var(--kh-bg-subtle); color: var(--kh-text-secondary);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+[data-theme="light"] .health-tab { background: #F1F5F9; color: #475569; }
+.health-tab.is-active { background: #f04e7a; color: #fff; }
+.health-tab[data-health-tab="baby"].is-active { background: #6366F1; }
+.health-tab-panel { display: none; }
+.health-tab-panel.is-active { display: block; }
+
+.baby-title { font-size: 17px; font-weight: 800; color: var(--kh-text); }
+.baby-intro, .baby-hint { font-size: 12.5px; color: var(--kh-text-muted); line-height: 1.6; margin-top: 4px; }
+.baby-hint { margin: -2px 0 8px; }
+.baby-date { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 6px; margin-top: 6px; }
+.baby-date select {
+  width: 100%; padding: 9px 8px; border-radius: 10px; font: inherit; font-size: 14px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated); color: var(--kh-text);
+}
+[data-theme="light"] .baby-date select { background: #fff; border-color: rgba(0,0,0,0.12); }
+.baby-result {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px;
+  border-radius: 14px; background: var(--kh-bg-subtle);
+}
+[data-theme="light"] .baby-result { background: #F8FAFC; border: 1px solid rgba(0,0,0,0.06); }
+.baby-result .baby-pill { font-size: 18px; padding: 6px 16px; }
+.baby-meta { font-size: 12.5px; color: var(--kh-text-secondary); line-height: 1.5; }
+.baby-empty { margin-top: 10px; font-size: 13px; color: var(--kh-text-muted); }
+.baby-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 11px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  background: var(--kh-bg-subtle); color: var(--kh-text-muted);
+}
+.baby-pill--boy  { background: rgba(59,130,246,0.14); color: #2563EB; }
+.baby-pill--girl { background: rgba(236,72,153,0.14); color: #DB2777; }
+.baby-plan { display: flex; flex-direction: column; }
+.baby-row {
+  display: flex; align-items: center; gap: 10px; padding: 9px 2px;
+  border-top: 1px solid var(--kh-border);
+}
+.baby-row:first-child { border-top: 0; }
+.baby-m { flex: none; width: 64px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; line-height: 1.35; }
+.baby-m small { font-size: 11px; font-weight: 500; color: var(--kh-gold); }
+.baby-range { flex: 1; min-width: 0; font-size: 12.5px; color: var(--kh-text-secondary); line-height: 1.5; display: flex; flex-direction: column; }
+.baby-fertile { display: inline-flex; align-items: center; gap: 4px; color: #16a34a; font-weight: 600; }
+.baby-fertile svg { width: 13px; height: 13px; }
+.baby-result .baby-pill svg { width: 18px; height: 18px; }

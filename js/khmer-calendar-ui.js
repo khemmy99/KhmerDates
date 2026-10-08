@@ -375,6 +375,117 @@ const KhCal = (() => {
     bodyEl.innerHTML = _eventRowsHtml(rows, today, lang, month);
   }
 
+  // ----- ផ្សំផ្គុំកូនប្រុសស្រី (inside the health panel) -----
+  const BG = (typeof BabyGender !== 'undefined') ? BabyGender : null;
+  const MOTHER_BIRTH_KEY = 'kh-cal-mother-birth';
+  let _babyCheck = null; // conception date being checked (YYYY-MM-DD)
+
+  const _ymdOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const _parseYmd = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+  function _getMotherBirth() { try { return localStorage.getItem(MOTHER_BIRTH_KEY) || ''; } catch (e) { return ''; } }
+  function _setMotherBirth(v) { try { localStorage.setItem(MOTHER_BIRTH_KEY, v); } catch (e) { /* private mode */ } }
+
+  /** Day / month / year selects (Khmer-friendly, no US-ordered native picker). */
+  function _dateSelects(id, ymd, minY, maxY) {
+    const [y, m, d] = ymd ? ymd.split('-').map(Number) : [0, 0, 0];
+    const opt = (v, label, sel) => `<option value="${v}"${sel ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+    let days = opt('', I18n.getLang() === 'km' ? 'ថ្ងៃ' : I18n.getLang() === 'zh' ? '日' : 'Day', !d);
+    for (let i = 1; i <= 31; i++) days += opt(i, _num(i), i === d);
+    let months = opt('', I18n.getLang() === 'km' ? 'ខែ' : I18n.getLang() === 'zh' ? '月' : 'Month', !m);
+    for (let i = 1; i <= 12; i++) months += opt(i, I18n.gregMonth(i - 1), i === m);
+    let years = opt('', I18n.getLang() === 'km' ? 'ឆ្នាំ' : I18n.getLang() === 'zh' ? '年' : 'Year', !y);
+    for (let i = maxY; i >= minY; i--) years += opt(i, _num(i), i === y);
+    return `<div class="baby-date" data-date="${id}">
+      <select data-part="d" aria-label="day">${days}</select>
+      <select data-part="m" aria-label="month">${months}</select>
+      <select data-part="y" aria-label="year">${years}</select>
+    </div>`;
+  }
+
+  function _readDateSelects(wrap) {
+    const v = p => +wrap.querySelector(`[data-part="${p}"]`).value;
+    const y = v('y'), m = v('m'), d = v('d');
+    if (!y || !m || !d) return '';
+    const last = new Date(y, m, 0).getDate();
+    return _ymdOf(new Date(y, m - 1, Math.min(d, last)));
+  }
+
+  const _ICON_MALE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="6"/><path d="M14.5 9.5 20 4M15 4h5v5"/></svg>';
+  const _ICON_FEMALE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M12 15v7M8.5 18.5h7"/></svg>';
+  const _babyPill = g => g === 'B'
+    ? `<span class="baby-pill baby-pill--boy">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</span>`
+    : `<span class="baby-pill baby-pill--girl">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</span>`;
+
+  function _renderBaby() {
+    const el = document.getElementById('health-baby');
+    if (!el || !BG) return;
+    const now = new Date();
+    const birth = _getMotherBirth();
+    if (!_babyCheck) _babyCheck = _ymdOf(now);
+    const fill = (k, o) => Object.keys(o).reduce((t, x) => t.replace('{' + x + '}', o[x]), I18n.t(k));
+
+    let result = `<div class="baby-empty">${escapeHtml(I18n.t('babyNeedBirth'))}</div>`;
+    let plan = '';
+    if (birth) {
+      const r = BG.predict(_parseYmd(birth), _parseYmd(_babyCheck));
+      result = r.gender
+        ? `<div class="baby-result">${_babyPill(r.gender)}
+             <div class="baby-meta">${escapeHtml(fill('babyAgeMonth', { age: _num(r.age), month: _num(r.month) }))}</div></div>`
+        : `<div class="baby-empty">${escapeHtml(I18n.t('babyOutOfChart'))} · ${escapeHtml(fill('babyAgeMonth', { age: _num(r.age), month: _num(r.month) }))}</div>`;
+
+      // Next 12 lunar months, with the tracker's fertile days when it is on
+      const tracking = HT && HT.isEnabled() && HT.getActiveProfile();
+      const fmt = d => `${_num(d.getDate())} ${I18n.getLang() === 'km' ? I18n.gregMonth(d.getMonth()) : I18n.gregMonthShort(d.getMonth())}`;
+      plan = BG.planMonths(_parseYmd(birth), now, 12).map(m => {
+        let fertile = '';
+        if (tracking) {
+          let fs = null, fe = null;
+          for (let d = new Date(m.start); d <= m.end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+            const k = HT.getDayInfo(d).kind;
+            if (k === 'fertile' || k === 'ovulation') { fs = fs || d; fe = d; }
+          }
+          if (fs) fertile = `<span class="baby-fertile">${_ICON_BABY} ${fmt(fs)}–${fmt(fe)}</span>`;
+        }
+        return `<div class="baby-row${m.gender ? ' baby-row--' + (m.gender === 'B' ? 'boy' : 'girl') : ''}">
+          <span class="baby-m">${escapeHtml(fill('babyLunarMonth', { n: _num(m.month) }))}${m.isLeap ? '*' : ''}<small>${escapeHtml(m.monthName)}</small></span>
+          <span class="baby-range">${fmt(m.start)} – ${fmt(m.end)}${fertile}</span>
+          ${m.gender ? _babyPill(m.gender) : '<span class="baby-pill">—</span>'}
+        </div>`;
+      }).join('');
+    }
+
+    el.innerHTML = `
+      <div class="settings-section">
+        <div class="baby-title">${escapeHtml(I18n.t('babyTitle'))}</div>
+        <div class="baby-intro">${escapeHtml(I18n.t('babyIntro'))}</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('motherBirth'))}</div>
+        ${_dateSelects('birth', birth, 1940, now.getFullYear() - 10)}
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('conceptionDate'))}</div>
+        ${_dateSelects('check', _babyCheck, now.getFullYear() - 2, now.getFullYear() + 3)}
+        ${result}
+      </div>
+      ${plan ? `<div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('babyPlan'))}</div>
+        <div class="baby-hint">${escapeHtml(I18n.t('babyPlanHint'))}</div>
+        <div class="baby-plan">${plan}</div>
+      </div>` : ''}
+      <div class="settings-section"><div class="health-privacy-note">${escapeHtml(I18n.t('babyNote'))}</div></div>`;
+  }
+
+  function _setHealthTab(tab) {
+    document.querySelectorAll('.health-tab').forEach(b => {
+      const on = b.dataset.healthTab === tab;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.health-tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.healthPanel === tab));
+    if (tab === 'baby') _renderBaby();
+  }
+
   // ----- Events page -----
   const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
 
@@ -2388,6 +2499,21 @@ const KhCal = (() => {
     if (titleEl) titleEl.addEventListener('click', _openPicker);
     // (Horizontal swipe to change month is already wired below via
     //  _onTouchStart / _onTouchEnd on the calendar grid.)
+
+    // Health panel: period / boy-or-girl tabs
+    document.querySelectorAll('.health-tab').forEach(b =>
+      b.addEventListener('click', () => _setHealthTab(b.dataset.healthTab)));
+    const babyEl = document.getElementById('health-baby');
+    if (babyEl) {
+      babyEl.addEventListener('change', (e) => {
+        const wrap = e.target.closest('.baby-date');
+        if (!wrap) return;
+        const v = _readDateSelects(wrap);
+        if (!v) return;
+        if (wrap.dataset.date === 'birth') _setMotherBirth(v); else _babyCheck = v;
+        _renderBaby();
+      });
+    }
 
     // View switch
     const viewBtn = document.getElementById('cal-view-btn');

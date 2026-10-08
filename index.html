@@ -68,6 +68,19 @@
           <button type="button" class="settings-close" id="health-overlay-close">&times;</button>
         </div>
 
+        <!-- Two sections: the cycle tracker and the boy-or-girl chart -->
+        <div class="health-tabs" role="tablist">
+          <button type="button" class="health-tab is-active" data-health-tab="period" role="tab" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>
+            <span data-i18n="tabPeriod">រដូវ</span>
+          </button>
+          <button type="button" class="health-tab" data-health-tab="baby" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></svg>
+            <span data-i18n="tabBaby">ផ្សំកូន</span>
+          </button>
+        </div>
+
+        <div class="health-tab-panel is-active" data-health-panel="period">
         <div class="settings-section">
           <div class="settings-row-header">
             <label class="settings-label" for="health-toggle" data-i18n="enableHealthTracking">បើកការតាមដាន</label>
@@ -125,6 +138,11 @@
               ទិន្នន័យរក្សាទុកនៅលើឧបករណ៍របស់អ្នកប៉ុណ្ណោះ មិនបញ្ជូនទៅណាមួយឡើយ។
             </div>
           </div>
+        </div>
+        </div>
+
+        <div class="health-tab-panel" data-health-panel="baby">
+          <div class="baby" id="health-baby"></div>
         </div>
       </div>
     </div>
@@ -523,9 +541,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span data-i18n="today">ថ្ងៃនេះ</span>
       </button>
-      <button class="cal-footer-btn cal-footer-btn--health" id="cal-health-btn" aria-label="Period tracker">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C12 2 5 9 5 14a7 7 0 0 0 14 0c0-5-7-12-7-12z"/></svg>
-        <span data-i18n="periodFooter">រដូវ</span>
+      <button class="cal-footer-btn cal-footer-btn--health" id="cal-health-btn" aria-label="Women's health">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.1a4.9 4.9 0 0 1 7.5 6.5z"/><path d="M12 9.6c1.2 1.4 1.9 2.5 1.9 3.3a1.9 1.9 0 0 1-3.8 0c0-.8.7-1.9 1.9-3.3z"/></svg>
+        <span data-i18n="healthFooter">សុខភាព</span>
       </button>
       <button class="cal-footer-btn" id="cal-events-btn" aria-label="Events">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 14.9 8.48 21.4 9.43 16.7 14.01 17.81 20.48 12 17.42 6.19 20.48 7.3 14.01 2.6 9.43 9.1 8.48 12 2.6"/></svg>
@@ -560,6 +578,7 @@
 
   <script src="js/khmer-calendar.js"></script>
   <script src="js/chinese-calendar.js"></script>
+  <script src="js/baby-gender.js"></script>
   <script src="js/holidays.js"></script>
   <script src="js/daily-block.js"></script>
   <script src="js/health-tracker.js"></script>
