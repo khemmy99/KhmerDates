@@ -4051,3 +4051,12 @@ html { background-color: #0a0c14; }
 }
 .dp-msg { min-height: 18px; font-size: 12px; color: var(--kh-red); margin: 2px 2px 4px; }
 
+
+/* The header bleeds to the screen edge; on phones the app's side padding
+   is 10px, so match it instead of overshooting by 4px */
+@media (max-width: 460px) {
+  .cal-topbar { margin-left: -10px; margin-right: -10px; }
+}
+/* Origin chips wrap when the labels are long (English) */
+.baby-origins { flex-wrap: wrap; }
+.baby-origin { flex: 1 0 auto; }
