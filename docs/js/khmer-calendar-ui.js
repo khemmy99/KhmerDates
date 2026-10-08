@@ -355,8 +355,10 @@ const KhCal = (() => {
     // the month before (Pchum Ben runs Sep -> Oct)
     const first = new Date(year, month, 1);
     const last  = new Date(year, month + 1, 0);
+    _monthFilter = _renderChipRow(document.getElementById('month-events-chips'), _monthFilter);
     const rows = _collectEventRows(year, lang).filter(r => r.start <= last && r.end >= first)
       .concat(_periodRowsFor(year, month))
+      .filter(r => _matchFilter(r, _monthFilter))
       .sort((a, b) => a.start - b.start);
 
     // The extra "today" row repeats a festival already counted
@@ -373,10 +375,341 @@ const KhCal = (() => {
     bodyEl.innerHTML = _eventRowsHtml(rows, today, lang, month);
   }
 
+  // ----- ផ្សំផ្គុំកូនប្រុសស្រី (inside the health panel) -----
+  const BG = (typeof BabyGender !== 'undefined') ? BabyGender : null;
+  const MOTHER_BIRTH_KEY = 'kh-cal-mother-birth';
+  let _babyCheck = null; // conception date being checked (YYYY-MM-DD)
+  let _babyNameGender = null; // 'B' | 'G' — follows the prediction until picked
+  let _babyNameQuery = '';
+  const BABY_FAVS_KEY = 'kh-cal-baby-favs';
+  const BABY_ORIGIN_KEY = 'kh-cal-baby-origin';
+  const CHILD_BIRTH_KEY = 'kh-cal-child-birth';
+  const CHILD_NIGHT_KEY = 'kh-cal-child-night';
+  let _babyMatchDay = true;
+  const _lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  const _lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } };
+
+  /** The child's birth-day letter group, or null when no birth date is set. */
+  function _childGroup() {
+    const b = _lsGet(CHILD_BIRTH_KEY, '');
+    if (!b || !BG) return null;
+    return BG.lettersFor(_parseYmd(b), _lsGet(CHILD_NIGHT_KEY, '0') === '1');
+  }
+  const _ORIGIN_KEYS = { km: 'originKm', zh: 'originZh', ja: 'originJa', ko: 'originKo', eu: 'originEu' };
+  let _babyNameOrigin = (() => { try { return localStorage.getItem(BABY_ORIGIN_KEY) || 'km'; } catch (e) { return 'km'; } })();
+  // Favourites are stored as "origin:name"; a bare name is from the Khmer list
+  const _favKey = n => _babyNameOrigin + ':' + n;
+  function _getBabyFavs() { try { return JSON.parse(localStorage.getItem(BABY_FAVS_KEY) || '[]'); } catch (e) { return []; } }
+  function _setBabyFavs(a) { try { localStorage.setItem(BABY_FAVS_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } }
+
+  /** Name cards for the chosen origin and gender, favourites first, filtered by the search box. */
+  function _renderBabyNames() {
+    const el = document.getElementById('baby-names-list');
+    if (!el || !BG) return;
+    const lang = I18n.getLang();
+    const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
+    const isFav = n => favs.includes(_favKey(n.name));
+    const q = _babyNameQuery.trim().toLowerCase();
+    const group = _childGroup();
+    const suits = n => group && BG.suits(_babyNameOrigin === 'km' ? n.name : n.sound, group);
+    const list = BG.names(_babyNameOrigin, _babyNameGender || 'B')
+      .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)))
+      .filter(n => !group || !_babyMatchDay || suits(n))
+      .sort((a, b) => isFav(b) - isFav(a));
+    document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
+    document.querySelectorAll('.baby-origin').forEach(t => t.classList.toggle('is-active', t.dataset.origin === _babyNameOrigin));
+    el.innerHTML = list.length ? list.map(n => {
+      const fav = isFav(n);
+      // Second line: how to read it — Latin spelling, plus the Khmer
+      // pronunciation in the Khmer UI
+      const read = [n.latin, lang === 'km' ? n.sound : ''].filter(Boolean).join(' · ');
+      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}${suits(n) ? ' is-suited' : ''}" data-name="${escapeHtml(n.name)}" aria-pressed="${fav}">
+        <span class="baby-name-km">${escapeHtml(n.name)}</span>
+        ${read ? `<span class="baby-name-latin">${escapeHtml(read)}</span>` : ''}
+        <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n.km : n.en)}</span>
+        <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
+      </button>`;
+    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t(group && _babyMatchDay && !q ? 'noMatchLetters' : 'babyNoMatch'))}</div>`;
+  }
+
+  const _ymdOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const _parseYmd = s => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
+  function _getMotherBirth() { try { return localStorage.getItem(MOTHER_BIRTH_KEY) || ''; } catch (e) { return ''; } }
+  function _setMotherBirth(v) { try { localStorage.setItem(MOTHER_BIRTH_KEY, v); } catch (e) { /* private mode */ } }
+
+  // ----- Date picker: one calendar for every date field in the baby tab -----
+  const _ICON_CAL_SM = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
+  let _dp = null; // { y, m, sel, mode: 'days'|'months'|'years', base, min, max, onPick }
+
+  /** A button showing the date (or a prompt); opens the picker. */
+  function _dateField(id, ymd) {
+    return `<button type="button" class="dp-field${ymd ? '' : ' is-empty'}" data-date="${id}">
+      <span>${escapeHtml(ymd ? _fmtYmd(ymd, true) : I18n.t('pickDate'))}</span>${_ICON_CAL_SM}
+    </button>`;
+  }
+
+  /**
+   * Parse a typed date: day/month/year in Khmer or Latin digits, any
+   * separator (/ - . space), or eight digits run together (ddmmyyyy).
+   * A two-digit year means 19xx from 50 up, else 20xx.
+   * Returns 'YYYY-MM-DD', or '' when it is not a real date.
+   */
+  function _parseTypedDate(text) {
+    const latin = String(text).replace(/[០-៩]/g, c => String(c.charCodeAt(0) - 0x17E0));
+    let parts = latin.split(/[^0-9]+/).filter(Boolean);
+    if (parts.length === 1 && parts[0].length === 8) parts = [parts[0].slice(0, 2), parts[0].slice(2, 4), parts[0].slice(4)];
+    if (parts.length !== 3) return '';
+    const d = +parts[0], m = +parts[1];
+    let y = +parts[2];
+    if (parts[2].length <= 2) y += y >= 50 ? 1900 : 2000;
+    if (parts[2].length === 3 || m < 1 || m > 12 || d < 1) return '';
+    const dt = new Date(y, m - 1, d);
+    return dt.getMonth() === m - 1 && dt.getDate() === d ? _ymdOf(dt) : '';
+  }
+
+  /** dd/mm/yyyy in the UI's digits, for the type-in box. */
+  function _typedText(ymd) {
+    if (!ymd) return '';
+    const [y, m, d] = ymd.split('-');
+    const t = `${d}/${m}/${y}`;
+    return I18n.getLang() === 'km' ? t.replace(/[0-9]/g, n => KC.khmerNumber(+n)) : t;
+  }
+
+  function _openDatePick(opts) {
+    const start = opts.value ? _parseYmd(opts.value) : (opts.initial || new Date());
+    _dp = { y: start.getFullYear(), m: start.getMonth(), sel: opts.value || '', mode: 'days',
+            base: start.getFullYear() - 5, min: opts.min, max: opts.max, onPick: opts.onPick };
+    const panel = document.getElementById('date-pick-panel');
+    panel.innerHTML = `<div class="dp-type">
+        <input type="text" id="dp-input" inputmode="numeric" autocomplete="off" spellcheck="false"
+               placeholder="${escapeHtml(I18n.t('dpTypeHint'))}" value="${escapeHtml(_typedText(_dp.sel))}" aria-label="${escapeHtml(I18n.t('dpTypeHint'))}">
+        <button type="button" class="dp-ok" data-dp="ok">${escapeHtml(I18n.t('dpOk'))}</button>
+      </div>
+      <div class="dp-msg" id="dp-msg" aria-live="polite"></div>
+      <div id="dp-body"></div>`;
+    _renderDatePick();
+    document.getElementById('date-pick-overlay').classList.add('open');
+  }
+
+  /** Typing moves the calendar to the date; returns the date or ''. */
+  function _onDateTyped(confirm) {
+    if (!_dp) return '';
+    const input = document.getElementById('dp-input');
+    const msg = document.getElementById('dp-msg');
+    const raw = input ? input.value.trim() : '';
+    const ymd = _parseTypedDate(raw);
+    let err = '';
+    if (raw && !ymd) err = confirm || raw.replace(/[^0-9\u17E0-\u17E9]/g, '').length >= 6 ? I18n.t('dpInvalid') : '';
+    else if (ymd && (_parseYmd(ymd) < _dp.min || _parseYmd(ymd) > _dp.max)) err = I18n.t('dpOutOfRange');
+    if (msg) msg.textContent = err;
+    if (input) input.classList.toggle('is-bad', !!err);
+    if (ymd && !err) {
+      const d = _parseYmd(ymd);
+      _dp.y = d.getFullYear(); _dp.m = d.getMonth(); _dp.sel = ymd; _dp.mode = 'days';
+      _renderDatePick();
+      return ymd;
+    }
+    return '';
+  }
+
+  function _closeDatePick() {
+    const ov = document.getElementById('date-pick-overlay');
+    if (ov) ov.classList.remove('open');
+    _dp = null;
+  }
+
+  function _renderDatePick() {
+    const el = document.getElementById('dp-body');
+    if (!el || !_dp) return;
+    const lang = I18n.getLang();
+    const minY = _dp.min.getFullYear(), maxY = _dp.max.getFullYear();
+    const chev = d => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
+    const head = (title, prevOk, nextOk) => `<div class="dp-head">
+        <button type="button" class="hl-nav" data-dp="prev"${prevOk ? '' : ' disabled'} aria-label="Previous">${chev('M15 18l-6-6 6-6')}</button>
+        <button type="button" class="dp-title" data-dp="title">${escapeHtml(title)}${_dp.mode === 'days' ? chev('m6 9 6 6 6-6') : ''}</button>
+        <button type="button" class="hl-nav" data-dp="next"${nextOk ? '' : ' disabled'} aria-label="Next">${chev('M9 18l6-6-6-6')}</button>
+      </div>`;
+    let body = '', title = '', prevOk = true, nextOk = true;
+
+    if (_dp.mode === 'years') {
+      title = `${_num(_dp.base)} – ${_num(_dp.base + 11)}`;
+      prevOk = _dp.base > minY; nextOk = _dp.base + 11 < maxY;
+      for (let y = _dp.base; y < _dp.base + 12; y++) {
+        const off = y < minY || y > maxY;
+        body += `<button type="button" class="dp-cell${y === _dp.y ? ' is-sel' : ''}${off ? ' is-off' : ''}" data-dp-year="${y}"${off ? ' disabled' : ''}>${_num(y)}</button>`;
+      }
+      body = `<div class="dp-grid3">${body}</div>`;
+    } else if (_dp.mode === 'months') {
+      title = _num(_dp.y);
+      prevOk = _dp.y > minY; nextOk = _dp.y < maxY;
+      for (let m = 0; m < 12; m++) {
+        const off = new Date(_dp.y, m + 1, 0) < _dp.min || new Date(_dp.y, m, 1) > _dp.max;
+        body += `<button type="button" class="dp-cell${m === _dp.m ? ' is-sel' : ''}${off ? ' is-off' : ''}" data-dp-month="${m}"${off ? ' disabled' : ''}>${escapeHtml(lang === 'km' ? I18n.gregMonth(m) : I18n.gregMonthShort(m))}</button>`;
+      }
+      body = `<div class="dp-grid3">${body}</div>`;
+    } else {
+      title = lang === 'zh' ? `${_dp.y}年${_dp.m + 1}月` : `${I18n.gregMonth(_dp.m)} ${_num(_dp.y)}`;
+      prevOk = new Date(_dp.y, _dp.m, 1) > _dp.min;
+      nextOk = new Date(_dp.y, _dp.m + 1, 1) <= _dp.max;
+      const T = I18n.translations[lang] || I18n.translations.km;
+      const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+      const todayYmd = _ymdOf(new Date());
+      body = order.map(d => `<span class="dp-wd${d === 0 ? ' is-sun' : ''}">${escapeHtml(T.weekdaysShort[d])}</span>`).join('');
+      body += '<span></span>'.repeat((new Date(_dp.y, _dp.m, 1).getDay() - order[0] + 7) % 7);
+      for (let d = 1, n = new Date(_dp.y, _dp.m + 1, 0).getDate(); d <= n; d++) {
+        const dt = new Date(_dp.y, _dp.m, d), ymd = _ymdOf(dt);
+        const off = dt < _dp.min || dt > _dp.max;
+        const cls = ['dp-day', ymd === _dp.sel ? 'is-sel' : '', ymd === todayYmd ? 'is-today' : '', off ? 'is-off' : '', dt.getDay() === 0 ? 'is-sun' : ''].filter(Boolean).join(' ');
+        body += `<button type="button" class="${cls}" data-dp-day="${ymd}"${off ? ' disabled' : ''}><span>${_num(d)}</span></button>`;
+      }
+      body = `<div class="dp-days">${body}</div>`;
+    }
+    el.innerHTML = head(title, prevOk, nextOk) + body +
+      `<div class="dp-foot"><button type="button" class="cal-modal-btn" data-dp="cancel">${escapeHtml(I18n.t('cancel'))}</button></div>`;
+    // Language may have changed while open: keep the type-in row's words current
+    const input = document.getElementById('dp-input');
+    if (input) input.placeholder = I18n.t('dpTypeHint');
+    const ok = document.querySelector('.dp-ok');
+    if (ok) ok.textContent = I18n.t('dpOk');
+  }
+
+  function _onDatePickClick(e) {
+    if (!_dp) return;
+    const t = e.target.closest('[data-dp], [data-dp-day], [data-dp-month], [data-dp-year]');
+    if (!t || t.disabled) return;
+    if (t.dataset.dpDay) { const cb = _dp.onPick, v = t.dataset.dpDay; _closeDatePick(); cb(v); return; }
+    if (t.dataset.dpMonth) { _dp.m = +t.dataset.dpMonth; _dp.mode = 'days'; return _renderDatePick(); }
+    if (t.dataset.dpYear) { _dp.y = +t.dataset.dpYear; _dp.mode = 'months'; return _renderDatePick(); }
+    const act = t.dataset.dp;
+    if (act === 'cancel') return _closeDatePick();
+    if (act === 'ok') {
+      const v = _onDateTyped(true) || (!document.getElementById('dp-input').value.trim() && _dp.sel);
+      if (v) { const cb = _dp.onPick; _closeDatePick(); cb(v); }
+      return;
+    }
+    if (act === 'title') {
+      _dp.mode = _dp.mode === 'days' ? 'years' : 'days';
+      _dp.base = _dp.y - 5;
+      return _renderDatePick();
+    }
+    const dir = act === 'next' ? 1 : -1;
+    if (_dp.mode === 'years') _dp.base += 12 * dir;
+    else if (_dp.mode === 'months') _dp.y += dir;
+    else { const d = new Date(_dp.y, _dp.m + dir, 1); _dp.y = d.getFullYear(); _dp.m = d.getMonth(); }
+    _renderDatePick();
+  }
+
+  const _ICON_MALE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="6"/><path d="M14.5 9.5 20 4M15 4h5v5"/></svg>';
+  const _ICON_FEMALE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="6"/><path d="M12 15v7M8.5 18.5h7"/></svg>';
+  const _babyPill = g => g === 'B'
+    ? `<span class="baby-pill baby-pill--boy">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</span>`
+    : `<span class="baby-pill baby-pill--girl">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</span>`;
+
+  function _renderBaby() {
+    const el = document.getElementById('health-baby');
+    if (!el || !BG) return;
+    const now = new Date();
+    const birth = _getMotherBirth();
+    if (!_babyCheck) _babyCheck = _ymdOf(now);
+    const fill = (k, o) => Object.keys(o).reduce((t, x) => t.replace('{' + x + '}', o[x]), I18n.t(k));
+
+    let result = `<div class="baby-empty">${escapeHtml(I18n.t('babyNeedBirth'))}</div>`;
+    let plan = '';
+    if (birth) {
+      const r = BG.predict(_parseYmd(birth), _parseYmd(_babyCheck));
+      if (!_babyNameGender && r.gender) _babyNameGender = r.gender;
+      result = r.gender
+        ? `<div class="baby-result">${_babyPill(r.gender)}
+             <div class="baby-meta">${escapeHtml(fill('babyAgeMonth', { age: _num(r.age), month: _num(r.month) }))}</div></div>`
+        : `<div class="baby-empty">${escapeHtml(I18n.t('babyOutOfChart'))} · ${escapeHtml(fill('babyAgeMonth', { age: _num(r.age), month: _num(r.month) }))}</div>`;
+
+      // Next 12 lunar months, with the tracker's fertile days when it is on
+      const tracking = HT && HT.isEnabled() && HT.getActiveProfile();
+      const fmt = d => `${_num(d.getDate())} ${I18n.getLang() === 'km' ? I18n.gregMonth(d.getMonth()) : I18n.gregMonthShort(d.getMonth())}`;
+      plan = BG.planMonths(_parseYmd(birth), now, 12).map(m => {
+        let fertile = '';
+        if (tracking) {
+          let fs = null, fe = null;
+          for (let d = new Date(m.start); d <= m.end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+            const k = HT.getDayInfo(d).kind;
+            if (k === 'fertile' || k === 'ovulation') { fs = fs || d; fe = d; }
+          }
+          if (fs) fertile = `<span class="baby-fertile">${_ICON_BABY} ${fmt(fs)}–${fmt(fe)}</span>`;
+        }
+        return `<div class="baby-row${m.gender ? ' baby-row--' + (m.gender === 'B' ? 'boy' : 'girl') : ''}">
+          <span class="baby-m">${escapeHtml(fill('babyLunarMonth', { n: _num(m.month) }))}${m.isLeap ? '*' : ''}<small>${escapeHtml(m.monthName)}</small></span>
+          <span class="baby-range">${fmt(m.start)} – ${fmt(m.end)}${fertile}</span>
+          ${m.gender ? _babyPill(m.gender) : '<span class="baby-pill">—</span>'}
+        </div>`;
+      }).join('');
+    }
+
+    el.innerHTML = `
+      <div class="settings-section">
+        <div class="baby-title">${escapeHtml(I18n.t('babyTitle'))}</div>
+        <div class="baby-intro">${escapeHtml(I18n.t('babyIntro'))}</div>
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('motherBirth'))}</div>
+        ${_dateField('birth', birth)}
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('conceptionDate'))}</div>
+        ${_dateField('check', _babyCheck)}
+        ${result}
+      </div>
+      <div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('babyNames'))}</div>
+        ${(() => {
+          const birthChild = _lsGet(CHILD_BIRTH_KEY, '');
+          const g = _childGroup();
+          const dayName = g ? (I18n.getLang() === 'km' ? 'ថ្ងៃ' + KC.KD7[g.dow]
+            : I18n.getLang() === 'zh' ? '星期' + I18n.weekday(g.dow)
+            : new Date(2026, 9, 11 + g.dow).toLocaleDateString('en-US', { weekday: 'long' })) : '';
+          const letters = g ? (g.key === 0 ? g.letters.join(' ') + ' …' : g.letters.join(' ')) : '';
+          return `<div class="baby-sub">${escapeHtml(I18n.t('childBirth'))}</div>
+            ${_dateField('child', birthChild)}
+            ${g && g.dow === 3 ? `<label class="baby-check"><input type="checkbox" id="baby-wed-night"${g.key === 'wedNight' ? ' checked' : ''}> ${escapeHtml(I18n.t('wedNight'))}</label>` : ''}
+            ${g ? `<div class="baby-letters"><span>${escapeHtml(I18n.t('dayLetters').replace('{day}', dayName))}</span><b>${escapeHtml(letters)}</b></div>
+              <label class="baby-check"><input type="checkbox" id="baby-match-day"${_babyMatchDay ? ' checked' : ''}> ${escapeHtml(I18n.t('matchBirthday'))}</label>`
+              : `<div class="baby-hint">${escapeHtml(I18n.t('childBirthHint'))}</div>`}`;
+        })()}
+        <div class="baby-origins">${BG.ORIGINS.map(o => `<button type="button" class="baby-origin" data-origin="${o}">${escapeHtml(I18n.t(_ORIGIN_KEYS[o]))}</button>`).join('')}</div>
+        <div class="baby-name-tabs">
+          <button type="button" class="baby-name-tab baby-name-tab--boy" data-g="B">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</button>
+          <button type="button" class="baby-name-tab baby-name-tab--girl" data-g="G">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</button>
+        </div>
+        <input type="search" class="baby-name-search" id="baby-name-search" placeholder="${escapeHtml(I18n.t('babySearch'))}" value="${escapeHtml(_babyNameQuery)}" autocomplete="off" spellcheck="false">
+        <div class="baby-hint">${escapeHtml(I18n.t('babyNamesHint'))}</div>
+        <div class="baby-names" id="baby-names-list"></div>
+      </div>
+      ${plan ? `<div class="settings-section">
+        <div class="settings-label">${escapeHtml(I18n.t('babyPlan'))}</div>
+        <div class="baby-hint">${escapeHtml(I18n.t('babyPlanHint'))}</div>
+        <div class="baby-plan">${plan}</div>
+      </div>` : ''}
+      <div class="settings-section"><div class="health-privacy-note">${escapeHtml(I18n.t('babyNote'))}</div></div>`;
+    _renderBabyNames();
+  }
+
+  function _setHealthTab(tab) {
+    document.querySelectorAll('.health-tab').forEach(b => {
+      const on = b.dataset.healthTab === tab;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.health-tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.healthPanel === tab));
+    if (tab === 'baby') _renderBaby();
+  }
+
   // ----- Events page -----
   const _ICON_GRID  = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>';
 
-  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil'
+  let _eventsFilter = 'all'; // 'all' | 'public' | 'observance' | 'sil' | 'cycle'
+  let _monthFilter = 'all';  // same values, for the card under the grid
+
+  const _CYCLE_KINDS = ['period', 'predicted', 'fertile', 'ovulation'];
+  const _matchFilter = (r, f) => f === 'all' || (f === 'cycle' ? _CYCLE_KINDS.includes(r.kind) : r.kind === f);
 
   /** Lunar reading for a row subtitle, e.g. "១៥ កើត ខែស្រាពណ៍". */
   function _lunarReading(lun) {
@@ -568,22 +901,27 @@ const KhCal = (() => {
     </div>`;
   }
 
-  function _renderEventChips() {
-    const el = document.getElementById('events-chips');
-    if (!el) return;
+  /** Fill a chip row and return the filter, reset to 'all' if its chip is gone. */
+  function _renderChipRow(el, current) {
+    if (!el) return current;
     const chips = [
       ['all', 'filterAll', _ICON_GRID],
       ['public', 'filterPublic', _ICON_DAYOFF],
-      ['observance', 'filterObservance', _ICON_FLAG],
+      ['observance', 'chipObservance', _ICON_FLAG],
     ];
-    if (I18n.getSilDays()) chips.push(['sil', 'silDay', _ICON_SIL]);
+    if (I18n.getSilDays()) chips.push(['sil', 'chipSil', _ICON_SIL]);
     if (HT && HT.isEnabled() && HT.getActiveProfile()) chips.push(['cycle', 'healthPeriod', _ICON_DROP]);
-    if (!chips.some(c => c[0] === _eventsFilter)) _eventsFilter = 'all';
+    if (!chips.some(c => c[0] === current)) current = 'all';
     el.classList.toggle('ev-chips--five', chips.length > 4);
     el.innerHTML = chips.map(([id, key, icon]) =>
-      `<button type="button" class="ev-chip ev-chip--${id}${id === _eventsFilter ? ' is-active' : ''}" data-filter="${id}">
+      `<button type="button" class="ev-chip ev-chip--${id}${id === current ? ' is-active' : ''}" data-filter="${id}">
         <span class="ev-chip-icon">${icon}</span>${escapeHtml(I18n.t(key))}
       </button>`).join('');
+    return current;
+  }
+
+  function _renderEventChips() {
+    _eventsFilter = _renderChipRow(document.getElementById('events-chips'), _eventsFilter);
   }
 
   function _renderEventsList() {
@@ -605,8 +943,7 @@ const KhCal = (() => {
       .filter(r => r.start.getFullYear() === _eventsYear);  // grouped by start month below
     const rows = _collectEventRows(_eventsYear, lang).concat(cycle)
       .sort((a, b) => a.start - b.start)
-      .filter(r => _eventsFilter === 'all' ||
-                   (_eventsFilter === 'cycle' ? ['period', 'predicted', 'fertile', 'ovulation'].includes(r.kind) : r.kind === _eventsFilter));
+      .filter(r => _matchFilter(r, _eventsFilter));
 
     const sections = [];
     for (let m = 0; m < 12; m++) {
@@ -834,6 +1171,17 @@ const KhCal = (() => {
   let _yearPageBase = 0; // base year for year grid
   let _eventsYear = new Date().getFullYear(); // year shown in events panel
 
+  // Calendar view: 'month' (grid + events card), 'full' (grid fills the
+  // screen, event names in the cells), 'week' (7-day list), 'year' (12 months)
+  const VIEWS = ['month', 'full', 'week', 'year'];
+  const VIEW_KEY = 'kh-cal-view';
+  let _view = (() => {
+    try { const v = localStorage.getItem(VIEW_KEY); return VIEWS.includes(v) ? v : 'month'; }
+    catch (e) { return 'month'; }
+  })();
+  let _lastMonthView = _view === 'full' ? 'full' : 'month'; // where a year-view tap lands
+  let _weekAnchor = null; // a Date inside the week on screen; null = derive
+
   // === Number display: Khmer digits for km, normal for en/zh ===
   function _num(n) {
     return I18n.getLang() === 'km' ? KC.khmerNumber(n) : String(n);
@@ -863,8 +1211,280 @@ const KhCal = (() => {
     }).join('');
   }
 
+  // ===== Views =====
+  const _VIEW_ICONS = {
+    month: '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+    full:  '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9h18M3 15h18M9 9v12M15 9v12"/>',
+    week:  '<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M3 9.5h18M7 13.5h10M7 17h10"/>',
+    year:  '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>'
+  };
+  const _VIEW_KEYS = { month: 'viewMonth', full: 'viewFull', week: 'viewWeek', year: 'viewYear' };
+  const _viewSvg = (v, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${_VIEW_ICONS[v]}</svg>`;
+
+  function _setView(v) {
+    if (!VIEWS.includes(v)) return;
+    _view = v;
+    if (v === 'month' || v === 'full') _lastMonthView = v;
+    if (v === 'week') { _weekAnchor = null; const w = document.getElementById('cal-week'); if (w) delete w.dataset.week; }
+    try { localStorage.setItem(VIEW_KEY, v); } catch (e) { /* private mode */ }
+    _closeViewMenu();
+    _renderCalendar();
+  }
+
+  function _renderViewButton() {
+    const btn = document.getElementById('cal-view-btn');
+    if (btn) {
+      btn.innerHTML = _viewSvg(_view, 16) +
+        `<span>${escapeHtml(I18n.t(_VIEW_KEYS[_view]))}</span>` +
+        '<svg class="cal-view-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+      btn.setAttribute('aria-label', I18n.t('viewLabel'));
+    }
+    const app = document.querySelector('.cal-app');
+    if (app) VIEWS.forEach(v => app.classList.toggle('view-' + v, v === _view));
+  }
+
+  function _openViewMenu() {
+    const btn = document.getElementById('cal-view-btn');
+    const menu = document.getElementById('cal-view-menu');
+    if (!btn || !menu) return;
+    menu.innerHTML = VIEWS.map(v => `<button type="button" class="cal-view-item${v === _view ? ' is-active' : ''}" data-view="${v}" role="menuitemradio" aria-checked="${v === _view}">
+        ${_viewSvg(v, 18)}<span>${escapeHtml(I18n.t(_VIEW_KEYS[v]))}</span>
+        <svg class="cal-view-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+      </button>`).join('');
+    const r = btn.getBoundingClientRect();
+    menu.style.top = Math.round(r.bottom + 6) + 'px';
+    menu.style.right = Math.round(document.documentElement.clientWidth - r.right) + 'px';
+    menu.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function _closeViewMenu() {
+    const menu = document.getElementById('cal-view-menu');
+    const btn = document.getElementById('cal-view-btn');
+    if (menu) menu.hidden = true;
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
+
+  function _weekStartOf(d) {
+    const first = I18n.getStartDay() === 'sun' ? 0 : 1;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() - first + 7) % 7));
+  }
+
+  function _weekdayName(dow) {
+    const lang = I18n.getLang();
+    return lang === 'km' ? KC.KD7[dow] : lang === 'zh' ? '周' + I18n.weekday(dow) : I18n.weekday(dow);
+  }
+
+  /** Each item a day carries in the week list: holidays, ថ្ងៃសីល, cycle day. */
+  function _dayItems(dt, lun, lang) {
+    const out = [];
+    ((HL && HL.getByDate(dt)) || []).forEach(h => out.push({
+      kind: h.observance === true ? 'observance' : 'public', text: HL.nameFor(h, lang)
+    }));
+    if (I18n.getSilDays()) {
+      const sil = KC.silDayFromKhmer(lun.km, lun.kd, dt.getFullYear());
+      if (sil) out.push({ kind: 'sil', text: _silLabel(sil) });
+    }
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) {
+      const info = HT.getDayInfo(dt);
+      const dayN = n => ' · ' + (I18n.t('healthDayN') || 'Day {n}').replace('{n}', _num(n));
+      if (info.kind === 'period') out.push({ kind: 'period', text: I18n.t('healthPeriod') + dayN(info.dayInPeriod) });
+      else if (info.kind === 'predicted-period') out.push({ kind: 'predicted', text: I18n.t('healthPredictedPeriod') + dayN(info.dayInPeriod) });
+      else if (info.kind === 'ovulation') out.push({ kind: 'ovulation', text: I18n.t('healthOvulation') });
+      else if (info.kind === 'fertile') out.push({ kind: 'fertile', text: I18n.t('healthFertile') });
+    }
+    return out;
+  }
+
+  function _renderWeek() {
+    const el = document.getElementById('cal-week');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const start = _weekStartOf(_weekAnchor);
+    const todayStr = new Date().toDateString();
+    let html = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      const dow = d.getDay();
+      const lun = KC.getKhmerDayMonthFromGregorian(d);
+      const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+      const wax = lun.kd <= 15 ? (lang === 'km' ? KC.RK[0] : I18n.t('waxing')) : (lang === 'km' ? KC.RK[1] : I18n.t('waning'));
+      const lunar = lang === 'km'
+        ? `${KC.khmerNumber(kd)} ${wax} ខែ${KC.khmerMonthNameFromKm(lun.km)}`
+        : `${wax} ${kd} · ${KC.khmerMonthNameFromKm(lun.km)}`;
+      const cn = CC.fromDate(d);
+      const items = _dayItems(d, lun, lang);
+      const icons = _EVENT_ICONS();
+      const isSel = _selectedDate && _selectedDate.y === d.getFullYear() && _selectedDate.m === d.getMonth() && _selectedDate.d === d.getDate();
+      const cls = ['wk-day',
+        d.toDateString() === todayStr ? 'is-today' : '',
+        isSel ? 'is-selected' : '',
+        dow === 0 ? 'is-sun' : dow === 6 ? 'is-sat' : '',
+        items.some(x => x.kind === 'public') ? 'is-holiday' : ''].filter(Boolean).join(' ');
+      html += `<button type="button" class="${cls}" data-y="${d.getFullYear()}" data-m="${d.getMonth()}" data-d="${d.getDate()}">
+        <span class="wk-date"><span class="wk-wd">${escapeHtml(_weekdayName(dow))}</span><span class="wk-num">${_gday(d.getDate())}</span></span>
+        <span class="wk-main">
+          <span class="wk-lunar">${escapeHtml(lunar)}${cn ? ` <span class="wk-cn">${escapeHtml(cn.cellText)}</span>` : ''}</span>
+          ${items.map(x => `<span class="wk-ev ev-row--${x.kind}"><span class="wk-ic">${icons[x.kind]}</span><span class="wk-ev-text">${escapeHtml(x.text)}</span></span>`).join('')}
+        </span>
+      </button>`;
+    }
+    el.innerHTML = html;
+    // A new week opens at today's row (or the top); re-renders of the same
+    // week, e.g. after tapping a day, keep the scroll position
+    const key = start.toDateString();
+    if (el.dataset.week !== key) {
+      el.dataset.week = key;
+      const t = el.querySelector('.wk-day.is-today');
+      el.scrollTop = t ? Math.max(0, t.offsetTop - el.offsetTop - 8) : 0;
+    }
+  }
+
+  function _renderYear() {
+    const el = document.getElementById('cal-year');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const T = I18n.translations[lang] || I18n.translations.km;
+    const order = I18n.getStartDay() === 'sun' ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+    const now = new Date();
+    const wd = order.map(d => `<span class="yr-wd${d === 0 ? ' is-sun' : ''}">${escapeHtml(T.weekdaysShort[d])}</span>`).join('');
+    let html = '';
+    for (let m = 0; m < 12; m++) {
+      const lead = (new Date(_year, m, 1).getDay() - order[0] + 7) % 7;
+      const days = new Date(_year, m + 1, 0).getDate();
+      let cells = '<span></span>'.repeat(lead);
+      for (let d = 1; d <= days; d++) {
+        const dt = new Date(_year, m, d);
+        const kind = HL ? HL.classifyDate(dt) : null;
+        const cls = ['yr-d',
+          kind === 'public' ? 'is-hol' : kind === 'observance' ? 'is-obs' : '',
+          dt.getDay() === 0 ? 'is-sun' : '',
+          dt.toDateString() === now.toDateString() ? 'is-today' : ''].filter(Boolean).join(' ');
+        cells += `<span class="${cls}">${_gday(d)}</span>`;
+      }
+      const isCur = _year === now.getFullYear() && m === now.getMonth();
+      html += `<button type="button" class="yr-month${isCur ? ' is-current' : ''}" data-m="${m}">
+        <span class="yr-name">${escapeHtml(I18n.gregMonth(m))}</span>
+        <span class="yr-grid">${wd}${cells}</span>
+      </button>`;
+    }
+    el.innerHTML = html;
+    el.classList.toggle('cal-year--km-digits', I18n.getDayDigits() === 'khmer');
+  }
+
+  /**
+   * Full-month view: week rows of day cells with event bars laid over them.
+   * A multi-day event is one bar across the days it covers (split at the
+   * week edge); bars stack in lanes, and a "+n" note marks days with more
+   * than fit. ថ្ងៃសីល and ovulation are small marks beside the day number.
+   */
+  const _FULL_LANES = 2; // thin strips at the foot of each square tile
+
+  function _fullSegments(from, to, lang) {
+    const segs = [];
+    const years = new Set([from.getFullYear(), to.getFullYear()]);
+    years.forEach(y => _collectEventRows(y, lang).forEach(r => {
+      if (r.isTodayRow || r.kind === 'sil' || r.end < from || r.start > to) return;
+      segs.push({ kind: r.kind, name: r.name, start: r.start, end: r.end });
+    }));
+    // Cycle runs straight from the tracker
+    if (HT && HT.isEnabled() && HT.getActiveProfile()) {
+      const runOf = k => k === 'period' ? 'period' : k === 'predicted-period' ? 'predicted'
+                       : (k === 'fertile' || k === 'ovulation') ? 'fertile' : null;
+      const NAME = { period: 'healthPeriod', predicted: 'healthPredictedPeriod', fertile: 'healthFertile' };
+      let run = null;
+      for (let d = new Date(from); d <= to; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+        const kind = runOf(HT.getDayInfo(d).kind);
+        if (run && kind === run.kind) { run.end = d; continue; }
+        if (run) segs.push(run);
+        run = kind ? { kind, name: I18n.t(NAME[kind]), start: d, end: d } : null;
+      }
+      if (run) segs.push(run);
+    }
+    return segs;
+  }
+
+  function _renderFull() {
+    const el = document.getElementById('cal-full');
+    if (!el) return;
+    const lang = I18n.getLang();
+    const year = _year, month = _month;
+    const order0 = I18n.getStartDay() === 'sun' ? 0 : 1;
+    const lead = (new Date(year, month, 1).getDay() - order0 + 7) % 7;
+    const first = new Date(year, month, 1 - lead);
+    const days = new Date(year, month + 1, 0).getDate();
+    const weeks = Math.ceil((lead + days) / 7);
+    const last = new Date(first.getFullYear(), first.getMonth(), first.getDate() + weeks * 7 - 1);
+    const segs = _fullSegments(first, last, lang);
+    const todayStr = new Date().toDateString();
+    const dayIdx = d => Math.round((d - first) / 86400000);
+
+    let html = '';
+    for (let w = 0; w < weeks; w++) {
+      const w0 = w * 7, w1 = w0 + 6;
+      // Segments clipped to this week, longest first, packed into lanes
+      const parts = segs.map(sg => ({ sg, a: Math.max(dayIdx(sg.start), w0), b: Math.min(dayIdx(sg.end), w1) }))
+        .filter(p => p.a <= p.b)
+        .sort((x, y) => (x.a - y.a) || ((y.b - y.a) - (x.b - x.a)));
+      const lanes = [];
+      const hidden = new Array(7).fill(0);
+      parts.forEach(p => {
+        let lane = lanes.findIndex(end => end < p.a);
+        if (lane === -1) { lane = lanes.length; lanes.push(-1); }
+        lanes[lane] = p.b;
+        p.lane = lane;
+        if (lane >= _FULL_LANES) for (let i = p.a; i <= p.b; i++) hidden[i - w0]++;
+      });
+
+      let cells = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(first.getFullYear(), first.getMonth(), first.getDate() + w0 + i);
+        const lun = KC.getKhmerDayMonthFromGregorian(d);
+        const kd = lun.kd <= 15 ? lun.kd : lun.kd - 15;
+        const wax = lun.kd <= 15 ? (lang === 'km' ? KC.RK[0] : I18n.t('waxingShort')) : (lang === 'km' ? KC.RK[1] : I18n.t('waningShort'));
+        const dow = d.getDay();
+        const kind = HL ? HL.classifyDate(d) : null;
+        const sil = I18n.getSilDays() && KC.silDayFromKhmer(lun.km, lun.kd, d.getFullYear());
+        const ovu = HT && HT.isEnabled() && HT.getActiveProfile() && HT.getDayInfo(d).kind === 'ovulation';
+        const isSel = _selectedDate && _selectedDate.y === d.getFullYear() && _selectedDate.m === d.getMonth() && _selectedDate.d === d.getDate();
+        const cls = ['fm-day',
+          d.getMonth() !== month ? 'is-out' : '',
+          d.toDateString() === todayStr ? 'is-today' : '',
+          isSel ? 'is-selected' : '',
+          dow === 0 || kind === 'public' ? 'is-red' : dow === 6 ? 'is-blue' : ''].filter(Boolean).join(' ');
+        const marks = (sil ? `<i class="fm-mark fm-mark--sil${sil.major ? '' : ' is-minor'}"></i>` : '') +
+                      (ovu ? '<i class="fm-mark fm-mark--ovu"></i>' : '');
+        cells += `<button type="button" class="${cls}" data-y="${d.getFullYear()}" data-m="${d.getMonth()}" data-d="${d.getDate()}">
+          <span class="fm-num">${_gday(d.getDate())}</span>
+          <span class="fm-lunar">${_num(kd)} ${escapeHtml(wax)}</span>
+          ${marks ? `<span class="fm-marks">${marks}</span>` : ''}
+          ${hidden[i] ? `<span class="fm-more">+${_num(hidden[i])}</span>` : ''}
+        </button>`;
+      }
+      const bars = parts.filter(p => p.lane < _FULL_LANES).map(p => {
+        const cut = (dayIdx(p.sg.start) < p.a ? ' cut-l' : '') + (dayIdx(p.sg.end) > p.b ? ' cut-r' : '');
+        return `<span class="fm-bar fm-bar--${p.sg.kind}${cut}" style="grid-column:${p.a - w0 + 1} / span ${p.b - p.a + 1};grid-row:${p.lane + 1}">${escapeHtml(p.sg.name)}</span>`;
+      }).join('');
+      html += `<div class="fm-week"><div class="fm-days">${cells}</div><div class="fm-bars">${bars}</div></div>`;
+    }
+    el.innerHTML = html;
+  }
+
   // === Render main calendar grid ===
   function _renderCalendar() {
+    _renderViewButton();
+    let weekStart = null;
+    if (_view === 'week') {
+      if (!_weekAnchor) {
+        const t = new Date();
+        _weekAnchor = _selectedDate ? new Date(_selectedDate.y, _selectedDate.m, _selectedDate.d)
+                    : (t.getFullYear() === _year && t.getMonth() === _month) ? t
+                    : new Date(_year, _month, 1);
+      }
+      weekStart = _weekStartOf(_weekAnchor);
+      _year = weekStart.getFullYear();
+      _month = weekStart.getMonth();
+    }
     const year = _year, month = _month;
     const today = new Date();
     const todayY = today.getFullYear(), todayM = today.getMonth(), todayD = today.getDate();
@@ -882,6 +1502,16 @@ const KhCal = (() => {
       if (lang === 'en')      { main = `${enName} ${year}`;  sub = `${kmName} · ${zhName}`; }
       else if (lang === 'zh') { main = `${year}年${zhName}`; sub = `${kmName} · ${enName}`; }
       else                    { main = `${kmName} ${KC.khmerNumber(year)}`; sub = `${enName} · ${zhName}`; }
+      if (_view === 'year') {
+        main = lang === 'km' ? `ឆ្នាំ ${KC.khmerNumber(year)}` : lang === 'zh' ? `${year}年` : String(year);
+        sub  = lang === 'km' ? String(year) : `ឆ្នាំ ${KC.khmerNumber(year)}`;
+      } else if (weekStart) {
+        const end = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 6);
+        const mName = (mm) => lang === 'km' ? I18n.gregMonth(mm) : I18n.gregMonthShort(mm);
+        sub = end.getMonth() === weekStart.getMonth()
+          ? `${_num(weekStart.getDate())}–${_num(end.getDate())} ${mName(end.getMonth())}`
+          : `${_num(weekStart.getDate())} ${mName(weekStart.getMonth())} – ${_num(end.getDate())} ${mName(end.getMonth())}`;
+      }
       titleEl.innerHTML =
         `<span class="cal-title-main">${escapeHtml(main)}` +
         `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></span>` +
@@ -1033,6 +1663,9 @@ const KhCal = (() => {
     }
 
     gridEl.innerHTML = html;
+    if (_view === 'full') _renderFull();
+    if (_view === 'week') _renderWeek();
+    if (_view === 'year') _renderYear();
 
     _renderMonthEvents(year, month);
 
@@ -1041,7 +1674,9 @@ const KhCal = (() => {
     // room for it; otherwise it floats on top of the last row of days.
     const todayBtn = document.getElementById('cal-today-btn');
     if (todayBtn) {
-      const onCurrentMonth = (year === todayY && month === todayM);
+      const onCurrentMonth = _view === 'year' ? year === todayY
+        : _view === 'week' ? (today >= weekStart && today < new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7))
+        : (year === todayY && month === todayM);
       todayBtn.textContent = I18n.t('today');
       todayBtn.style.display = onCurrentMonth ? 'none' : 'block';
       const app = document.querySelector('.cal-app');
@@ -1261,6 +1896,7 @@ const KhCal = (() => {
     if (action === 'pick-month') {
       _month = +el.dataset.m;
       _year = _pickerYear;
+      _weekAnchor = null;
       _selectedDate = null;
       _closePicker();
       _renderCalendar();
@@ -1292,9 +1928,16 @@ const KhCal = (() => {
 
   // === Navigation ===
   function _nav(dir) {
-    _month += dir;
-    if (_month > 11) { _month = 0; _year++; }
-    if (_month < 0) { _month = 11; _year--; }
+    if (_view === 'week') {
+      const a = _weekAnchor || new Date(_year, _month, 1);
+      _weekAnchor = new Date(a.getFullYear(), a.getMonth(), a.getDate() + 7 * dir);
+    } else if (_view === 'year') {
+      _year += dir;
+    } else {
+      _month += dir;
+      if (_month > 11) { _month = 0; _year++; }
+      if (_month < 0) { _month = 11; _year--; }
+    }
     _selectedDate = null;
     const panel = document.getElementById('cal-detail');
     if (panel) panel.classList.remove('open');
@@ -1305,6 +1948,7 @@ const KhCal = (() => {
     const today = new Date();
     _year = today.getFullYear();
     _month = today.getMonth();
+    _weekAnchor = today;
     _selectedDate = null;
     _renderCalendar();
     _showDetail(today.getFullYear(), today.getMonth(), today.getDate());
@@ -1419,6 +2063,17 @@ const KhCal = (() => {
       if (_eventsYear === new Date().getFullYear()) _scrollEventsToToday();
       else if (eventsListEl) eventsListEl.scrollTop = 0;
     };
+    const monthChips = document.getElementById('month-events-chips');
+    if (monthChips) {
+      monthChips.addEventListener('click', (e) => {
+        const chip = e.target.closest('.ev-chip');
+        if (!chip || chip.dataset.filter === _monthFilter) return;
+        _monthFilter = chip.dataset.filter;
+        _renderMonthEvents(_year, _month);
+        const body = document.getElementById('month-events-body');
+        if (body) body.scrollTop = 0;
+      });
+    }
     const eventsChips = document.getElementById('events-chips');
     if (eventsChips) {
       eventsChips.addEventListener('click', (e) => {
@@ -1605,8 +2260,15 @@ const KhCal = (() => {
 
   function _refreshAll() {
     I18n.updateStaticTexts();
+    _closeViewMenu();
     _renderWeekdays();
     _renderCalendar();
+    // Panels that build their text in JS follow the language change too
+    if (HT) { _refreshHealthSummary(); _refreshPeriodHistory(); }
+    if (document.querySelector('.health-tab.is-active[data-health-tab="baby"]')) _renderBaby();
+    const evOverlay = document.getElementById('cal-events-overlay');
+    if (evOverlay && evOverlay.classList.contains('open')) _renderEventsList();
+    if (_dp) _renderDatePick();
     if (_selectedDate) {
       _showDetail(_selectedDate.y, _selectedDate.m, _selectedDate.d);
     }
@@ -1626,7 +2288,13 @@ const KhCal = (() => {
     const healthOverlay = document.getElementById('cal-health-overlay');
     const healthClose   = document.getElementById('health-overlay-close');
     if (healthBtn && healthOverlay) {
-      healthBtn.addEventListener('click', () => healthOverlay.classList.add('open'));
+      healthBtn.addEventListener('click', () => {
+        // Repaint the active tab, so dates and labels follow the current
+        // language and today's date
+        const babyOn = document.querySelector('.health-tab.is-active[data-health-tab="baby"]');
+        if (babyOn) _renderBaby();
+        healthOverlay.classList.add('open');
+      });
     }
     if (healthClose && healthOverlay) {
       healthClose.addEventListener('click', () => healthOverlay.classList.remove('open'));
@@ -2061,6 +2729,122 @@ const KhCal = (() => {
     // (Horizontal swipe to change month is already wired below via
     //  _onTouchStart / _onTouchEnd on the calendar grid.)
 
+    const dpOverlay = document.getElementById('date-pick-overlay');
+    if (dpOverlay) {
+      dpOverlay.addEventListener('input', (e) => { if (e.target.id === 'dp-input') _onDateTyped(false); });
+      dpOverlay.addEventListener('keydown', (e) => {
+        if (e.target.id !== 'dp-input' || e.key !== 'Enter') return;
+        e.preventDefault();
+        const v = _onDateTyped(true);
+        if (v) { const cb = _dp.onPick; _closeDatePick(); cb(v); }
+      });
+      dpOverlay.addEventListener('click', (e) => {
+        if (e.target === dpOverlay) { _closeDatePick(); return; }
+        _onDatePickClick(e);
+      });
+    }
+
+    // Health panel: period / boy-or-girl tabs
+    document.querySelectorAll('.health-tab').forEach(b =>
+      b.addEventListener('click', () => _setHealthTab(b.dataset.healthTab)));
+    const babyEl = document.getElementById('health-baby');
+    if (babyEl) {
+      babyEl.addEventListener('click', (e) => {
+        const field = e.target.closest('.dp-field');
+        if (field) {
+          const now = new Date();
+          const y = now.getFullYear();
+          const which = field.dataset.date;
+          const ranges = {
+            birth: [new Date(1940, 0, 1), new Date(y - 10, 11, 31), new Date(y - 28, 0, 1)],
+            check: [new Date(y - 2, 0, 1), new Date(y + 3, 11, 31), now],
+            child: [new Date(y - 18, 0, 1), new Date(y + 2, 11, 31), now]
+          }[which];
+          const current = which === 'birth' ? _getMotherBirth() : which === 'child' ? _lsGet(CHILD_BIRTH_KEY, '') : _babyCheck;
+          _openDatePick({ value: current, min: ranges[0], max: ranges[1], initial: ranges[2], onPick: (v) => {
+            if (which === 'birth') _setMotherBirth(v);
+            else if (which === 'child') _lsSet(CHILD_BIRTH_KEY, v);
+            else _babyCheck = v;
+            _renderBaby();
+          } });
+          return;
+        }
+        const origin = e.target.closest('.baby-origin');
+        if (origin) {
+          _babyNameOrigin = origin.dataset.origin;
+          try { localStorage.setItem(BABY_ORIGIN_KEY, _babyNameOrigin); } catch (err) { /* private mode */ }
+          _renderBabyNames();
+          return;
+        }
+        const tab = e.target.closest('.baby-name-tab');
+        if (tab) { _babyNameGender = tab.dataset.g; _renderBabyNames(); return; }
+        const card = e.target.closest('.baby-name');
+        if (card) {
+          const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
+          const key = _favKey(card.dataset.name);
+          const i = favs.indexOf(key);
+          if (i >= 0) favs.splice(i, 1); else favs.push(key);
+          _setBabyFavs(favs);
+          _renderBabyNames();
+        }
+      });
+      babyEl.addEventListener('input', (e) => {
+        if (e.target.id !== 'baby-name-search') return;
+        _babyNameQuery = e.target.value;
+        _renderBabyNames();
+      });
+      babyEl.addEventListener('change', (e) => {
+        if (e.target.id === 'baby-wed-night') { _lsSet(CHILD_NIGHT_KEY, e.target.checked ? '1' : '0'); _renderBaby(); return; }
+        if (e.target.id === 'baby-match-day') { _babyMatchDay = e.target.checked; _renderBabyNames(); return; }
+      });
+    }
+
+    // View switch
+    const viewBtn = document.getElementById('cal-view-btn');
+    const viewMenu = document.getElementById('cal-view-menu');
+    if (viewBtn && viewMenu) {
+      viewBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (viewMenu.hidden) _openViewMenu(); else _closeViewMenu();
+      });
+      viewMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = e.target.closest('[data-view]');
+        if (item) _setView(item.dataset.view);
+      });
+      document.addEventListener('click', () => { if (!viewMenu.hidden) _closeViewMenu(); });
+      window.addEventListener('resize', _closeViewMenu);
+    }
+    const fullEl = document.getElementById('cal-full');
+    if (fullEl) {
+      fullEl.addEventListener('click', (e) => {
+        const day = e.target.closest('.fm-day');
+        if (day) _showDetail(+day.dataset.y, +day.dataset.m, +day.dataset.d);
+      });
+      fullEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      fullEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
+    const weekEl = document.getElementById('cal-week');
+    if (weekEl) {
+      weekEl.addEventListener('click', (e) => {
+        const day = e.target.closest('.wk-day');
+        if (day) _showDetail(+day.dataset.y, +day.dataset.m, +day.dataset.d);
+      });
+      weekEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      weekEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
+    const yearEl = document.getElementById('cal-year');
+    if (yearEl) {
+      yearEl.addEventListener('click', (e) => {
+        const m = e.target.closest('.yr-month');
+        if (!m) return;
+        _month = +m.dataset.m;
+        _setView(_lastMonthView);
+      });
+      yearEl.addEventListener('touchstart', _onTouchStart, { passive: true });
+      yearEl.addEventListener('touchend', _onTouchEnd, { passive: true });
+    }
+
     const pickerOverlay = document.getElementById('cal-picker-overlay');
     if (pickerOverlay) {
       pickerOverlay.addEventListener('click', (e) => {
@@ -2128,7 +2912,7 @@ const KhCal = (() => {
     document.addEventListener('click', (e) => {
       const d = document.getElementById('cal-detail');
       if (d && d.classList.contains('open')) {
-        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, #cal-today-footer, #cal-today-btn')) {
+        if (!d.contains(e.target) && !e.target.closest('.cal-cell, .ev-row, .wk-day, .fm-day, #cal-today-footer, #cal-today-btn')) {
           _hideDetail();
         }
       }

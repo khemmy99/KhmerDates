@@ -41,6 +41,10 @@
         <!-- Lunar month · sak · animal · BE, on the line of the
              English / Chinese month names -->
         <div class="cal-lunar-info" id="cal-lunar-info"></div>
+        <!-- View switch (month / full month / week / year), plus the month
+             arrows on pointer devices -->
+        <div class="cal-title-tools">
+        <button type="button" class="cal-view-btn" id="cal-view-btn" aria-haspopup="menu" aria-expanded="false"></button>
         <div class="cal-title-nav">
           <button type="button" class="cal-nav-round" id="cal-prev-month" aria-label="Previous month" title="Previous month">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
@@ -48,6 +52,7 @@
           <button type="button" class="cal-nav-round" id="cal-next-month" aria-label="Next month" title="Next month">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
           </button>
+        </div>
         </div>
       </div>
     </header>
@@ -63,6 +68,19 @@
           <button type="button" class="settings-close" id="health-overlay-close">&times;</button>
         </div>
 
+        <!-- Two sections: the cycle tracker and the boy-or-girl chart -->
+        <div class="health-tabs" role="tablist">
+          <button type="button" class="health-tab is-active" data-health-tab="period" role="tab" aria-selected="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7c3.5 4.3 6 7.6 6 10.8a6 6 0 0 1-12 0c0-3.2 2.5-6.5 6-10.8z"/></svg>
+            <span data-i18n="tabPeriod">រដូវ</span>
+          </button>
+          <button type="button" class="health-tab" data-health-tab="baby" role="tab" aria-selected="false">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></svg>
+            <span data-i18n="tabBaby">យកកូន</span>
+          </button>
+        </div>
+
+        <div class="health-tab-panel is-active" data-health-panel="period">
         <div class="settings-section">
           <div class="settings-row-header">
             <label class="settings-label" for="health-toggle" data-i18n="enableHealthTracking">បើកការតាមដាន</label>
@@ -120,6 +138,11 @@
               ទិន្នន័យរក្សាទុកនៅលើឧបករណ៍របស់អ្នកប៉ុណ្ណោះ មិនបញ្ជូនទៅណាមួយឡើយ។
             </div>
           </div>
+        </div>
+        </div>
+
+        <div class="health-tab-panel" data-health-panel="baby">
+          <div class="baby" id="health-baby"></div>
         </div>
       </div>
     </div>
@@ -492,6 +515,10 @@
 
     <!-- Calendar grid -->
     <div class="cal-grid" id="cal-grid"></div>
+    <!-- Week and year views; shown instead of the grid by the view switch -->
+    <div class="cal-full" id="cal-full"></div>
+    <div class="cal-week" id="cal-week"></div>
+    <div class="cal-year" id="cal-year"></div>
 
     <!-- Events for the month currently on screen -->
     <section class="month-events" id="month-events" aria-live="polite">
@@ -499,10 +526,17 @@
         <span class="month-events-title" id="month-events-title">ព្រឹត្តិការណ៍</span>
         <span class="month-events-count" id="month-events-count"></span>
       </div>
+      <!-- Same filters as the events page; kept separately -->
+      <div class="ev-chips ev-chips--card" id="month-events-chips"></div>
       <div class="month-events-body" id="month-events-body"></div>
     </section>
 
     <!-- Today button -->
+    <div class="cal-view-menu" id="cal-view-menu" role="menu" hidden></div>
+    <!-- Single-date calendar picker (mother's / child's birth, conception) -->
+    <div class="cal-modal-overlay dp-overlay" id="date-pick-overlay">
+      <div class="cal-modal-panel dp-panel" id="date-pick-panel" role="dialog" aria-modal="true"></div>
+    </div>
     <button class="cal-today-btn" id="cal-today-btn">ថ្ងៃនេះ</button>
 
     <!-- Footer bar -->
@@ -511,9 +545,9 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span data-i18n="today">ថ្ងៃនេះ</span>
       </button>
-      <button class="cal-footer-btn cal-footer-btn--health" id="cal-health-btn" aria-label="Period tracker">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C12 2 5 9 5 14a7 7 0 0 0 14 0c0-5-7-12-7-12z"/></svg>
-        <span data-i18n="periodFooter">រដូវ</span>
+      <button class="cal-footer-btn cal-footer-btn--health" id="cal-health-btn" aria-label="Women's health">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.5 12.6 12 20l-7.5-7.4A4.9 4.9 0 0 1 12 6.1a4.9 4.9 0 0 1 7.5 6.5z"/><path d="M12 9.6c1.2 1.4 1.9 2.5 1.9 3.3a1.9 1.9 0 0 1-3.8 0c0-.8.7-1.9 1.9-3.3z"/></svg>
+        <span data-i18n="healthFooter">សុខភាព</span>
       </button>
       <button class="cal-footer-btn" id="cal-events-btn" aria-label="Events">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 14.9 8.48 21.4 9.43 16.7 14.01 17.81 20.48 12 17.42 6.19 20.48 7.3 14.01 2.6 9.43 9.1 8.48 12 2.6"/></svg>
@@ -548,6 +582,7 @@
 
   <script src="js/khmer-calendar.js"></script>
   <script src="js/chinese-calendar.js"></script>
+  <script src="js/baby-gender.js"></script>
   <script src="js/holidays.js"></script>
   <script src="js/daily-block.js"></script>
   <script src="js/health-tracker.js"></script>

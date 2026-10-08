@@ -3611,3 +3611,452 @@ html { background-color: #0a0c14; }
   .cal-title-nav { display: flex; }
 }
 
+/* Filter chips inside the month card — a size down from the events page so
+   five fit the card's narrower width */
+.ev-chips--card,
+.ev-chips--card.ev-chips--five { gap: 4px; padding: 8px 10px 8px; flex: none; border-bottom: 1px solid var(--kh-border); }
+.ev-chips--card .ev-chip { flex: 1 1 auto; padding: 5px 4px; gap: 3px; font-size: 12px; }
+.ev-chips--card .ev-chip-icon,
+.ev-chips--card .ev-chip-icon svg { width: 12px; height: 12px; }
+
+
+/* =========================================================
+   VIEW SWITCH — button top-right of the header, menu below it
+   ========================================================= */
+.cal-topbar--title .cal-topbar-row { position: relative; }
+.cal-title-tools {
+  position: absolute; top: 2px; right: 0;
+  display: flex; align-items: center; gap: 6px;
+}
+.cal-title-tools .cal-nav-round { width: 32px; height: 32px; }
+.cal-view-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  height: 32px; padding: 0 10px 0 9px; border-radius: 999px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated);
+  color: var(--kh-text); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap;
+}
+.cal-view-btn svg { flex: none; color: var(--kh-primary); }
+.cal-view-btn .cal-view-chev { color: var(--kh-text-muted); }
+.cal-view-btn[aria-expanded="true"] { background: var(--kh-primary-glow); border-color: var(--kh-primary); }
+[data-theme="light"] .cal-view-btn { background: #fff; border-color: rgba(0,0,0,0.10); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+.cal-view-menu {
+  position: fixed; z-index: 650; min-width: 190px; padding: 6px;
+  border-radius: 16px; background: var(--kh-card-bg); border: 1px solid var(--kh-border-strong);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.28);
+}
+.cal-view-menu[hidden] { display: none; }
+[data-theme="light"] .cal-view-menu { background: #fff; box-shadow: 0 12px 36px rgba(15,23,42,0.16); }
+.cal-view-item {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 10px 12px; border: 0; border-radius: 11px; background: transparent;
+  color: var(--kh-text); font: inherit; font-size: 15px; font-weight: 600; text-align: left; cursor: pointer;
+}
+.cal-view-item > svg:first-child { color: var(--kh-text-secondary); flex: none; }
+.cal-view-item span { flex: 1; }
+.cal-view-item .cal-view-check { visibility: hidden; color: var(--kh-primary); }
+.cal-view-item.is-active { background: var(--kh-primary-glow); color: var(--kh-primary); }
+.cal-view-item.is-active > svg:first-child { color: var(--kh-primary); }
+.cal-view-item.is-active .cal-view-check { visibility: visible; }
+
+/* Which blocks each view shows */
+.cal-week, .cal-year { display: none; }
+.cal-full { display: none; }
+.cal-app.view-full .cal-grid { display: none; }
+.cal-app.view-full .cal-full { display: flex; }
+.cal-app.view-week .cal-weekdays,
+.cal-app.view-week .cal-grid,
+.cal-app.view-week .month-events,
+.cal-app.view-year .cal-weekdays,
+.cal-app.view-year .cal-grid,
+.cal-app.view-year .month-events { display: none; }
+.cal-app.view-week .cal-week,
+.cal-app.view-year .cal-year { display: block; }
+
+/* ---------- Week: one row per day ---------- */
+.cal-week {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin-top: 8px; padding-bottom: 12px;
+}
+.wk-day {
+  display: flex; align-items: flex-start; gap: 12px; width: 100%;
+  padding: 12px 14px; margin-bottom: 8px; border-radius: 16px; text-align: left;
+  background: var(--kh-card-bg); border: 1px solid var(--kh-border-strong);
+  color: var(--kh-text); font: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .wk-day { background: #fff; border-color: rgba(0,0,0,0.07); box-shadow: 0 1px 3px rgba(15,23,42,0.04); }
+.wk-day.is-selected { border-color: var(--kh-primary); box-shadow: 0 0 0 1px var(--kh-primary); }
+.wk-date {
+  flex: none; width: 52px; height: 58px; border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--kh-bg-subtle);
+}
+[data-theme="light"] .wk-date { background: #F1F5F9; }
+.wk-wd { font-size: 10.5px; color: var(--kh-text-muted); line-height: 1.4; white-space: nowrap; }
+.wk-num { font-size: 22px; font-weight: 800; line-height: 1.15; }
+.wk-day.is-sun .wk-num, .wk-day.is-holiday .wk-num { color: var(--kh-red); }
+.wk-day.is-sat .wk-num { color: var(--kh-primary); }
+.wk-day.is-today .wk-date { background: #059669; }
+.wk-day.is-today .wk-wd, .wk-day.is-today .wk-num { color: #fff; }
+.wk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; padding-top: 2px; }
+.wk-lunar { font-size: 13.5px; font-weight: 600; color: var(--kh-text-secondary); line-height: 1.5; }
+.wk-cn { color: var(--kh-gold); font-weight: 500; margin-left: 4px; }
+.wk-ev { display: flex; align-items: center; gap: 7px; font-size: 13.5px; line-height: 1.45; color: var(--tone); }
+.wk-ic { flex: none; width: 22px; height: 22px; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; background: var(--tone-bg); }
+.wk-ic svg { width: 14px; height: 14px; }
+.wk-ev-text { min-width: 0; font-weight: 600; }
+.wk-ev.ev-row--observance { --tone: var(--kh-gold); --tone-bg: rgba(212,168,74,0.14); color: #9A6B12; }
+:root:not([data-theme="light"]) .wk-ev.ev-row--observance { color: #E8B25C; }
+
+
+/* =========================================================
+   FULL MONTH — hairline grid, number + lunar day at the top of
+   each cell, events as bars across the days they cover.
+   ========================================================= */
+.cal-full {
+  flex: 1 1 auto; min-height: 0; flex-direction: column;
+  margin: 0 -2px 8px; border-top: 1px solid var(--kh-border-strong);
+  touch-action: pan-y;
+}
+.fm-week { position: relative; flex: 1 1 0; min-height: 64px; border-bottom: 1px solid var(--kh-border); }
+.fm-days { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(7, 1fr); }
+.fm-day {
+  position: relative; display: flex; flex-direction: column; align-items: center;
+  padding: 4px 0 0; border: 0; border-left: 1px solid var(--kh-border);
+  background: transparent; color: var(--kh-text); font: inherit; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.fm-day:first-child { border-left: 0; }
+.fm-day:active { background: var(--kh-primary-glow); }
+.fm-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14.5px; font-weight: 700; line-height: 1;
+}
+.fm-day.is-red .fm-num { color: var(--kh-red); }
+.fm-day.is-blue .fm-num { color: var(--kh-primary); }
+.fm-day.is-today .fm-num { background: #059669; color: #fff; }
+.fm-day.is-selected:not(.is-today) .fm-num { box-shadow: inset 0 0 0 1.5px var(--kh-primary); }
+.fm-lunar { font-size: 8.5px; color: var(--kh-text-muted); line-height: 1.3; white-space: nowrap; }
+.fm-day.is-out { opacity: 0.35; }
+.fm-marks { position: absolute; top: 5px; right: 3px; display: flex; flex-direction: column; gap: 2px; }
+.fm-mark { display: block; width: 8px; height: 8px; }
+.fm-mark--sil { background-color: var(--kh-gold); -webkit-mask: var(--kh-sil-icon) center / contain no-repeat; mask: var(--kh-sil-icon) center / contain no-repeat; }
+.fm-mark--sil.is-minor { opacity: 0.45; }
+.fm-mark--ovu { border-radius: 50%; background: #f59e0b; width: 6px; height: 6px; margin: 1px; }
+.fm-more {
+  position: absolute; bottom: 2px; left: 0; right: 0; text-align: center;
+  font-size: 9px; font-weight: 700; color: var(--kh-text-muted);
+}
+.fm-bars {
+  position: absolute; left: 0; right: 0; top: 42px;
+  display: grid; grid-template-columns: repeat(7, 1fr); grid-auto-rows: 15px; row-gap: 2px;
+  pointer-events: none;
+}
+.fm-bar {
+  margin: 0 2px; padding: 0 4px; border-radius: 4px; min-width: 0;
+  font-size: 9px; font-weight: 700; line-height: 15px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--bar-bg); color: var(--bar-fg);
+}
+.fm-bar.cut-l { margin-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.fm-bar.cut-r { margin-right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.fm-bar--public     { --bar-bg: #EF4444; --bar-fg: #fff; }
+.fm-bar--observance { --bar-bg: rgba(184,137,46,0.16); --bar-fg: #8A6410; }
+.fm-bar--period     { --bar-bg: #F472B6; --bar-fg: #fff; }
+.fm-bar--predicted  { --bar-bg: transparent; --bar-fg: #DB2777; box-shadow: inset 0 0 0 1px rgba(219,39,119,0.6); }
+.fm-bar--fertile    { --bar-bg: rgba(34,197,94,0.15); --bar-fg: #15803D; }
+:root:not([data-theme="light"]) .fm-bar--observance { --bar-bg: rgba(232,178,92,0.18); --bar-fg: #E8B25C; }
+:root:not([data-theme="light"]) .fm-bar--fertile    { --bar-bg: rgba(74,222,128,0.16); --bar-fg: #4ADE80; }
+:root:not([data-theme="light"]) .fm-bar--predicted  { --bar-fg: #F472B6; }
+
+/* =========================================================
+   YEAR — twelve open mini months (no boxes); month name bold,
+   the current month in green; today a filled circle, public
+   holidays red, observances gold.
+   ========================================================= */
+.cal-year {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin-top: 6px; padding: 4px 2px 12px; touch-action: pan-y;
+}
+.cal-app.view-year .cal-year {
+  display: grid; grid-template-columns: repeat(3, 1fr); column-gap: 14px; row-gap: 14px; align-content: start;
+}
+.yr-month {
+  padding: 4px 2px; border: 0; border-radius: 12px; background: transparent;
+  color: var(--kh-text); font: inherit; text-align: left; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.yr-month:active { background: var(--kh-primary-glow); }
+.yr-name { display: block; font-size: 15px; font-weight: 800; padding: 0 2px 4px; line-height: 1.5; }
+.yr-month.is-current .yr-name { color: #059669; }
+.yr-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; text-align: center; }
+.yr-wd { font-size: 7.5px; font-weight: 600; color: var(--kh-text-muted); line-height: 1.7; overflow: hidden; white-space: nowrap; }
+.yr-wd.is-sun { color: var(--kh-red); }
+.yr-d {
+  justify-self: center; width: 13px; height: 13px; border-radius: 50%;
+  font-size: 8px; font-weight: 600; line-height: 13px; color: var(--kh-text-secondary);
+}
+.yr-d.is-sun { color: rgba(220,38,38,0.75); }
+.yr-d.is-obs { color: #B8892E; font-weight: 800; }
+.yr-d.is-hol { color: #DC2626; font-weight: 800; }
+.yr-d.is-today { background: #059669; color: #fff; font-weight: 800; }
+:root:not([data-theme="light"]) .yr-d.is-hol { color: #F87171; }
+:root:not([data-theme="light"]) .yr-d.is-obs { color: #E8B25C; }
+.cal-app.view-year .cal-year { column-gap: 10px; }
+.yr-d { width: 100%; max-width: 15px; border-radius: 7px; }
+/* Khmer digits run ~40% wider; at 8px two of them touched the next date */
+.cal-year--km-digits .yr-d { font-size: 7.2px; letter-spacing: -0.4px; max-width: none; }
+.cal-year--km-digits .yr-d.is-today { justify-self: center; width: 15px; }
+
+/* Buttons centre their content vertically; months with five weeks floated
+   lower than six-week ones, so pin the content to the top */
+.yr-month { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }
+
+/* =========================================================
+   FULL MONTH TILES — the same rounded day tiles as the month
+   view (gaps, soft fill, weekend tint, solid green today),
+   with the event bars inside them.
+   ========================================================= */
+.cal-full { gap: 4px; margin: 2px 0 8px; border-top: 0; }
+.fm-week { border-bottom: 0; }
+.fm-days { gap: 4px; }
+.fm-day,
+.fm-day:first-child {
+  border: 0; border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+  padding-top: 5px;
+}
+[data-theme="light"] .fm-day {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.04);
+}
+[data-theme="light"] .fm-day.is-blue { background: linear-gradient(135deg, rgba(59,130,246,0.07), rgba(37,99,235,0.04)); }
+[data-theme="light"] .fm-day.is-red  { background: linear-gradient(135deg, rgba(220,38,38,0.065), rgba(185,28,28,0.035)); }
+.fm-day.is-out { opacity: 0.4; }
+.fm-day.is-today,
+[data-theme="light"] .fm-day.is-today { background: #059669; box-shadow: 0 2px 8px rgba(5,150,105,0.35); }
+.fm-day.is-today .fm-num { background: transparent; color: #fff; }
+.fm-day.is-today .fm-lunar { color: rgba(255,255,255,0.85); }
+.fm-day.is-selected:not(.is-today) { box-shadow: inset 0 0 0 1.5px var(--kh-primary), 0 2px 8px rgba(59,125,230,0.18); }
+.fm-day.is-selected:not(.is-today) .fm-num { box-shadow: none; }
+.fm-day:active { filter: brightness(0.96); }
+/* Bars sit inside the tiles: inset from the tile edge, flush across gaps */
+.fm-bars { top: 44px; column-gap: 4px; }
+.fm-bar { margin: 0 3px; }
+.fm-bar.cut-l,
+.fm-bar.cut-r { margin: 0 3px; }
+
+/* =========================================================
+   FULL MONTH, SQUARE — 1:1 day tiles like the month view.
+   Event bars become thin strips along the bottom of each tile
+   (still continuous across the days they cover); the names are
+   in the events card under the grid.
+   ========================================================= */
+.cal-full { flex: 0 0 auto; }
+.fm-week { flex: none; min-height: 0; }
+.fm-days { position: relative; inset: auto; }
+.fm-day { aspect-ratio: 1 / 1; padding-top: 4px; justify-content: flex-start; }
+.fm-num { width: auto; height: auto; font-size: 15px; line-height: 1.25; }
+.fm-lunar { font-size: 8.5px; line-height: 1.35; }
+.fm-bars { top: auto; bottom: 5px; grid-auto-rows: 4px; row-gap: 2px; }
+.fm-bar { font-size: 0; line-height: 0; padding: 0; border-radius: 3px; margin: 0 5px; }
+.fm-bar.cut-l, .fm-bar.cut-r { margin: 0 5px; }
+.fm-bar--observance { --bar-bg: #E8B25C; }
+.fm-bar--fertile    { --bar-bg: #22C55E; }
+.fm-bar--predicted  { --bar-bg: transparent; box-shadow: inset 0 0 0 1px #EC4899; }
+.fm-more { display: none; }
+.fm-day.is-today .fm-num { font-size: 15px; }
+.cal-app.view-full .month-events { margin-top: 8px; }
+
+/* Two thin strips fit under the number + lunar day without touching them */
+.fm-day { padding-top: 3px; }
+.fm-num { font-size: 14px; line-height: 1.2; }
+.fm-lunar { font-size: 8px; line-height: 1.3; }
+.fm-bars { bottom: 4px; grid-auto-rows: 3px; row-gap: 2px; }
+.fm-bar { border-radius: 2px; }
+
+
+/* =========================================================
+   HEALTH PANEL TABS + ផ្សំផ្គុំកូនប្រុសស្រី
+   ========================================================= */
+.health-tabs {
+  display: flex; gap: 6px; padding: 10px 16px 4px;
+  position: sticky; top: 57px; z-index: 2; background: var(--kh-card-bg);
+}
+.health-tab {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 8px; border-radius: 12px; border: 0;
+  background: var(--kh-bg-subtle); color: var(--kh-text-secondary);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+[data-theme="light"] .health-tab { background: #F1F5F9; color: #475569; }
+.health-tab.is-active { background: #f04e7a; color: #fff; }
+.health-tab[data-health-tab="baby"].is-active { background: #6366F1; }
+.health-tab-panel { display: none; }
+.health-tab-panel.is-active { display: block; }
+
+.baby-title { font-size: 17px; font-weight: 800; color: var(--kh-text); }
+.baby-intro, .baby-hint { font-size: 12.5px; color: var(--kh-text-muted); line-height: 1.6; margin-top: 4px; }
+.baby-hint { margin: -2px 0 8px; }
+.baby-date { display: grid; grid-template-columns: 1fr 1.6fr 1.2fr; gap: 6px; margin-top: 6px; }
+.baby-date select {
+  width: 100%; padding: 9px 8px; border-radius: 10px; font: inherit; font-size: 14px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated); color: var(--kh-text);
+}
+[data-theme="light"] .baby-date select { background: #fff; border-color: rgba(0,0,0,0.12); }
+.baby-result {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 14px;
+  border-radius: 14px; background: var(--kh-bg-subtle);
+}
+[data-theme="light"] .baby-result { background: #F8FAFC; border: 1px solid rgba(0,0,0,0.06); }
+.baby-result .baby-pill { font-size: 18px; padding: 6px 16px; }
+.baby-meta { font-size: 12.5px; color: var(--kh-text-secondary); line-height: 1.5; }
+.baby-empty { margin-top: 10px; font-size: 13px; color: var(--kh-text-muted); }
+.baby-pill {
+  flex: none; display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 11px; border-radius: 999px; font-size: 13px; font-weight: 800;
+  background: var(--kh-bg-subtle); color: var(--kh-text-muted);
+}
+.baby-pill--boy  { background: rgba(59,130,246,0.14); color: #2563EB; }
+.baby-pill--girl { background: rgba(236,72,153,0.14); color: #DB2777; }
+.baby-plan { display: flex; flex-direction: column; }
+.baby-row {
+  display: flex; align-items: center; gap: 10px; padding: 9px 2px;
+  border-top: 1px solid var(--kh-border);
+}
+.baby-row:first-child { border-top: 0; }
+.baby-m { flex: none; width: 64px; font-size: 14px; font-weight: 700; display: flex; flex-direction: column; line-height: 1.35; }
+.baby-m small { font-size: 11px; font-weight: 500; color: var(--kh-gold); }
+.baby-range { flex: 1; min-width: 0; font-size: 12.5px; color: var(--kh-text-secondary); line-height: 1.5; display: flex; flex-direction: column; }
+.baby-fertile { display: inline-flex; align-items: center; gap: 4px; color: #16a34a; font-weight: 600; }
+.baby-fertile svg { width: 13px; height: 13px; }
+.baby-result .baby-pill svg { width: 18px; height: 18px; }
+
+/* Baby names */
+.baby-name-tabs { display: flex; gap: 6px; margin-top: 6px; }
+.baby-name-tab {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 8px; border-radius: 11px; border: 0; font: inherit; font-size: 14px; font-weight: 700;
+  background: var(--kh-bg-subtle); color: var(--kh-text-secondary); cursor: pointer;
+}
+[data-theme="light"] .baby-name-tab { background: #F1F5F9; color: #475569; }
+.baby-name-tab--boy.is-active  { background: #2563EB; color: #fff; }
+.baby-name-tab--girl.is-active { background: #DB2777; color: #fff; }
+.baby-name-search {
+  width: 100%; margin-top: 8px; padding: 9px 12px; border-radius: 10px; font: inherit; font-size: 14px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated); color: var(--kh-text);
+  -webkit-user-select: text; user-select: text;
+}
+[data-theme="light"] .baby-name-search { background: #fff; border-color: rgba(0,0,0,0.12); }
+.baby-names { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.baby-name {
+  position: relative; display: flex; flex-direction: column; align-items: flex-start;
+  padding: 9px 26px 9px 11px; border-radius: 12px; text-align: left; cursor: pointer;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated);
+  color: var(--kh-text); font: inherit; -webkit-tap-highlight-color: transparent;
+}
+[data-theme="light"] .baby-name { background: #fff; border-color: rgba(0,0,0,0.08); }
+.baby-name-km { font-size: 17px; font-weight: 800; line-height: 1.45; }
+.baby-name-latin { font-size: 12px; font-weight: 600; color: var(--kh-text-secondary); }
+.baby-name-mean { font-size: 11.5px; color: var(--kh-text-muted); line-height: 1.45; }
+.baby-name-star { position: absolute; top: 8px; right: 9px; font-size: 15px; color: var(--kh-text-muted); }
+.baby-name.is-fav { border-color: #F59E0B; box-shadow: 0 0 0 1px #F59E0B; }
+.baby-name.is-fav .baby-name-star { color: #F59E0B; }
+
+/* Name origin chips */
+.baby-origins { display: flex; gap: 5px; margin-top: 6px; }
+.baby-origin {
+  flex: 1 1 auto; padding: 6px 4px; border-radius: 999px; border: 1px solid var(--kh-border-strong);
+  background: transparent; color: var(--kh-text-secondary); font: inherit; font-size: 13px; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+[data-theme="light"] .baby-origin { border-color: rgba(0,0,0,0.12); color: #475569; }
+.baby-origin.is-active { background: #6366F1; border-color: #6366F1; color: #fff; }
+
+/* Naming by birth day */
+.baby-sub { font-size: 13px; font-weight: 700; color: var(--kh-text-secondary); margin-top: 6px; }
+.baby-letters {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin-top: 10px;
+  padding: 10px 12px; border-radius: 12px; background: rgba(99,102,241,0.10);
+  font-size: 13px; color: var(--kh-text-secondary);
+}
+.baby-letters b { font-size: 19px; font-weight: 800; color: #6366F1; letter-spacing: 2px; }
+.baby-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13.5px; color: var(--kh-text); }
+.baby-check input { width: 18px; height: 18px; accent-color: #6366F1; }
+.baby-name.is-suited .baby-name-km { color: #6366F1; }
+.baby-origins { margin-top: 12px; }
+
+/* =========================================================
+   DATE PICKER — field button + calendar modal
+   ========================================================= */
+.dp-field {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-top: 6px; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--kh-border-strong); background: var(--kh-card-elevated);
+  color: var(--kh-text); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; text-align: left;
+}
+[data-theme="light"] .dp-field { background: #fff; border-color: rgba(0,0,0,0.12); }
+.dp-field svg { flex: none; color: #6366F1; }
+.dp-field.is-empty { color: var(--kh-text-muted); font-weight: 500; }
+.dp-overlay { z-index: 1200; }
+.dp-panel { padding: 14px 14px 10px; }
+.dp-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 8px; }
+.dp-title {
+  display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 10px;
+  border: 0; background: transparent; color: var(--kh-text); font: inherit; font-size: 16px; font-weight: 800; cursor: pointer;
+}
+.dp-title:active { background: var(--kh-primary-glow); }
+.dp-days { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; }
+.dp-wd { text-align: center; font-size: 11px; color: var(--kh-text-muted); padding: 2px 0 6px; }
+.dp-wd.is-sun { color: var(--kh-red); }
+.dp-day { height: 40px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; font: inherit; color: var(--kh-text); cursor: pointer; padding: 0; }
+.dp-day span { width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 14.5px; }
+.dp-day.is-sun span { color: var(--kh-red); }
+.dp-day.is-today span { box-shadow: inset 0 0 0 1.5px #6366F1; }
+.dp-day.is-sel span { background: #6366F1; color: #fff; font-weight: 800; box-shadow: none; }
+.dp-day.is-off, .dp-cell.is-off { opacity: 0.3; cursor: default; }
+.dp-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 4px 0; }
+.dp-cell {
+  padding: 13px 4px; border-radius: 12px; border: 1px solid var(--kh-border-strong);
+  background: transparent; color: var(--kh-text); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+[data-theme="light"] .dp-cell { border-color: rgba(0,0,0,0.10); }
+.dp-cell.is-sel { background: #6366F1; border-color: #6366F1; color: #fff; }
+.dp-foot { display: flex; justify-content: flex-end; margin-top: 8px; }
+
+/* Chips keep their natural width; a row that is too long for the screen
+   (longer labels in English) scrolls sideways instead of overlapping */
+.ev-chips { overflow-x: auto; scrollbar-width: none; }
+.ev-chips::-webkit-scrollbar { display: none; }
+.ev-chips .ev-chip,
+.ev-chips--five .ev-chip,
+.ev-chips--card .ev-chip { flex: 1 0 auto; white-space: nowrap; }
+
+/* Type-in row at the top of the date picker */
+.dp-type { display: flex; gap: 8px; margin-bottom: 4px; }
+.dp-type input {
+  flex: 1; min-width: 0; padding: 10px 12px; border-radius: 12px; font: inherit; font-size: 16px; font-weight: 700;
+  letter-spacing: 1px; border: 1.5px solid var(--kh-border-strong); background: var(--kh-card-elevated); color: var(--kh-text);
+  -webkit-user-select: text; user-select: text;
+}
+[data-theme="light"] .dp-type input { background: #fff; border-color: rgba(0,0,0,0.14); }
+.dp-type input:focus { outline: none; border-color: #6366F1; box-shadow: 0 0 0 3px rgba(99,102,241,0.18); }
+.dp-type input.is-bad { border-color: var(--kh-red); box-shadow: none; }
+.dp-ok {
+  flex: none; padding: 0 16px; border-radius: 12px; border: 0;
+  background: #6366F1; color: #fff; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.dp-msg { min-height: 18px; font-size: 12px; color: var(--kh-red); margin: 2px 2px 4px; }
+
+
+/* The header bleeds to the screen edge; on phones the app's side padding
+   is 10px, so match it instead of overshooting by 4px */
+@media (max-width: 460px) {
+  .cal-topbar { margin-left: -10px; margin-right: -10px; }
+}
+/* Origin chips wrap when the labels are long (English) */
+.baby-origins { flex-wrap: wrap; }
+.baby-origin { flex: 1 0 auto; }
