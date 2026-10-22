@@ -4130,3 +4130,33 @@ html { background-color: #0a0c14; }
   .hl-day { height: 32px; }
   .hl-day span { width: 30px; height: 30px; }
 }
+
+/* =========================================================
+   SETTINGS TABS + SHARE
+   ========================================================= */
+.set-tabs .health-tab.is-active { background: var(--kh-primary); color: #fff; }
+.set-tabs .health-tab { font-size: 13.5px; padding: 9px 6px; }
+.share { padding: 4px 0 8px; }
+.share-hero { display: flex; align-items: center; gap: 14px; padding: 14px 18px 6px; }
+.share-hero img { border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.12); flex: none; }
+.share-title { font-size: 17px; font-weight: 800; color: var(--kh-text); line-height: 1.45; }
+.share-intro { font-size: 13px; color: var(--kh-text-muted); line-height: 1.5; }
+.share-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px 6px; padding: 14px 14px 10px; }
+.share-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border: 0; background: transparent; padding: 4px 0; cursor: pointer; text-decoration: none;
+  font: inherit; font-size: 12.5px; font-weight: 600; color: var(--kh-text); -webkit-tap-highlight-color: transparent;
+}
+.share-ic {
+  width: 52px; height: 52px; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 12px rgba(15,23,42,0.16); transition: transform .12s var(--kh-transition);
+}
+.share-btn:active .share-ic { transform: scale(0.92); }
+.share-links .share-link { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--kh-border); }
+.share-links .share-link:first-of-type { border-top: 0; }
+.share-link-main { flex: 1; min-width: 0; }
+.share-link-label { font-size: 13px; font-weight: 700; color: var(--kh-text); }
+.share-link-url { font-size: 12px; color: var(--kh-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Same height on every tab, so switching tabs does not make the panel jump */
+#cal-settings-panel { min-height: min(640px, 90vh); min-height: min(640px, 90dvh); }
