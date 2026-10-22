@@ -1065,13 +1065,33 @@ const KhCal = (() => {
     return I18n.t('silDay') + ' · ' + I18n.t(phaseKey);
   }
 
+  // Header moon drawn at the lunar day's phase: it grows through កើត
+  // (lit on the right), is full on ១៥កើត, then shrinks through រោច.
+  function _moonIcon(kd) {
+    const waxing = kd <= 15;
+    const f = Math.max(0, Math.min(1, waxing ? kd / 15 : (30 - kd) / 15));
+    const r = 9, rx = (r * Math.abs(1 - 2 * f)).toFixed(2);
+    const lit = `M12 3A${r} ${r} 0 0 1 12 21A${rx} ${r} 0 0 ${f > 0.5 ? 1 : 0} 12 3Z`;
+    return '<svg class="lunar-icon" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">' +
+      `<circle cx="12" cy="12" r="${r}" fill="none" stroke="currentColor" stroke-width="1.6" opacity=".45"/>` +
+      `<path d="${lit}" fill="currentColor"${waxing ? '' : ' transform="matrix(-1 0 0 1 24 0)"'}/></svg>`;
+  }
+
+  // The first profile is created as "Me" in whatever language was on at the
+  // time; show it in the current language rather than the stored one.
+  const _DEFAULT_PROFILE_NAMES = ['ខ្ញុំ', 'Me', '我'];
+  function _profileName(p) {
+    if (!p) return '';
+    return _DEFAULT_PROFILE_NAMES.includes(p.name) ? (I18n.t('myProfile') || p.name) : p.name;
+  }
+
   function _healthRow(dt) {
     if (!HT || !HT.isEnabled()) return '';
     const info = HT.getDayInfo(dt);
     if (!info || info.kind === 'none') return '';
 
     const profile = HT.getActiveProfile();
-    const profileName = profile ? profile.name : '';
+    const profileName = _profileName(profile);
     const fill = (key, fallback, n) => (I18n.t(key) || fallback).replace('{n}', _num(n));
 
     let icon = '', kindLabel = '', detail = '';
@@ -1600,7 +1620,7 @@ const KhCal = (() => {
         : `${I18n.t('bePrefix')} ${be}`;
       const sep = '<span class="lunar-sep">·</span>';
       infoEl.innerHTML =
-        '<svg class="lunar-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.5 6.5 0 0 0 11 11z"/></svg>' +
+        _moonIcon(refLun.kd) +
         `<span class="lunar-month">${escapeHtml(kmName)}</span>` + sep +
         `<span class="lunar-sak">${escapeHtml(sak)}</span>` + sep +
         `<span class="lunar-animal">${escapeHtml(animal)}</span>` + sep +
@@ -2311,7 +2331,7 @@ const KhCal = (() => {
     _renderWeekdays();
     _renderCalendar();
     // Panels that build their text in JS follow the language change too
-    if (HT) { _refreshHealthSummary(); _refreshPeriodHistory(); }
+    if (HT) { _refreshHealthProfileSelect(); _refreshProfilesList(); _refreshHealthSummary(); _refreshPeriodHistory(); }
     if (document.querySelector('.health-tab.is-active[data-health-tab="baby"]')) _renderBaby();
     const evOverlay = document.getElementById('cal-events-overlay');
     if (evOverlay && evOverlay.classList.contains('open')) _renderEventsList();
@@ -2411,7 +2431,7 @@ const KhCal = (() => {
     const s = HT.getSettings();
     const profiles = HT.getProfiles();
     select.innerHTML = profiles.map(p =>
-      `<option value="${escapeHtml(p.id)}"${p.id === s.activeProfileId ? ' selected' : ''}>${escapeHtml(p.name)}</option>`
+      `<option value="${escapeHtml(p.id)}"${p.id === s.activeProfileId ? ' selected' : ''}>${escapeHtml(_profileName(p))}</option>`
     ).join('');
     if (profiles.length === 0) {
       select.innerHTML = `<option value="">${escapeHtml(I18n.t('noProfiles') || '— no profile —')}</option>`;
@@ -2702,7 +2722,7 @@ const KhCal = (() => {
     list.innerHTML = profiles.map(p => `
       <div class="health-profile-item${p.id === activeId ? ' is-active' : ''}" data-profile-id="${escapeHtml(p.id)}">
         <span class="health-profile-dot" style="background:${escapeHtml(p.color || '#ff6b9d')}"></span>
-        <span class="health-profile-name">${escapeHtml(p.name)}</span>
+        <span class="health-profile-name">${escapeHtml(_profileName(p))}</span>
         <button type="button" class="health-profile-action" data-action="rename">${escapeHtml(renameLabel)}</button>
         <button type="button" class="health-profile-action" data-action="delete">${escapeHtml(deleteLabel)}</button>
       </div>
@@ -2732,7 +2752,7 @@ const KhCal = (() => {
     const action = btn.dataset.action;
 
     if (action === 'rename') {
-      const current = (HT.getProfile(id) || {}).name || '';
+      const current = _profileName(HT.getProfile(id));
       const name = window.prompt(I18n.t('renameProfilePrompt') || 'New name:', current);
       if (name && name.trim()) {
         HT.renameProfile(id, name.trim());
@@ -2976,5 +2996,5 @@ const KhCal = (() => {
     init();
   }
 
-  return { _nav, _goToday };
+  return { _nav, _goToday, _moon: _moonIcon };
 })();
