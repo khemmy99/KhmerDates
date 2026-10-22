@@ -4061,3 +4061,72 @@ html { background-color: #0a0c14; }
 .baby-origins { flex-wrap: wrap; }
 .baby-origin { flex: 1 0 auto; }
 .baby-fallback { grid-column: 1 / -1; font-size: 12.5px; color: var(--kh-text-muted); padding: 2px 2px 4px; }
+
+/* =========================================================
+   LANDSCAPE PHONE — two panes. Header across the top; the
+   calendar (any view) on the left at the height of the screen,
+   the events card on the right. Week and year views, which hide
+   the card, use the full width.
+   ========================================================= */
+@media (orientation: landscape) and (max-height: 600px) {
+  .cal-app {
+    max-width: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 14px;
+    padding-left: calc(14px + env(safe-area-inset-left, 0px));
+    padding-right: calc(14px + env(safe-area-inset-right, 0px));
+    padding-bottom: calc(62px + var(--kh-footer-safe));
+  }
+  .cal-app.has-today-fab { padding-bottom: calc(62px + var(--kh-footer-safe)); }
+  .cal-topbar {
+    grid-column: 1 / -1; grid-row: 1;
+    margin-left: calc(-14px - env(safe-area-inset-left, 0px));
+    margin-right: calc(-14px - env(safe-area-inset-right, 0px));
+    padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: 10px;
+    border-radius: 0 0 16px 16px;
+  }
+  .cal-topbar .cal-lunar-info { line-height: 1.6; padding-bottom: 2px; }
+  .cal-title-main { font-size: 19px; line-height: 1.3; }
+  .cal-title-sub { font-size: 11.5px; }
+  .cal-weekdays { grid-column: 1; grid-row: 2; padding: 4px 0 2px; }
+  .cal-wh { padding: 1px 0; font-size: 11px; }
+  .cal-grid, .cal-full { grid-column: 1; grid-row: 3; min-height: 0; }
+  .cal-week, .cal-year { grid-column: 1 / -1; grid-row: 2 / 4; min-height: 0; margin-top: 6px; }
+  .month-events, .cal-app.view-full .month-events {
+    grid-column: 2; grid-row: 2 / 4; min-height: 0; max-height: none; margin: 4px 0 0;
+  }
+
+  /* Month grid: rows share the height instead of square tiles */
+  .cal-grid { grid-auto-rows: minmax(0, 1fr); align-content: stretch; padding: 2px 0 4px; gap: 3px; }
+  .cal-cell { aspect-ratio: auto; min-height: 0; padding: 1px; }
+  .cal-cday { display: none; }
+  .cal-gday { font-size: 14px; line-height: 1.1; }
+  .cal-kday { font-size: 9px; line-height: 1.1; margin-top: 0; }
+
+  /* Full month: same, with the strips at the foot */
+  .cal-full { flex: 1 1 auto; gap: 3px; margin: 2px 0 4px; }
+  .fm-week { flex: 1 1 0; min-height: 0; }
+  .fm-days { position: absolute; inset: 0; gap: 3px; }
+  .fm-day { aspect-ratio: auto; padding-top: 1px; }
+  .fm-num { font-size: 13px; line-height: 1.15; }
+  .fm-lunar { font-size: 7.5px; line-height: 1.2; }
+  .fm-bars { bottom: 2px; grid-auto-rows: 2px; row-gap: 1px; column-gap: 3px; }
+  .fm-marks { top: 2px; }
+
+  /* Week: two columns of day cards; year: six months per row */
+  .cal-app.view-week .cal-week { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; align-content: start; }
+  .wk-day { margin-bottom: 8px; padding: 9px 12px; }
+  .cal-app.view-year .cal-year { grid-template-columns: repeat(6, 1fr); row-gap: 10px; }
+}
+
+/* Pop-ups never run off a short screen: they scroll inside instead */
+.cal-modal-panel { max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-height: 600px) {
+  .cal-modal-overlay { padding: 12px; }
+  .dp-day { height: 32px; }
+  .dp-day span { width: 30px; height: 30px; }
+  .hl-day { height: 32px; }
+  .hl-day span { width: 30px; height: 30px; }
+}
