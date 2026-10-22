@@ -7,5 +7,8 @@
   },
   "android": {
     "backgroundColor": "#0f1117"
+  },
+  "ios": {
+    "backgroundColor": "#0f1117"
   }
 }

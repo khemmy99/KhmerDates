@@ -1,0 +1,83 @@
+name: Build unsigned iOS IPA
+
+# Produces an unsigned .ipa for sideloading onto a personal device with
+# Sideloadly (or AltStore). No Apple Developer Program membership needed --
+# signing happens locally on the Windows PC with a free Apple ID.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - 'js/**'
+      - 'css/**'
+      - 'icons/**'
+      - 'index.html'
+      - 'manifest.json'
+      - 'sw.js'
+      - 'package.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # www/ is gitignored, so rebuild it from the root web sources.
+      - name: Assemble www/
+        run: |
+          rm -rf www
+          mkdir -p www
+          cp -R index.html manifest.json sw.js css js icons www/
+
+      # On macOS this also rewrites CapApp-SPM/Package.swift with correct
+      # POSIX paths, undoing the backslash paths the CLI emits on Windows.
+      - name: Sync web assets into the iOS project
+        run: npx cap sync ios
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project ios/App/App.xcodeproj \
+            -scheme App
+
+      - name: Build unsigned .app
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Package into .ipa
+        run: |
+          APP="build/Build/Products/Release-iphoneos/App.app"
+          test -d "$APP" || { echo "Build product missing at $APP"; exit 1; }
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry KhmerCalendar-unsigned.ipa Payload
+          ls -lh KhmerCalendar-unsigned.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KhmerCalendar-ipa
+          path: KhmerCalendar-unsigned.ipa
+          retention-days: 30

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"exit=$?\")",
+      "Bash(node -e ' *)",
+      "Bash(grep -c 'path: \"\\\\.\\\\./\\\\.\\\\./\\\\.\\\\./node_modules' /c/Users/KM/KhmerDates/ios/App/CapApp-SPM/Package.swift)",
+      "Bash(grep -n \"PBXNativeTarget\\\\|/\\\\* App \\\\*/ = {\" ios/App/App.xcodeproj/project.pbxproj)",
+      "Bash(awk '/Begin PBXNativeTarget section/,/End PBXNativeTarget section/' ios/App/App.xcodeproj/project.pbxproj)",
+      "Bash(grep -n \"rootObject\\\\|productName\\\\|/\\\\* Build configuration list for PBXProject\" ios/App/App.xcodeproj/project.pbxproj)",
+      "Bash(python -c \"import yaml,sys; d=yaml.safe_load\\(open\\('.github/workflows/ios-build.yml'\\)\\); print\\('YAML OK'\\); print\\('job:', list\\(d['jobs']\\)[0]\\); print\\('runner:', d['jobs']['build']['runs-on']\\); print\\('steps:', len\\(d['jobs']['build']['steps']\\)\\)\")"
+    ]
+  }
+}
