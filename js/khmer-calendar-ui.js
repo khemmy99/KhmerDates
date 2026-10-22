@@ -412,13 +412,17 @@ const KhCal = (() => {
     const q = _babyNameQuery.trim().toLowerCase();
     const group = _childGroup();
     const suits = n => group && BG.suits(_babyNameOrigin === 'km' ? n.name : n.sound, group);
-    const list = BG.names(_babyNameOrigin, _babyNameGender || 'B')
-      .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)))
-      .filter(n => !group || !_babyMatchDay || suits(n))
-      .sort((a, b) => isFav(b) - isFav(a));
+    const searched = BG.names(_babyNameOrigin, _babyNameGender || 'B')
+      .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)));
+    let list = searched.filter(n => !group || !_babyMatchDay || suits(n));
+    // Never leave the list blank: with no name for this birth day, say so and
+    // show every name of the origin instead
+    const fellBack = !list.length && searched.length > 0;
+    if (fellBack) list = searched;
+    list.sort((a, b) => isFav(b) - isFav(a));
     document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
     document.querySelectorAll('.baby-origin').forEach(t => t.classList.toggle('is-active', t.dataset.origin === _babyNameOrigin));
-    el.innerHTML = list.length ? list.map(n => {
+    el.innerHTML = (fellBack ? `<div class="baby-fallback">${escapeHtml(I18n.t('noMatchLetters'))}</div>` : '') + (list.length ? list.map(n => {
       const fav = isFav(n);
       // Second line: how to read it — Latin spelling, plus the Khmer
       // pronunciation in the Khmer UI
@@ -429,7 +433,7 @@ const KhCal = (() => {
         <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n.km : n.en)}</span>
         <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
       </button>`;
-    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t(group && _babyMatchDay && !q ? 'noMatchLetters' : 'babyNoMatch'))}</div>`;
+    }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t('babyNoMatch'))}</div>`);
   }
 
   const _ymdOf = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
