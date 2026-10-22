@@ -697,13 +697,57 @@ const KhCal = (() => {
   }
 
   function _setHealthTab(tab) {
-    document.querySelectorAll('.health-tab').forEach(b => {
+    document.querySelectorAll('.health-tab[data-health-tab]').forEach(b => {
       const on = b.dataset.healthTab === tab;
       b.classList.toggle('is-active', on);
       b.setAttribute('aria-selected', String(on));
     });
     document.querySelectorAll('.health-tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.healthPanel === tab));
     if (tab === 'baby') _renderBaby();
+  }
+
+  // ----- Share the app -----
+  const SHARE_PLAY = 'https://play.google.com/store/apps/details?id=com.khmercalendar.app';
+  const SHARE_WEB = 'https://khemmy99.github.io/KhmerDates/';
+  const _shareText = () => `${I18n.t('shareMessage')}\nAndroid: ${SHARE_PLAY}\niPhone / Web: ${SHARE_WEB}`;
+  const _SOCIAL = {
+    facebook: { color: '#1877F2', label: 'Facebook', href: () => 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(SHARE_PLAY),
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M14.2 8.2H16V5.1a24 24 0 0 0-2.6-.1c-2.6 0-4.3 1.6-4.3 4.5v2.5H6.3v3.5h2.8V24h3.4v-8.5h2.8l.4-3.5h-3.2V9.8c0-1 .3-1.6 1.7-1.6z"/></svg>' },
+    telegram: { color: '#229ED9', label: 'Telegram', href: () => 'https://t.me/share/url?url=' + encodeURIComponent(SHARE_PLAY) + '&text=' + encodeURIComponent(I18n.t('shareMessage') + '\niPhone / Web: ' + SHARE_WEB),
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="#fff"><path d="M20.7 4.4 3.3 11.1c-1.2.5-1.2 1.2-.2 1.5l4.5 1.4 1.7 5.3c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.2-2.1 4.5 3.3c.8.5 1.4.2 1.6-.8l2.9-13.8c.3-1.2-.4-1.8-1.6-1.3zM9.5 14.3l8.8-5.6c.4-.3.8-.1.5.2l-7.4 6.7-.3 3.1z"/></svg>' },
+    whatsapp: { color: '#25D366', label: 'WhatsApp', href: () => 'https://wa.me/?text=' + encodeURIComponent(_shareText()),
+      icon: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.2a8.8 8.8 0 0 0-7.6 13.2L3.3 20.8l4.5-1.2A8.8 8.8 0 1 0 12 3.2z"/><path fill="#fff" stroke="none" d="M9.1 7.6c-.3 0-.6.1-.8.4-.3.3-1 1-1 2.3s1 2.7 1.2 2.9c.1.2 2 3.1 4.9 4.2 2.4.9 2.9.7 3.4.7.5-.1 1.7-.7 1.9-1.4.2-.7.2-1.2.2-1.4l-.5-.3-1.9-.9c-.3-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.6 6.6 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.9-2c-.2-.6-.4-.5-.6-.5z"/></svg>' },
+    x: { color: '#111', label: 'X', href: () => 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(I18n.t('shareMessage')) + '&url=' + encodeURIComponent(SHARE_PLAY),
+      icon: '<svg viewBox="0 0 24 24" width="21" height="21" fill="#fff"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L1.9 3h6.4l4.4 5.8zm-1.1 16.2h1.7L7.4 4.7H5.5z"/></svg>' }
+  };
+
+  function _renderSharePanel() {
+    const el = document.getElementById('share-panel');
+    if (!el) return;
+    const btn = (key) => { const s = _SOCIAL[key];
+      return `<a class="share-btn" href="${escapeHtml(s.href())}" target="_blank" rel="noopener">
+        <span class="share-ic" style="background:${s.color}">${s.icon}</span><span>${escapeHtml(s.label)}</span></a>`; };
+    const linkIcon = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+    const moreIcon = _ICON_SHARE.replace('stroke="currentColor"', 'stroke="#fff"').replace('width="17" height="17"', 'width="22" height="22"');
+    const linkRow = (label, url) => `<div class="share-link">
+        <div class="share-link-main"><div class="share-link-label">${escapeHtml(label)}</div><div class="share-link-url">${escapeHtml(url.replace(/^https:\/\//, ''))}</div></div>
+        <button type="button" class="detail-copy-btn" data-share-copy="${escapeHtml(url)}" aria-label="${escapeHtml(I18n.t('copy'))}">${_ICON_COPY}</button>
+      </div>`;
+    el.innerHTML = `
+      <div class="share-hero">
+        <img src="icons/icon-192.png" alt="" width="56" height="56">
+        <div><div class="share-title">${escapeHtml(I18n.t('shareTitle'))}</div><div class="share-intro">${escapeHtml(I18n.t('shareIntro'))}</div></div>
+      </div>
+      <div class="share-grid">
+        ${btn('facebook')}${btn('telegram')}${btn('whatsapp')}${btn('x')}
+        <button type="button" class="share-btn" data-share-copy="${escapeHtml(_shareText())}"><span class="share-ic" style="background:#6366F1">${linkIcon}</span><span>${escapeHtml(I18n.t('shareCopyLink'))}</span></button>
+        ${typeof navigator.share === 'function' ? `<button type="button" class="share-btn" data-share-native="1"><span class="share-ic" style="background:#64748B">${moreIcon}</span><span>${escapeHtml(I18n.t('shareMore'))}</span></button>` : ''}
+      </div>
+      <div class="settings-section share-links">
+        <div class="settings-label">${escapeHtml(I18n.t('shareLinks'))}</div>
+        ${linkRow(I18n.t('shareAndroid'), SHARE_PLAY)}
+        ${linkRow(I18n.t('shareIphone'), SHARE_WEB)}
+      </div>`;
   }
 
   // ----- Events page -----
@@ -1999,43 +2043,42 @@ const KhCal = (() => {
   // === Settings Panel ===
   function _initSettings() {
     const settingsBtn  = document.getElementById('cal-settings-btn');
-    const menuOverlay  = document.getElementById('cal-settings-menu-overlay');
     const overlay      = document.getElementById('cal-settings-overlay');
-    const aboutOverlay = document.getElementById('cal-about-overlay');
 
     // Stamp the current app version into the About panel
     const versionEl = document.getElementById('settings-app-version');
     if (versionEl) versionEl.textContent = APP_VERSION;
 
-    // Helper: close every settings-style overlay, then open one
-    const _openOnly = (el) => {
-      [menuOverlay, overlay, aboutOverlay].forEach(o => o && o.classList.remove('open'));
-      if (el) el.classList.add('open');
-    };
-
-    // Footer gear opens the chooser menu (Settings / About)
-    if (settingsBtn) settingsBtn.addEventListener('click', () => _openOnly(menuOverlay));
-
-    // Menu entries open their own popup panel
-    const openSettings = document.getElementById('open-settings-popup');
-    const openAbout    = document.getElementById('open-about-popup');
-    if (openSettings) openSettings.addEventListener('click', () => _openOnly(overlay));
-    if (openAbout)    openAbout.addEventListener('click', () => _openOnly(aboutOverlay));
-
-    // Close buttons + backdrop taps for each overlay.
-    // Closing Settings or About steps back to the chooser menu; closing the
-    // menu itself dismisses everything (back to the calendar).
-    [
-      ['settings-menu-close', menuOverlay, null],
-      ['settings-close',      overlay,      menuOverlay],
-      ['about-close',         aboutOverlay, menuOverlay],
-    ].forEach(([closeId, ov, back]) => {
-      const close = () => { if (back) _openOnly(back); else ov.classList.remove('open'); };
-      const btn = document.getElementById(closeId);
-      if (btn && ov) btn.addEventListener('click', close);
-      if (ov) ov.addEventListener('click', (e) => {
-        if (e.target === ov) close();
+    // One panel with tabs, opened straight from the footer gear
+    const titleEl = document.getElementById('settings-title');
+    const TAB_TITLE = { settings: 'settings', share: 'shareTab', about: 'about' };
+    let settingsTab = 'settings';
+    const showSettingsTab = (tab) => {
+      settingsTab = tab;
+      document.querySelectorAll('[data-set-tab]').forEach(b => {
+        const on = b.dataset.setTab === tab;
+        b.classList.toggle('is-active', on);
+        b.setAttribute('aria-selected', String(on));
       });
+      overlay.querySelectorAll('.settings-tab-panel').forEach(p => p.classList.toggle('is-active', p.dataset.tabPanel === tab));
+      if (titleEl) { titleEl.dataset.i18n = TAB_TITLE[tab]; titleEl.textContent = I18n.t(TAB_TITLE[tab]); }
+      if (tab === 'share') _renderSharePanel();
+      const panel = document.getElementById('cal-settings-panel');
+      if (panel) panel.scrollTop = 0;
+    };
+    document.querySelectorAll('[data-set-tab]').forEach(b => b.addEventListener('click', () => showSettingsTab(b.dataset.setTab)));
+    if (settingsBtn && overlay) settingsBtn.addEventListener('click', () => { showSettingsTab(settingsTab); overlay.classList.add('open'); });
+    const closeBtn = document.getElementById('settings-close');
+    if (closeBtn && overlay) closeBtn.addEventListener('click', () => overlay.classList.remove('open'));
+    if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.classList.remove('open'); });
+    const sharePanel = document.getElementById('share-panel');
+    if (sharePanel) sharePanel.addEventListener('click', (e) => {
+      const c = e.target.closest('[data-share-copy]');
+      if (c) { e.preventDefault(); _copyText(c.dataset.shareCopy); return; }
+      if (e.target.closest('[data-share-native]')) {
+        e.preventDefault();
+        navigator.share({ title: I18n.t('shareTitle'), text: _shareText(), url: SHARE_PLAY }).catch(() => {});
+      }
     });
 
     // Events overlay
@@ -2273,6 +2316,9 @@ const KhCal = (() => {
     const evOverlay = document.getElementById('cal-events-overlay');
     if (evOverlay && evOverlay.classList.contains('open')) _renderEventsList();
     if (_dp) _renderDatePick();
+    if (document.querySelector('[data-set-tab="share"].is-active')) _renderSharePanel();
+    const st = document.getElementById('settings-title');
+    if (st && st.dataset.i18n) st.textContent = I18n.t(st.dataset.i18n);
     if (_selectedDate) {
       _showDetail(_selectedDate.y, _selectedDate.m, _selectedDate.d);
     }
@@ -2749,7 +2795,7 @@ const KhCal = (() => {
     }
 
     // Health panel: period / boy-or-girl tabs
-    document.querySelectorAll('.health-tab').forEach(b =>
+    document.querySelectorAll('.health-tab[data-health-tab]').forEach(b =>
       b.addEventListener('click', () => _setHealthTab(b.dataset.healthTab)));
     const babyEl = document.getElementById('health-baby');
     if (babyEl) {
