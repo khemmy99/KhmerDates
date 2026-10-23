@@ -406,53 +406,6 @@
       </div>
     </div>
 
-    <!-- Weather overlay — opened from footer -->
-    <div class="cal-settings-overlay" id="cal-weather-overlay">
-      <div class="cal-settings-panel cal-weather-panel">
-        <div class="settings-header">
-          <span class="settings-title">
-            <span class="weather-title-icon">☀️</span>
-            <span data-i18n="weather">អាកាសធាតុ</span>
-          </span>
-          <button type="button" class="settings-close" id="weather-overlay-close">&times;</button>
-        </div>
-
-        <!-- City picker + use-my-location button -->
-        <div class="weather-location-bar">
-          <select id="weather-city-select" class="weather-city-select" aria-label="City"></select>
-          <button type="button" id="weather-gps-btn" class="weather-gps-btn">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
-            <span data-i18n="useMyLocation">ប្រើទីតាំងរបស់ខ្ញុំ</span>
-          </button>
-        </div>
-
-        <!-- Current conditions card -->
-        <div class="weather-current" id="weather-current">
-          <div class="weather-loading"><span class="weather-spinner"></span> <span data-i18n="loading">កំពុងផ្ទុក...</span></div>
-        </div>
-
-        <!-- Hourly strip + 7-day list -->
-        <div class="weather-section">
-          <div class="weather-section-label" data-i18n="hourly">ម៉ោងបន្ទាប់</div>
-          <div class="weather-hourly" id="weather-hourly"></div>
-        </div>
-        <div class="weather-section">
-          <div class="weather-section-label" data-i18n="daily">៧ ថ្ងៃខាងមុខ</div>
-          <div class="weather-daily" id="weather-daily"></div>
-        </div>
-
-        <!-- Phone apps only: hand over to the phone's own weather app (Apple
-             Weather on iPhone, the maker's app on Android). Hidden on the web,
-             which cannot open other apps. -->
-        <button type="button" id="weather-open-app" class="weather-open-app" hidden>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 1 0 6 16.9"/><path d="M14 13l3 3-3 3M17 16H9"/></svg>
-          <span data-i18n="openWeatherApp">បើកកម្មវិធីអាកាសធាតុក្នុងទូរស័ព្ទ</span>
-        </button>
-
-        <div class="weather-credit" data-i18n="weatherCredit">ទិន្នន័យដោយ Open-Meteo</div>
-      </div>
-    </div>
-
     <!-- Month picker moved into the topbar (next to the logo). The grid still
          supports swipe left/right to change month. -->
 
@@ -542,7 +495,8 @@
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 14.9 8.48 21.4 9.43 16.7 14.01 17.81 20.48 12 17.42 6.19 20.48 7.3 14.01 2.6 9.43 9.1 8.48 12 2.6"/></svg>
         <span data-i18n="eventsFooter">ព្រឹត្តិការណ៍</span>
       </button>
-      <button class="cal-footer-btn cal-footer-btn--weather" id="cal-weather-btn" aria-label="Weather">
+      <!-- Opens the phone's own weather app. Hidden on the web, which cannot open other apps. -->
+      <button class="cal-footer-btn cal-footer-btn--weather" id="cal-weather-btn" aria-label="Weather" hidden>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 16.9"/><line x1="8" y1="19" x2="8" y2="19"/><line x1="12" y1="21" x2="12" y2="21"/><line x1="16" y1="19" x2="16" y2="19"/></svg>
         <span data-i18n="weatherFooter">អាកាសធាតុ</span>
       </button>
@@ -575,7 +529,6 @@
   <script src="js/holidays.js"></script>
   <script src="js/daily-block.js"></script>
   <script src="js/health-tracker.js"></script>
-  <script src="js/weather.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/reminders.js"></script>
   <script src="js/khmer-calendar-ui.js"></script>
@@ -773,7 +726,7 @@
     // Esc closes any open overlay
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      ['cal-settings-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-events-overlay', 'cal-weather-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
+      ['cal-settings-overlay', 'cal-picker-overlay', 'cal-health-overlay', 'cal-events-overlay', 'health-log-overlay', 'health-profiles-overlay'].forEach((id) => {
         const el = document.getElementById(id);
         if (el && el.classList.contains('open')) el.classList.remove('open');
       });
