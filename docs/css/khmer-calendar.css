@@ -4180,3 +4180,16 @@ html { background-color: #0a0c14; }
 .baby-name-tag--G { background: rgba(219,39,119,0.14); color: #F472B6; }
 [data-theme="light"] .baby-name-tag { color: #1D4ED8; }
 [data-theme="light"] .baby-name-tag--G { color: #BE185D; }
+
+/* Weather panel: open the phone's own weather app (phone apps only) */
+.weather-open-app {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  margin: 10px 16px 2px; width: calc(100% - 32px); padding: 11px 14px;
+  border: 1px solid var(--kh-border-strong); border-radius: 12px;
+  background: rgba(91,156,246,0.10); color: var(--kh-primary);
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.weather-open-app[hidden] { display: none; }
+.weather-open-app:active { transform: scale(0.98); }
+[data-theme="light"] .weather-open-app { background: #EFF6FF; border-color: rgba(37,99,235,0.25); color: #1D4ED8; }
