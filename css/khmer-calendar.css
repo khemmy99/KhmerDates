@@ -4160,3 +4160,21 @@ html { background-color: #0a0c14; }
 
 /* Same height on every tab, so switching tabs does not make the panel jump */
 #cal-settings-panel { min-height: min(640px, 90vh); min-height: min(640px, 90dvh); }
+
+/* Baby name search: magnifier, room to lift above the keyboard, origin tags */
+.baby-name-search,
+[data-theme="light"] .baby-name-search {
+  padding-left: 36px; scroll-margin-top: 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 12px 50%;
+}
+[data-theme="light"] .baby-name-search { background-color: #fff; }
+.baby-names.is-searching { min-height: 60vh; align-content: start; }
+.baby-names .baby-empty { grid-column: 1 / -1; }
+.baby-name-tag {
+  margin-top: 4px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+  background: rgba(37,99,235,0.14); color: #60A5FA;
+}
+.baby-name-tag--G { background: rgba(219,39,119,0.14); color: #F472B6; }
+[data-theme="light"] .baby-name-tag { color: #1D4ED8; }
+[data-theme="light"] .baby-name-tag--G { color: #BE185D; }
