@@ -698,6 +698,192 @@ body {
   background: rgba(240,78,122,0.06);
 }
 
+/* ===== Weather overlay ===== */
+.cal-weather-panel .settings-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.weather-title-icon { font-size: 18px; }
+
+.weather-location-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 4px;
+  align-items: center;
+}
+.weather-city-select {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--kh-border);
+  background: var(--kh-card-bg);
+  color: var(--kh-text);
+  border-radius: var(--kh-radius);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+/* Current conditions card */
+.weather-current {
+  margin: 8px 16px 4px;
+  padding: 16px;
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(91,156,246,0.18) 0%, rgba(91,156,246,0.02) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(91,156,246,0.08) 0%, rgba(91,156,246,0.02) 100%);
+  border: 1px solid rgba(91,156,246,0.22);
+  border-radius: 18px;
+  min-height: 110px;
+}
+.weather-current-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.weather-current-icon { font-size: 52px; line-height: 1; }
+.weather-current-info { flex: 1; min-width: 120px; }
+.weather-current-temp {
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--kh-text);
+  line-height: 1;
+}
+.weather-current-cond {
+  font-size: 14px;
+  color: var(--kh-primary);
+  font-weight: 600;
+  margin-top: 4px;
+}
+.weather-current-loc {
+  font-size: 12px;
+  color: var(--kh-text-secondary);
+  margin-top: 4px;
+}
+.weather-current-extra {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--kh-text);
+  margin-left: auto;
+  text-align: right;
+}
+.weather-extra-label {
+  color: var(--kh-text-muted);
+  font-weight: 500;
+  margin-right: 3px;
+}
+
+/* Loading + error states */
+.weather-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--kh-text-secondary);
+  font-size: 13px;
+}
+.weather-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(91,156,246,0.2);
+  border-top-color: var(--kh-primary);
+  border-radius: 50%;
+  animation: wx-spin 0.9s linear infinite;
+  display: inline-block;
+}
+@keyframes wx-spin { to { transform: rotate(360deg); } }
+.weather-error {
+  color: var(--kh-red, #f87171);
+  font-size: 13px;
+  text-align: center;
+  padding: 14px;
+}
+
+/* Hourly strip — horizontally scrollable */
+.weather-section {
+  padding: 8px 16px 4px;
+}
+.weather-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--kh-primary);
+  margin-bottom: 8px;
+}
+.weather-hourly {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.weather-hourly::-webkit-scrollbar { height: 4px; }
+.weather-hourly::-webkit-scrollbar-thumb { background: var(--kh-border); border-radius: 2px; }
+.weather-hour {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 8px 0;
+  border-radius: 12px;
+  text-align: center;
+  background: rgba(91,156,246,0.04);
+  border: 1px solid var(--kh-border);
+}
+.weather-hour.is-now {
+  background: rgba(91,156,246,0.16);
+  border-color: rgba(91,156,246,0.4);
+}
+.weather-hour-time {
+  font-size: 10.5px;
+  color: var(--kh-text-secondary);
+  font-family: ui-monospace, "SF Mono", Consolas, monospace;
+}
+.weather-hour-icon { font-size: 22px; line-height: 1; margin: 3px 0; }
+.weather-hour-temp {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--kh-text);
+}
+
+/* 7-day forecast list */
+.weather-daily {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.weather-day {
+  display: grid;
+  grid-template-columns: 60px 30px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: rgba(91,156,246,0.03);
+  border: 1px solid var(--kh-border);
+  border-radius: var(--kh-radius);
+  font-size: 13px;
+}
+.weather-day-name {
+  font-weight: 600;
+  color: var(--kh-text);
+}
+.weather-day-icon { font-size: 18px; line-height: 1; text-align: center; }
+.weather-day-cond { color: var(--kh-text-secondary); font-size: 12px; }
+.weather-day-range { white-space: nowrap; }
+.weather-day-max { color: var(--kh-red, #f87171); font-weight: 600; }
+.weather-day-sep { color: var(--kh-text-muted); margin: 0 4px; }
+.weather-day-min { color: var(--kh-primary); font-weight: 600; }
+
+.weather-credit {
+  text-align: center;
+  font-size: 10.5px;
+  color: var(--kh-text-muted);
+  padding: 14px 0 4px;
+  font-style: italic;
+}
+
+[data-theme="light"] .weather-hour { background: rgba(0,0,0,0.02); }
+[data-theme="light"] .weather-day  { background: rgba(0,0,0,0.02); }
+
 /* Footer button: weather (orange/amber accent) */
 .cal-footer-btn--weather:active,
 .cal-footer-btn--weather:hover { color: #f5b860; }
@@ -2157,6 +2343,18 @@ body {
 }
 
 /* Accent colours re-tuned for a white background */
+[data-theme="light"] .weather-current {
+  background:
+    radial-gradient(120% 100% at 0% 0%, rgba(59,125,230,0.12) 0%, rgba(59,125,230,0.02) 50%, transparent 80%),
+    linear-gradient(180deg, rgba(59,125,230,0.06) 0%, rgba(59,125,230,0.02) 100%);
+  border-color: rgba(59,125,230,0.18);
+}
+[data-theme="light"] .weather-hour {
+  background: rgba(0,0,0,0.02);
+}
+[data-theme="light"] .weather-day {
+  background: rgba(0,0,0,0.02);
+}
 [data-theme="light"] .cal-footer-btn--weather:hover,
 [data-theme="light"] .cal-footer-btn--weather:active {
   color: #B45309;
@@ -3967,15 +4165,3 @@ html { background-color: #0a0c14; }
 [data-theme="light"] .baby-name-tag { color: #1D4ED8; }
 [data-theme="light"] .baby-name-tag--G { color: #BE185D; }
 
-/* Footer weather button exists only in the phone apps */
-.cal-footer-btn[hidden] { display: none; }
-
-/* Weather: asks once to float a back button over the phone's weather app */
-#wx-back-overlay .cal-modal-body { text-align: center; }
-.wx-back-demo {
-  display: inline-flex; align-items: center; gap: 6px; margin: 6px auto 12px;
-  padding: 10px 18px; border-radius: 999px; background: #2563EB; color: #fff;
-  font-size: 15px; font-weight: 700; box-shadow: 0 6px 18px rgba(37,99,235,0.35);
-}
-#wx-back-overlay .cal-modal-btn--primary { background: #2563EB; border-color: #2563EB; color: #fff; }
-.wx-back-text { margin: 0 0 4px; font-size: 14px; line-height: 1.65; color: var(--kh-text-secondary); text-align: left; }
