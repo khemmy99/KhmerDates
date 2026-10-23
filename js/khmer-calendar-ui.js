@@ -2373,6 +2373,8 @@ const KhCal = (() => {
 
   function _initHealth() {
     if (!HT) return;
+    // Refresh what the month widget shows, e.g. after a new month starts
+    HT.syncToNative();
     const toggle  = document.getElementById('health-toggle');
     const body    = document.getElementById('health-body');
     const select  = document.getElementById('health-profile-select');
