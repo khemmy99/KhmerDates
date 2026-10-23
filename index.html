@@ -441,6 +441,14 @@
           <div class="weather-daily" id="weather-daily"></div>
         </div>
 
+        <!-- Phone apps only: hand over to the phone's own weather app (Apple
+             Weather on iPhone, the maker's app on Android). Hidden on the web,
+             which cannot open other apps. -->
+        <button type="button" id="weather-open-app" class="weather-open-app" hidden>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19a4.5 4.5 0 1 0-1.4-8.78A6 6 0 1 0 6 16.9"/><path d="M14 13l3 3-3 3M17 16H9"/></svg>
+          <span data-i18n="openWeatherApp">បើកកម្មវិធីអាកាសធាតុក្នុងទូរស័ព្ទ</span>
+        </button>
+
         <div class="weather-credit" data-i18n="weatherCredit">ទិន្នន័យដោយ Open-Meteo</div>
       </div>
     </div>

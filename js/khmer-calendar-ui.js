@@ -2225,6 +2225,23 @@ const KhCal = (() => {
     const wxGpsBtn = document.getElementById('weather-gps-btn');
     if (wxGpsBtn) wxGpsBtn.addEventListener('click', _useGpsLocation);
 
+    // In the phone apps, a way across to the phone's own weather app. iOS
+    // opens Apple Weather by its URL scheme (Capacitor hands non-web URLs to
+    // the system); Android has no system weather app, so the app's
+    // WeatherApp plugin tries the makers' apps and falls back to Google.
+    const wxAppBtn = document.getElementById('weather-open-app');
+    const cap = window.Capacitor;
+    const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
+    if (wxAppBtn && (platform === 'ios' || platform === 'android')) {
+      wxAppBtn.hidden = false;
+      wxAppBtn.addEventListener('click', () => {
+        if (platform === 'ios') { window.location.href = 'weather://'; return; }
+        const plugin = cap.Plugins && cap.Plugins.WeatherApp;
+        if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
+        plugin.open().catch(() => _toast(I18n.t('weatherAppFailed')));
+      });
+    }
+
     // Theme toggle
     const themeGroup = document.getElementById('theme-toggle');
     if (themeGroup) {
