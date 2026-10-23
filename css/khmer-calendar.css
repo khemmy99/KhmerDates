@@ -724,6 +724,23 @@ body {
   font-size: 13px;
 }
 
+.weather-gps-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: 1px solid var(--kh-border);
+  background: rgba(91,156,246,0.08);
+  color: var(--kh-primary);
+  border-radius: var(--kh-radius);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.weather-gps-btn:hover { background: rgba(91,156,246,0.15); }
+
 /* Current conditions card */
 .weather-current {
   margin: 8px 16px 4px;

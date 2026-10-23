@@ -22,7 +22,8 @@ const KhCal = (() => {
   // The app's own forecast (Open-Meteo), in a panel over the calendar that
   // closes completely with ✕, Back or a tap outside. Opening the phone's
   // weather app instead left it running in the background with no way for
-  // the calendar to close it. City list only, so no location permission.
+  // the calendar to close it. "Use my location" asks for approximate
+  // location only when tapped; the city list works without it.
 
   function _openWeather() {
     if (!WX) return;
@@ -46,6 +47,25 @@ const KhCal = (() => {
     sel.innerHTML = WX.CITIES.map(c =>
       `<option value="${escapeHtml(c.id)}"${c.id === savedId ? ' selected' : ''}>${escapeHtml(WX.cityName(c, lang))}</option>`
     ).join('');
+  }
+
+  function _useGpsLocation() {
+    if (!WX) return;
+    const cur = document.getElementById('weather-current');
+    if (cur) cur.innerHTML =
+      `<div class="weather-loading"><span class="weather-spinner"></span> <span>${escapeHtml(I18n.t('gpsRequesting') || 'Requesting location…')}</span></div>`;
+    WX.getCurrentPosition().then(pos => {
+      WX.setLocation({ kind: 'gps', lat: pos.lat, lon: pos.lon });
+      _loadWeather();
+    }).catch(err => {
+      // Every failure used to read "Location unavailable. Pick a city above.",
+      // which sent people to the city list when the fix was to turn location on
+      // or grant the permission. getCurrentPosition() now says which it was.
+      const key = { disabled: 'gpsOff', denied: 'gpsNoPermission', timeout: 'gpsTimeout' }[err && err.code]
+                || 'gpsDenied';
+      if (cur) cur.innerHTML =
+        `<div class="weather-error">${escapeHtml(I18n.t(key) || 'Location unavailable. Pick a city above.')}</div>`;
+    });
   }
 
   function _loadWeather() {
@@ -2210,6 +2230,8 @@ const KhCal = (() => {
         _loadWeather();
       }
     });
+    const wxGpsBtn = document.getElementById('weather-gps-btn');
+    if (wxGpsBtn) wxGpsBtn.addEventListener('click', _useGpsLocation);
 
     // Theme toggle
     const themeGroup = document.getElementById('theme-toggle');
