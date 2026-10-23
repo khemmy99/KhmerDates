@@ -24,21 +24,87 @@ const KhCal = (() => {
   // iOS: Apple Weather by its URL scheme (Capacitor hands non-web URLs to the
   // system); iOS shows "◀ Khmer Calendar" at the top-left to come back.
 
-  function _openPhoneWeather() {
+  // Over the phone's weather app floats a "← back to the calendar" button,
+  // once the user allows "Display over other apps". Asked once; after that
+  // the button simply appears whenever the permission is on.
+  const WX_BACK_ASKED = 'kh-cal-wx-back-asked';
+  let _wxAfterSettings = false;
+
+  async function _openPhoneWeather() {
     const cap = window.Capacitor;
     const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
     if (platform === 'ios') { window.location.href = 'weather://'; return; }
     const plugin = cap && cap.Plugins && cap.Plugins.WeatherApp;
     if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
+    try {
+      const st = await plugin.backButtonStatus();
+      if (st.phoneApp && !st.allowed && _lsGet(WX_BACK_ASKED, '') !== '1') {
+        _askWeatherBackButton(plugin);
+        return;
+      }
+    } catch (e) { /* older native build: open without the button */ }
+    _launchWeather(plugin);
+  }
+
+  function _launchWeather(plugin) {
     plugin.open({
       title: I18n.t('weather'),
       lang: I18n.getLang(),
       dark: document.documentElement.dataset.theme !== 'light',
       offline: I18n.t('weatherOffline'),
       retry: I18n.t('retry'),
-      openApp: I18n.t('weatherPhoneApp')
+      openApp: I18n.t('weatherPhoneApp'),
+      backLabel: I18n.t('wxBackToCalendar')
     }).catch(() => _toast(I18n.t('weatherAppFailed')));
   }
+
+  /** Once: why the permission, with Allow (to the system switch) or Not now. */
+  function _askWeatherBackButton(plugin) {
+    _lsSet(WX_BACK_ASKED, '1');
+    let overlay = document.getElementById('wx-back-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'cal-modal-overlay';
+      overlay.id = 'wx-back-overlay';
+      document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `<div class="cal-modal-panel" role="dialog" aria-modal="true">
+        <div class="cal-modal-header"><span>${escapeHtml(I18n.t('wxBackTitle'))}</span>
+          <button type="button" class="cal-modal-close" data-wx="later">&times;</button></div>
+        <div class="cal-modal-body">
+          <div class="wx-back-demo">← ${escapeHtml(I18n.t('wxBackToCalendar'))}</div>
+          <p class="wx-back-text">${escapeHtml(I18n.t('wxBackText'))}</p>
+          <div class="cal-modal-actions">
+            <button type="button" class="cal-modal-btn" data-wx="later">${escapeHtml(I18n.t('wxBackLater'))}</button>
+            <button type="button" class="cal-modal-btn cal-modal-btn--primary" data-wx="allow">${escapeHtml(I18n.t('wxBackAllow'))}</button>
+          </div>
+        </div>
+      </div>`;
+    overlay.onclick = (e) => {
+      const btn = e.target.closest('[data-wx]');
+      if (!btn && e.target !== overlay) return;
+      overlay.classList.remove('open');
+      if (btn && btn.dataset.wx === 'allow') {
+        // Back from the system switch, the weather opens (with the button
+        // if it was turned on) through the resume listener below
+        _wxAfterSettings = true;
+        plugin.allowBackButton().catch(() => { _wxAfterSettings = false; _launchWeather(plugin); });
+      } else {
+        _launchWeather(plugin);
+      }
+    };
+    overlay.classList.add('open');
+  }
+
+  function _onAppVisible() {
+    if (!_wxAfterSettings) return;
+    _wxAfterSettings = false;
+    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WeatherApp;
+    if (plugin) setTimeout(() => _launchWeather(plugin), 300);
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') _onAppVisible();
+  });
 
   /**
    * Build a year-long list of unique holiday occurrences, grouped by month.
