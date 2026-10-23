@@ -330,6 +330,12 @@ const I18n = (() => {
       originJa: 'Japanese',
       originKo: 'Korean',
       originEu: 'European',
+      // Shorter chip labels so the five origins fit on one row
+      originKmChip: 'Khmer',
+      originZhChip: 'China',
+      originJaChip: 'Japan',
+      originKoChip: 'Korea',
+      originEuChip: 'Europe',
       babyNamesHint: 'Tap a name to keep it as a favourite ★',
       babySearch: 'Search names…',
       babyNoMatch: 'No matching name',

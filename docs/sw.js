@@ -1,4 +1,4 @@
-const CACHE_NAME = 'khmer-calendar-v159';
+const CACHE_NAME = 'khmer-calendar-v161';
 const ASSETS = [
   './',
   './index.html',
@@ -75,7 +75,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // Only this release's cache: caches.match() searched every cache, so while
+  // an old cache was still around it could serve last release's files
   e.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
+    caches.open(CACHE_NAME).then((c) => c.match(req)).then((cached) => cached || fetch(req))
   );
 });
