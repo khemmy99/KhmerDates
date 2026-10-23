@@ -7,7 +7,6 @@ const KhCal = (() => {
   const HL = (typeof KhmerHolidays !== 'undefined') ? KhmerHolidays : null;
   const DB = (typeof DailyBlock     !== 'undefined') ? DailyBlock     : null;
   const HT = (typeof HealthTracker  !== 'undefined') ? HealthTracker  : null;
-  const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
   const APP_VERSION = '1.5.7';
@@ -19,150 +18,18 @@ const KhCal = (() => {
   }
 
   // ===== Weather =====
+  // The phone's own weather app, not a forecast of our own. iOS opens Apple
+  // Weather by its URL scheme (Capacitor hands non-web URLs to the system).
+  // Android has no system weather app, so the app's WeatherApp plugin tries
+  // the makers' apps in turn and falls back to Google's weather page.
 
-  function _openWeather() {
-    if (!WX) return;
-    const overlay = document.getElementById('cal-weather-overlay');
-    if (!overlay) return;
-    _populateCitySelect();
-    overlay.classList.add('open');
-    _loadWeather();
-  }
-
-  function _populateCitySelect() {
-    if (!WX) return;
-    const sel = document.getElementById('weather-city-select');
-    if (!sel) return;
-    const lang = I18n.getLang();
-    const saved = WX.getLocation();
-    const savedId = saved && saved.kind === 'city' ? saved.id : 'pnh';
-    sel.innerHTML = WX.CITIES.map(c =>
-      `<option value="${escapeHtml(c.id)}"${c.id === savedId ? ' selected' : ''}>${escapeHtml(WX.cityName(c, lang))}</option>`
-    ).join('');
-  }
-
-  function _useGpsLocation() {
-    if (!WX) return;
-    const cur = document.getElementById('weather-current');
-    if (cur) cur.innerHTML =
-      `<div class="weather-loading"><span class="weather-spinner"></span> <span>${escapeHtml(I18n.t('gpsRequesting') || 'Requesting location…')}</span></div>`;
-    WX.getCurrentPosition().then(pos => {
-      WX.setLocation({ kind: 'gps', lat: pos.lat, lon: pos.lon });
-      _loadWeather();
-    }).catch(err => {
-      // Every failure used to read "Location unavailable. Pick a city above.",
-      // which sent people to the city list when the fix was to turn location on
-      // or grant the permission. getCurrentPosition() now says which it was.
-      const key = { disabled: 'gpsOff', denied: 'gpsNoPermission', timeout: 'gpsTimeout' }[err && err.code]
-                || 'gpsDenied';
-      if (cur) cur.innerHTML =
-        `<div class="weather-error">${escapeHtml(I18n.t(key) || 'Location unavailable. Pick a city above.')}</div>`;
-    });
-  }
-
-  function _loadWeather() {
-    if (!WX) return;
-    const lang = I18n.getLang();
-    let loc = WX.getLocation();
-    if (!loc) {
-      // Default to Phnom Penh on first open
-      const city = WX.findCity('pnh');
-      loc = { kind: 'city', id: city.id, name: WX.cityName(city, lang), lat: city.lat, lon: city.lon };
-      WX.setLocation(loc);
-    }
-    const cur = document.getElementById('weather-current');
-    const hourly = document.getElementById('weather-hourly');
-    const daily  = document.getElementById('weather-daily');
-    if (cur) cur.innerHTML = `<div class="weather-loading"><span class="weather-spinner"></span> <span>${escapeHtml(I18n.t('loading') || 'Loading…')}</span></div>`;
-    if (hourly) hourly.innerHTML = '';
-    if (daily)  daily.innerHTML  = '';
-
-    WX.fetchForecast(loc.lat, loc.lon).then(data => {
-      _renderWeather(data, loc, lang);
-    }).catch(() => {
-      if (cur) cur.innerHTML = `<div class="weather-error">${escapeHtml(I18n.t('weatherError') || 'Could not load weather. Check your connection.')}</div>`;
-    });
-  }
-
-  function _renderWeather(data, loc, lang) {
-    const cur = document.getElementById('weather-current');
-    const hourlyEl = document.getElementById('weather-hourly');
-    const dailyEl  = document.getElementById('weather-daily');
-
-    // --- Current conditions ---
-    const c = data.current || {};
-    const cdesc = WX.describeCode(c.weather_code, lang);
-    const locName = loc.kind === 'gps'
-      ? (I18n.t('myLocation') || 'My location')
-      : (loc.name || '');
-    const updated = c.time ? c.time.replace('T', ' ').slice(0, 16) : '';
-    if (cur) {
-      cur.innerHTML = `
-        <div class="weather-current-row">
-          <div class="weather-current-icon">${cdesc.icon}</div>
-          <div class="weather-current-info">
-            <div class="weather-current-temp">${Math.round(c.temperature_2m)}°</div>
-            <div class="weather-current-cond">${escapeHtml(cdesc.label)}</div>
-            <div class="weather-current-loc">${escapeHtml(locName)}</div>
-          </div>
-          <div class="weather-current-extra">
-            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxFeels') || 'Feels')}</span> ${Math.round(c.apparent_temperature)}°</div>
-            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxHumidity') || 'Humidity')}</span> ${Math.round(c.relative_humidity_2m)}%</div>
-            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxWind') || 'Wind')}</span> ${Math.round(c.wind_speed_10m)} km/h</div>
-          </div>
-        </div>
-      `;
-    }
-
-    // --- Hourly (next 24 hours starting from "now") ---
-    if (hourlyEl && data.hourly && data.hourly.time) {
-      const now = new Date();
-      const nowHourMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()).getTime();
-      const times = data.hourly.time;
-      const temps = data.hourly.temperature_2m;
-      const codes = data.hourly.weather_code;
-      let startIdx = times.findIndex(t => new Date(t).getTime() >= nowHourMs);
-      if (startIdx < 0) startIdx = 0;
-      const rows = [];
-      for (let i = startIdx; i < Math.min(startIdx + 24, times.length); i++) {
-        const dt = new Date(times[i]);
-        const hh = String(dt.getHours()).padStart(2, '0') + ':00';
-        const desc = WX.describeCode(codes[i], lang);
-        const isFirst = i === startIdx;
-        rows.push(`<div class="weather-hour${isFirst ? ' is-now' : ''}">
-          <div class="weather-hour-time">${isFirst ? escapeHtml(I18n.t('wxNow') || 'Now') : hh}</div>
-          <div class="weather-hour-icon">${desc.icon}</div>
-          <div class="weather-hour-temp">${Math.round(temps[i])}°</div>
-        </div>`);
-      }
-      hourlyEl.innerHTML = rows.join('');
-    }
-
-    // --- Daily (7 days) ---
-    if (dailyEl && data.daily && data.daily.time) {
-      const T = I18n.translations || {};
-      const weekShort = (T[lang] && T[lang].weekdaysShort) || ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-      const rows = data.daily.time.map((t, i) => {
-        const dt = new Date(t);
-        const desc = WX.describeCode(data.daily.weather_code[i], lang);
-        const tmax = Math.round(data.daily.temperature_2m_max[i]);
-        const tmin = Math.round(data.daily.temperature_2m_min[i]);
-        const dayLabel = i === 0
-          ? (I18n.t('wxToday') || 'Today')
-          : weekShort[dt.getDay()];
-        return `<div class="weather-day">
-          <div class="weather-day-name">${escapeHtml(dayLabel)}</div>
-          <div class="weather-day-icon">${desc.icon}</div>
-          <div class="weather-day-cond">${escapeHtml(desc.label)}</div>
-          <div class="weather-day-range">
-            <span class="weather-day-max">${tmax}°</span>
-            <span class="weather-day-sep">/</span>
-            <span class="weather-day-min">${tmin}°</span>
-          </div>
-        </div>`;
-      }).join('');
-      dailyEl.innerHTML = rows;
-    }
+  function _openPhoneWeather() {
+    const cap = window.Capacitor;
+    const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
+    if (platform === 'ios') { window.location.href = 'weather://'; return; }
+    const plugin = cap && cap.Plugins && cap.Plugins.WeatherApp;
+    if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
+    plugin.open().catch(() => _toast(I18n.t('weatherAppFailed')));
   }
 
   /**
@@ -2196,50 +2063,14 @@ const KhCal = (() => {
     if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); _resetEventsScroll(); });
     if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); _resetEventsScroll(); });
 
-    // Weather overlay
-    const weatherBtn     = document.getElementById('cal-weather-btn');
-    const weatherOverlay = document.getElementById('cal-weather-overlay');
-    const weatherClose   = document.getElementById('weather-overlay-close');
-    if (weatherBtn && weatherOverlay) {
-      weatherBtn.addEventListener('click', () => {
-        _openWeather();
-      });
-    }
-    if (weatherClose && weatherOverlay) {
-      weatherClose.addEventListener('click', () => weatherOverlay.classList.remove('open'));
-    }
-    if (weatherOverlay) {
-      weatherOverlay.addEventListener('click', (e) => {
-        if (e.target === weatherOverlay) weatherOverlay.classList.remove('open');
-      });
-    }
-    const wxSelect = document.getElementById('weather-city-select');
-    if (wxSelect) wxSelect.addEventListener('change', () => {
-      if (!WX) return;
-      const city = WX.findCity(wxSelect.value);
-      if (city) {
-        WX.setLocation({ kind: 'city', id: city.id, name: WX.cityName(city, I18n.getLang()), lat: city.lat, lon: city.lon });
-        _loadWeather();
-      }
-    });
-    const wxGpsBtn = document.getElementById('weather-gps-btn');
-    if (wxGpsBtn) wxGpsBtn.addEventListener('click', _useGpsLocation);
-
-    // In the phone apps, a way across to the phone's own weather app. iOS
-    // opens Apple Weather by its URL scheme (Capacitor hands non-web URLs to
-    // the system); Android has no system weather app, so the app's
-    // WeatherApp plugin tries the makers' apps and falls back to Google.
-    const wxAppBtn = document.getElementById('weather-open-app');
+    // Weather: only in the phone apps, where it opens the phone's weather
+    // app. A website cannot open other apps, so the web build hides it.
+    const weatherBtn = document.getElementById('cal-weather-btn');
     const cap = window.Capacitor;
     const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
-    if (wxAppBtn && (platform === 'ios' || platform === 'android')) {
-      wxAppBtn.hidden = false;
-      wxAppBtn.addEventListener('click', () => {
-        if (platform === 'ios') { window.location.href = 'weather://'; return; }
-        const plugin = cap.Plugins && cap.Plugins.WeatherApp;
-        if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
-        plugin.open().catch(() => _toast(I18n.t('weatherAppFailed')));
-      });
+    if (weatherBtn && (platform === 'ios' || platform === 'android')) {
+      weatherBtn.hidden = false;
+      weatherBtn.addEventListener('click', _openPhoneWeather);
     }
 
     // Theme toggle
