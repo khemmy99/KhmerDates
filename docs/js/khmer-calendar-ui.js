@@ -22,7 +22,8 @@ const KhCal = (() => {
   // The app's own forecast (Open-Meteo), in a panel over the calendar that
   // closes completely with ✕, Back or a tap outside. Opening the phone's
   // weather app instead left it running in the background with no way for
-  // the calendar to close it. City list only, so no location permission.
+  // the calendar to close it. "Use my location" asks for approximate
+  // location only when tapped; the city list works without it.
 
   function _openWeather() {
     if (!WX) return;
@@ -42,10 +43,45 @@ const KhCal = (() => {
     if (!sel) return;
     const lang = I18n.getLang();
     const saved = WX.getLocation();
-    const savedId = saved && saved.kind === 'city' ? saved.id : 'pnh';
+    const savedId = _savedCityId(saved);
     sel.innerHTML = WX.CITIES.map(c =>
       `<option value="${escapeHtml(c.id)}"${c.id === savedId ? ' selected' : ''}>${escapeHtml(WX.cityName(c, lang))}</option>`
     ).join('');
+    const gps = document.getElementById('weather-gps-btn');
+    if (gps) gps.classList.toggle('is-active', !!(saved && saved.kind === 'gps'));
+  }
+
+  /** The city the box should show: the chosen one, or the one nearest "my location". */
+  function _savedCityId(loc) {
+    if (!loc) return 'pnh';
+    if (loc.id) return loc.id;
+    if (loc.kind === 'gps' && typeof loc.lat === 'number') {
+      const near = WX.nearestCity(loc.lat, loc.lon);
+      if (near) return near.id;
+    }
+    return 'pnh';
+  }
+
+  function _useGpsLocation() {
+    if (!WX) return;
+    const cur = document.getElementById('weather-current');
+    if (cur) cur.innerHTML =
+      `<div class="weather-loading"><span class="weather-spinner"></span> <span>${escapeHtml(I18n.t('gpsRequesting') || 'Requesting location…')}</span></div>`;
+    WX.getCurrentPosition().then(pos => {
+      // The forecast is for the exact spot; the box shows the nearest province
+      const near = WX.nearestCity(pos.lat, pos.lon);
+      WX.setLocation({ kind: 'gps', lat: pos.lat, lon: pos.lon, id: near ? near.id : undefined });
+      _populateCitySelect();
+      _loadWeather();
+    }).catch(err => {
+      // Every failure used to read "Location unavailable. Pick a city above.",
+      // which sent people to the city list when the fix was to turn location on
+      // or grant the permission. getCurrentPosition() now says which it was.
+      const key = { disabled: 'gpsOff', denied: 'gpsNoPermission', timeout: 'gpsTimeout' }[err && err.code]
+                || 'gpsDenied';
+      if (cur) cur.innerHTML =
+        `<div class="weather-error">${escapeHtml(I18n.t(key) || 'Location unavailable. Pick a city above.')}</div>`;
+    });
   }
 
   function _loadWeather() {
@@ -80,8 +116,9 @@ const KhCal = (() => {
     // --- Current conditions ---
     const c = data.current || {};
     const cdesc = WX.describeCode(c.weather_code, lang);
+    const nearCity = loc.kind === 'gps' ? WX.findCity(_savedCityId(loc)) : null;
     const locName = loc.kind === 'gps'
-      ? (I18n.t('myLocation') || 'My location')
+      ? (nearCity ? WX.cityName(nearCity, lang) + ' · ' : '') + (I18n.t('myLocation') || 'My location')
       : (loc.name || '');
     const updated = c.time ? c.time.replace('T', ' ').slice(0, 16) : '';
     if (cur) {
@@ -2207,9 +2244,13 @@ const KhCal = (() => {
       const city = WX.findCity(wxSelect.value);
       if (city) {
         WX.setLocation({ kind: 'city', id: city.id, name: WX.cityName(city, I18n.getLang()), lat: city.lat, lon: city.lon });
+        const gps = document.getElementById('weather-gps-btn');
+        if (gps) gps.classList.remove('is-active');
         _loadWeather();
       }
     });
+    const wxGpsBtn = document.getElementById('weather-gps-btn');
+    if (wxGpsBtn) wxGpsBtn.addEventListener('click', _useGpsLocation);
 
     // Theme toggle
     const themeGroup = document.getElementById('theme-toggle');

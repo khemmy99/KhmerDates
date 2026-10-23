@@ -371,6 +371,8 @@
               <span data-i18n="privacy">គោលនយោបាយឯកជន</span>
             </a>
           </div>
+          <!-- Open-Meteo's free data is CC BY 4.0: it must be credited -->
+          <p class="about-credit" data-i18n="weatherCredit">ទិន្នន័យអាកាសធាតុ៖ Open-Meteo.com (CC BY 4.0)</p>
 
         </div>
       </div>
@@ -417,9 +419,13 @@
           <button type="button" class="settings-close" id="weather-overlay-close">&times;</button>
         </div>
 
-        <!-- City picker -->
+        <!-- City picker + use-my-location button -->
         <div class="weather-location-bar">
           <select id="weather-city-select" class="weather-city-select" aria-label="City"></select>
+          <button type="button" id="weather-gps-btn" class="weather-gps-btn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+            <span data-i18n="useMyLocation">ប្រើទីតាំងរបស់ខ្ញុំ</span>
+          </button>
         </div>
 
         <!-- Current conditions card -->
@@ -437,7 +443,6 @@
           <div class="weather-daily" id="weather-daily"></div>
         </div>
 
-        <div class="weather-credit" data-i18n="weatherCredit">ទិន្នន័យដោយ Open-Meteo</div>
       </div>
     </div>
 

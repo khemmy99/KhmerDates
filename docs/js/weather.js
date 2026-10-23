@@ -276,8 +276,25 @@ const Weather = (() => {
     return { icon: c.icon, label: c[lang] || c.en };
   }
 
+  /**
+   * The listed city or province nearest a point (great-circle distance), so
+   * "my location" can show which one it is in the city box.
+   */
+  function nearestCity(lat, lon) {
+    const rad = Math.PI / 180;
+    let best = null, bestD = Infinity;
+    for (const c of CITIES) {
+      const dLat = (c.lat - lat) * rad, dLon = (c.lon - lon) * rad;
+      const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat * rad) * Math.cos(c.lat * rad) * Math.sin(dLon / 2) ** 2;
+      const d = 2 * Math.asin(Math.min(1, Math.sqrt(a)));
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    return best;
+  }
+
   return {
-    CITIES, findCity, cityName,
+    CITIES, findCity, cityName, nearestCity,
     getLocation, setLocation, getCurrentPosition,
     fetchForecast, describeCode
   };
