@@ -4186,3 +4186,13 @@ html { background-color: #0a0c14; }
 /* Weather: "my location" in use; Open-Meteo's credit at the foot of About */
 .weather-gps-btn.is-active { background: var(--kh-primary); border-color: var(--kh-primary); color: #fff; }
 .about-credit { margin: 0 18px 18px; text-align: center; font-size: 11px; color: var(--kh-text-muted); }
+
+/* Events page: each year is a block headed by the year as the list scrolls on */
+/* The script keeps the view still when a year is added above; Chrome's own
+   scroll anchoring would shift it a second time (Safari has none) */
+.events-list { overflow-anchor: none; }
+.ev-ybanner {
+  padding: 14px 16px 6px; font-size: 20px; font-weight: 800; letter-spacing: 0.5px;
+  color: var(--kh-primary);
+}
+.ev-yblock + .ev-yblock { border-top: 1px solid var(--kh-border); }
