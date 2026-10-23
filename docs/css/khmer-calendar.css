@@ -3969,3 +3969,13 @@ html { background-color: #0a0c14; }
 
 /* Footer weather button exists only in the phone apps */
 .cal-footer-btn[hidden] { display: none; }
+
+/* Weather: asks once to float a back button over the phone's weather app */
+#wx-back-overlay .cal-modal-body { text-align: center; }
+.wx-back-demo {
+  display: inline-flex; align-items: center; gap: 6px; margin: 6px auto 12px;
+  padding: 10px 18px; border-radius: 999px; background: #2563EB; color: #fff;
+  font-size: 15px; font-weight: 700; box-shadow: 0 6px 18px rgba(37,99,235,0.35);
+}
+#wx-back-overlay .cal-modal-btn--primary { background: #2563EB; border-color: #2563EB; color: #fff; }
+.wx-back-text { margin: 0 0 4px; font-size: 14px; line-height: 1.65; color: var(--kh-text-secondary); text-align: left; }
