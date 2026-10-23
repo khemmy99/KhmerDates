@@ -18,9 +18,9 @@ const KhCal = (() => {
   }
 
   // ===== Weather =====
-  // Android: the app's WeatherApp plugin opens Google's weather page inside
-  // the app as a Custom Tab in the app's colours (its own WebView page when
-  // no browser supports that), so ✕ or Back returns to the calendar.
+  // Android: the app's WeatherApp plugin opens the phone's weather app on
+  // top of the calendar, so Back returns to it. A phone without one gets
+  // Google's weather page in the app's language and colours instead.
   // iOS: Apple Weather by its URL scheme (Capacitor hands non-web URLs to the
   // system); iOS shows "◀ Khmer Calendar" at the top-left to come back.
 
