@@ -18,10 +18,11 @@ const KhCal = (() => {
   }
 
   // ===== Weather =====
-  // The phone's own weather app, not a forecast of our own. iOS opens Apple
-  // Weather by its URL scheme (Capacitor hands non-web URLs to the system).
-  // Android has no system weather app, so the app's WeatherApp plugin tries
-  // the makers' apps in turn and falls back to Google's weather page.
+  // Android: the app's WeatherApp plugin opens Google's weather page inside
+  // the app as a Custom Tab in the app's colours (its own WebView page when
+  // no browser supports that), so ✕ or Back returns to the calendar.
+  // iOS: Apple Weather by its URL scheme (Capacitor hands non-web URLs to the
+  // system); iOS shows "◀ Khmer Calendar" at the top-left to come back.
 
   function _openPhoneWeather() {
     const cap = window.Capacitor;
@@ -29,7 +30,14 @@ const KhCal = (() => {
     if (platform === 'ios') { window.location.href = 'weather://'; return; }
     const plugin = cap && cap.Plugins && cap.Plugins.WeatherApp;
     if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
-    plugin.open().catch(() => _toast(I18n.t('weatherAppFailed')));
+    plugin.open({
+      title: I18n.t('weather'),
+      lang: I18n.getLang(),
+      dark: document.documentElement.dataset.theme !== 'light',
+      offline: I18n.t('weatherOffline'),
+      retry: I18n.t('retry'),
+      openApp: I18n.t('weatherPhoneApp')
+    }).catch(() => _toast(I18n.t('weatherAppFailed')));
   }
 
   /**
