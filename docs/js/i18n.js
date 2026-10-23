@@ -685,6 +685,8 @@ const I18n = (() => {
   function setSilDays(on) {
     _silDays = !!on;
     localStorage.setItem('kh-cal-sildays', _silDays ? 'on' : 'off');
+    // The month widget marks holy days only while this is on
+    mirrorToNative('kh-cal-sildays', _silDays ? 'on' : 'off');
   }
 
   function setDayDigits(v) {
@@ -795,6 +797,7 @@ const I18n = (() => {
   function syncToNative() {
     mirrorToNative('kh-cal-lang', _lang);
     mirrorToNative('kh-cal-startday', _startDay);
+    mirrorToNative('kh-cal-sildays', _silDays ? 'on' : 'off');
   }
 
   syncToNative();

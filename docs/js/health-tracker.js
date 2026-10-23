@@ -55,6 +55,41 @@ const HealthTracker = (() => {
   function _safeWrite(key, value) {
     try { localStorage.setItem(key, JSON.stringify(value)); }
     catch (e) { /* quota or disabled storage — ignore */ }
+    _scheduleMirror();
+  }
+
+  // ----- Home-screen widget -----
+  // The Android month widget colours period, fertile and ovulation days the
+  // way the app's calendar does, but native code cannot read localStorage.
+  // So a compact summary goes to Capacitor Preferences: the first day, then
+  // one letter per day (p period, q predicted period, o ovulation, f fertile,
+  // . none) for six months. Nothing is sent while tracking is off, so the
+  // widget then shows no health data at all. A no-op on the web build.
+  const WIDGET_KEY = 'kh-cal-health-days';
+  const WIDGET_DAYS = 186;
+  const WIDGET_CODES = { 'period': 'p', 'predicted-period': 'q', 'ovulation': 'o', 'fertile': 'f' };
+  let _mirrorTimer = null;
+
+  function _scheduleMirror() {
+    if (_mirrorTimer) return;
+    _mirrorTimer = setTimeout(() => { _mirrorTimer = null; syncToNative(); }, 0);
+  }
+
+  function syncToNative() {
+    const prefs = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences;
+    if (!prefs) return;
+    let value = '';
+    if (getSettings().enabled && getActiveProfile()) {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      let days = '';
+      for (let i = 0; i < WIDGET_DAYS; i++) {
+        const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+        days += WIDGET_CODES[getDayInfo(d).kind] || '.';
+      }
+      if (/[pqof]/.test(days)) value = _ymd(start) + ':' + days;
+    }
+    prefs.set({ key: WIDGET_KEY, value }).catch(() => {});
   }
 
   // ----- Settings -----
@@ -125,6 +160,7 @@ const HealthTracker = (() => {
     const profiles = getProfiles().filter(p => p.id !== id);
     _safeWrite(PROFILES_KEY, profiles);
     try { localStorage.removeItem(PROFILE_PREFIX + id); } catch (e) {}
+    _scheduleMirror();
 
     // If the deleted profile was active, switch to the first remaining
     const s = getSettings();
@@ -298,6 +334,8 @@ const HealthTracker = (() => {
     // Cycle math
     getDayInfo, getEffectiveCycleLength, getEffectivePeriodLength,
     predictNextPeriods,
+    // Home-screen widget
+    syncToNative,
     // Helpers (exposed for tests / UI)
     _ymd
   };
