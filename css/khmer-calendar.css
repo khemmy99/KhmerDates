@@ -4058,8 +4058,10 @@ html { background-color: #0a0c14; }
   .cal-topbar { margin-left: -10px; margin-right: -10px; }
 }
 /* Origin chips wrap when the labels are long (English) */
-.baby-origins { flex-wrap: wrap; }
-.baby-origin { flex: 1 0 auto; }
+/* Five equal chips on one row in every language */
+.baby-origins { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; }
+.baby-origin { min-width: 0; padding: 6px 2px; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 340px) { .baby-origin { font-size: 11.5px; letter-spacing: -0.2px; } }
 .baby-fallback { grid-column: 1 / -1; font-size: 12.5px; color: var(--kh-text-muted); padding: 2px 2px 4px; }
 
 /* =========================================================

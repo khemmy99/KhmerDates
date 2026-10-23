@@ -396,6 +396,12 @@ const KhCal = (() => {
     return BG.lettersFor(_parseYmd(b), _lsGet(CHILD_NIGHT_KEY, '0') === '1');
   }
   const _ORIGIN_KEYS = { km: 'originKm', zh: 'originZh', ja: 'originJa', ko: 'originKo', eu: 'originEu' };
+  // Chip label: a shorter word where a language has one (English "China"
+  // rather than "Chinese") so all five chips fit on one row
+  const _originChip = o => {
+    const k = _ORIGIN_KEYS[o] + 'Chip', v = I18n.t(k);
+    return v === k ? I18n.t(_ORIGIN_KEYS[o]) : v;
+  };
   let _babyNameOrigin = (() => { try { return localStorage.getItem(BABY_ORIGIN_KEY) || 'km'; } catch (e) { return 'km'; } })();
   // Favourites are stored as "origin:name"; a bare name is from the Khmer list
   function _getBabyFavs() { try { return JSON.parse(localStorage.getItem(BABY_FAVS_KEY) || '[]'); } catch (e) { return []; } }
@@ -697,7 +703,7 @@ const KhCal = (() => {
               <label class="baby-check"><input type="checkbox" id="baby-match-day"${_babyMatchDay ? ' checked' : ''}> ${escapeHtml(I18n.t('matchBirthday'))}</label>`
               : `<div class="baby-hint">${escapeHtml(I18n.t('childBirthHint'))}</div>`}`;
         })()}
-        <div class="baby-origins">${BG.ORIGINS.map(o => `<button type="button" class="baby-origin" data-origin="${o}">${escapeHtml(I18n.t(_ORIGIN_KEYS[o]))}</button>`).join('')}</div>
+        <div class="baby-origins">${BG.ORIGINS.map(o => `<button type="button" class="baby-origin" data-origin="${o}">${escapeHtml(_originChip(o))}</button>`).join('')}</div>
         <div class="baby-name-tabs">
           <button type="button" class="baby-name-tab baby-name-tab--boy" data-g="B">${_ICON_MALE}${escapeHtml(I18n.t('babyBoy'))}</button>
           <button type="button" class="baby-name-tab baby-name-tab--girl" data-g="G">${_ICON_FEMALE}${escapeHtml(I18n.t('babyGirl'))}</button>
