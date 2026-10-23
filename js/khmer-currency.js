@@ -1,112 +1,143 @@
 /* ===== Khmer currency in words =====
  *
  * Written in ES5 on purpose. Office 2019 and 2016 host task panes in IE11,
- * which cannot parse var, var or arrow functions; a single one of them here
- * would stop the whole file loading and take the រៀល and ដុល្លារ ribbon buttons
- * with it. The calendar pane needs a modern engine and does not run there, but
- * these two commands do, so this file must stay ES5.
+ * which cannot parse let, const, arrow functions or shorthand properties; a
+ * single one of them here would stop the whole file loading and take the រៀល
+ * and ដុល្លារ ribbon buttons with it. The calendar pane needs a modern engine
+ * and does not run there, but these two commands do, so this file must stay ES5.
  *
- * Ported from ReadKHR&USD.bas (KhmerCurrency / DollarsCurrency). The VBA is the
- * specification: where it does something surprising, this follows it rather
- * than "correcting" it, so numbers read the same as in the spreadsheets that
- * already use the macro.
+ * Same reading as KhmerCurrency / DollarsCurrency in the KCalendar Excel and
+ * Word add-ins (KhmerCurrencyText.bas), so an amount reads the same everywhere:
  *
- * Two of those quirks are worth naming:
- *   - The `Case "One"` branches in the VBA are unreachable. GetHundreds returns
- *     Khmer text, never the literal string "One", so one riel reads through the
- *     general branch. Reproduced by simply not having those branches.
- *   - Riel centimes are suffixed រៀលគត់, not a centime word. That is what the
- *     macro does, so it is what this does.
+ *   1500               មួយពាន់ ប្រាំរយរៀលគត់
+ *   1500.5             មួយពាន់ ប្រាំរយរៀល និងហាសិបសេន
+ *   2500000000         ពីរប៊ីលាន ប្រាំរយលានរៀលគត់
+ *   1500000000000      មួយទ្រីលាន ប្រាំរយប៊ីលានរៀលគត់
+ *   0                  សូន្យរៀលគត់
+ *   -5                 ដកប្រាំរៀលគត់
+ *
+ * Groups of three digits with the scale words ពាន់ លាន ប៊ីលាន ទ្រីលាន; cents
+ * are rounded half up and read as សេន for both currencies. Accepts numbers or
+ * text such as "1,500", "$12.50", "1500៛" or Khmer digits. Anything else, a
+ * blank, or 10^15 and above returns '' (the ribbon buttons then do nothing).
  */
 var KhmerCurrency = (function () {
   'use strict';
 
-  // Place(1) is empty in the VBA (ReDim leaves it ""), and 6+ are never set,
-  // so anything past a trillion loses its place word exactly as it does there.
-  var PLACE = ['', '', 'ពាន់ ', 'លាន ', 'ពាន់លាន ', 'ពាន់ពាន់លាន ', '', '', '', ''];
-
   var DIGIT = ['', 'មួយ', 'ពីរ', 'បី', 'បួន', 'ប្រាំ',
-                 'ប្រាំមួយ', 'ប្រាំពីរ', 'ប្រាំបី', 'ប្រាំបួន'];
+               'ប្រាំមួយ', 'ប្រាំពីរ', 'ប្រាំបី', 'ប្រាំបួន'];
+  var TENS  = ['', 'ដប់', 'ម្ភៃ', 'សាមសិប', 'សែសិប', 'ហាសិប',
+               'ហុកសិប', 'ចិតសិប', 'ប៉ែតសិប', 'កៅសិប'];
+  var SCALE = ['', 'ពាន់', 'លាន', 'ប៊ីលាន', 'ទ្រីលាន'];
 
-  var TEEN = ['ដប់', 'ដប់មួយ', 'ដប់ពីរ', 'ដប់បី', 'ដប់បួន', 'ដប់ប្រាំ',
-                'ដប់ប្រាំមួយ', 'ដប់ប្រាំពីរ', 'ដប់ប្រាំបី', 'ដប់ប្រាំបួន'];
+  var HUNDRED = 'រយ';
+  var ZERO    = 'សូន្យ';
+  var MINUS   = 'ដក';
+  var RIEL    = 'រៀល';
+  var DOLLAR  = 'ដុល្លារ';
+  var CENT    = 'សេន';
+  var EXACT   = 'គត់';
+  var AND     = 'និង';
 
-  var TENS = ['', '', 'ម្ភៃ', 'សាមសិប', 'សែសិប', 'ហាសិប',
-                'ហុកសិប', 'ចិតសិប', 'ប៉ែតសិប', 'កៅសិប'];
-
-  var ZERO   = 'គ្មានលេខ';
-  var RIEL   = 'រៀលគត់';
-  var DOLLAR = 'ដុល្លារ';
-  var EXACT  = 'គត់';
-  var AND    = 'និង';
-  var CENT   = 'សេន';
-
-  function digit(ch) {
-    var n = parseInt(ch, 10);
-    return isNaN(n) ? '' : DIGIT[n];
+  /** 1..999 */
+  function below1000(n) {
+    var s = '';
+    if (n >= 100) { s = DIGIT[Math.floor(n / 100)] + HUNDRED; n = n % 100; }
+    if (n >= 10)  { s += TENS[Math.floor(n / 10)]; n = n % 10; }
+    if (n > 0)    { s += DIGIT[n]; }
+    return s;
   }
 
-  /** Always receives two characters, as it does in the VBA. */
-  function tens(text) {
-    var t = parseInt(text[0], 10) || 0;
-    if (t === 1) return TEEN[parseInt(text, 10) - 10] || '';
-    return TENS[t] + digit(text[1]);
-  }
-
-  function hundreds(numStr) {
-    if (parseInt(numStr, 10) === 0 || isNaN(parseInt(numStr, 10))) return '';
-    var s = ('000' + numStr).slice(-3);
-    var out = '';
-    if (s[0] !== '0') out += digit(s[0]) + 'រយ';
-    out += (s[1] !== '0') ? tens(s.slice(1)) : digit(s[2]);
-    return out;
-  }
-
-  /** Splits the whole part into groups of three, right to left. */
-  function groups(whole) {
-    var out = '', count = 1, rest = whole;
-    while (rest !== '') {
-      var chunk = hundreds(rest.slice(-3));
-      if (chunk !== '') out = chunk + PLACE[count] + out;
-      rest = rest.length > 3 ? rest.slice(0, -3) : '';
-      count++;
+  /** Whole part as a digit string (no leading zeros needed), grouped by thousand. */
+  function integerWords(digits) {
+    digits = digits.replace(/^0+/, '');
+    if (digits === '') return ZERO;
+    var parts = [], i = 0, end, group;
+    for (end = digits.length; end > 0; end -= 3, i++) {
+      group = parseInt(digits.slice(Math.max(0, end - 3), end), 10);
+      if (group > 0) parts.unshift(below1000(group) + SCALE[i]);
     }
-    return out;
+    return parts.join(' ');
   }
 
-  /** Normalises to the "1234.56" shape VBA's Str + Trim produces. */
-  function split(value) {
-    var s = String(value == null ? '' : value).trim().replace(/,/g, '');
-    if (s === '' || isNaN(Number(s))) return null;
-    s = String(Number(s));
-    var dot = s.indexOf('.');
-    if (dot < 0) return { whole: s, frac: null };
-    return { whole: s.slice(0, dot), frac: (s.slice(dot + 1) + '00').slice(0, 2) };
+  /**
+   * Amount -> { negative, whole: digit string, cents: 0..99 } or null.
+   * Text is cleaned the same way as the add-ins: Khmer digits become 0-9;
+   * spaces, commas, $ and ៛ are ignored; the decimal point is always ".".
+   */
+  function parse(value) {
+    var t, i, ch, code, clean = '', sign = '';
+    if (value === null || value === undefined || typeof value === 'boolean') return null;
+    if (typeof value === 'number') {
+      if (!isFinite(value)) return null;
+      t = value.toFixed(3);                 // no exponent below 1e21
+    } else {
+      t = String(value);
+    }
+
+    for (i = 0; i < t.length; i++) {
+      ch = t.charAt(i);
+      code = t.charCodeAt(i);
+      if (code >= 0x17E0 && code <= 0x17E9) {
+        clean += String.fromCharCode(code - 0x17E0 + 48);
+      } else if ((ch >= '0' && ch <= '9') || ch === '.') {
+        clean += ch;
+      } else if (ch === '-') {
+        if (clean !== '' || sign !== '') return null;
+        sign = '-';
+      } else if (ch === ' ' || ch === ' ' || ch === ',' || ch === '$' || ch === '៛' ||
+                 ch === '\t' || ch === '\r' || ch === '\n') {
+        // ignored
+      } else {
+        return null;
+      }
+    }
+
+    var dot = clean.indexOf('.');
+    var whole = dot < 0 ? clean : clean.slice(0, dot);
+    var frac  = dot < 0 ? '' : clean.slice(dot + 1);
+    if (frac.indexOf('.') >= 0) return null;
+    if (whole === '' && frac === '') return null;
+    whole = whole.replace(/^0+/, '') || '0';
+    if (whole.length > 15) return null;
+
+    // Cents, rounded half up on the third decimal
+    frac = (frac + '000').slice(0, 3);
+    var cents = parseInt(frac.slice(0, 2), 10);
+    if (parseInt(frac.charAt(2), 10) >= 5) cents++;
+    if (cents === 100) {
+      cents = 0;
+      whole = addOne(whole);
+      if (whole.length > 15) return null;
+    }
+
+    return { negative: sign === '-' && (whole !== '0' || cents > 0), whole: whole, cents: cents };
   }
 
-  function riel(value) {
-    var p = split(value);
+  /** "999" -> "1000" on a digit string (whole parts can exceed 2^53). */
+  function addOne(digits) {
+    var out = '', carry = 1, i, d;
+    for (i = digits.length - 1; i >= 0; i--) {
+      d = parseInt(digits.charAt(i), 10) + carry;
+      carry = d === 10 ? 1 : 0;
+      out = (d % 10) + out;
+    }
+    return carry ? '1' + out : out;
+  }
+
+  function inWords(value, unit) {
+    if (typeof value === 'string' && value.replace(/\s+/g, '') === '') return '';
+    var p = parse(value);
     if (!p) return '';
-    var words = groups(p.whole);
-    words = (words === '') ? ZERO : words + RIEL;
-    var cents = p.frac ? tens(p.frac) : '';
-    cents = cents ? AND + cents + RIEL : '';
-    return (words + ' ' + cents).trim();
+    var s = integerWords(p.whole) + unit;
+    s += p.cents === 0 ? EXACT : ' ' + AND + below1000(p.cents) + CENT;
+    return (p.negative ? MINUS : '') + s;
   }
 
-  function dollar(value) {
-    var p = split(value);
-    if (!p) return '';
-    var words = groups(p.whole);
-    words = (words === '') ? ZERO : words + DOLLAR;
-    // The VBA appends គត់ only when the source had no decimal point at all.
-    if (p.frac === null) words += EXACT;
-    var cents = p.frac ? tens(p.frac) : '';
-    cents = cents ? AND + cents + CENT : '';
-    return (words + ' ' + cents).trim();
-  }
+  function riel(value)   { return inWords(value, RIEL); }
+  function dollar(value) { return inWords(value, DOLLAR); }
 
-  return { riel, dollar };
+  return { riel: riel, dollar: dollar };
 })();
 
 if (typeof module !== 'undefined' && module.exports) module.exports = KhmerCurrency;
