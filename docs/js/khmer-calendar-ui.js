@@ -398,39 +398,58 @@ const KhCal = (() => {
   const _ORIGIN_KEYS = { km: 'originKm', zh: 'originZh', ja: 'originJa', ko: 'originKo', eu: 'originEu' };
   let _babyNameOrigin = (() => { try { return localStorage.getItem(BABY_ORIGIN_KEY) || 'km'; } catch (e) { return 'km'; } })();
   // Favourites are stored as "origin:name"; a bare name is from the Khmer list
-  const _favKey = n => _babyNameOrigin + ':' + n;
   function _getBabyFavs() { try { return JSON.parse(localStorage.getItem(BABY_FAVS_KEY) || '[]'); } catch (e) { return []; } }
   function _setBabyFavs(a) { try { localStorage.setItem(BABY_FAVS_KEY, JSON.stringify(a)); } catch (e) { /* private mode */ } }
 
-  /** Name cards for the chosen origin and gender, favourites first, filtered by the search box. */
+  // Lower-case and drop Latin accents so "zoe" finds "Zoé"
+  const _normName = x => String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  /**
+   * Name cards for the chosen origin and gender, favourites first. Typing in
+   * the search box looks through every origin, boys and girls, so a name is
+   * found whichever tab is open.
+   */
   function _renderBabyNames() {
     const el = document.getElementById('baby-names-list');
     if (!el || !BG) return;
     const lang = I18n.getLang();
+    const gender = _babyNameGender || 'B';
     const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
-    const isFav = n => favs.includes(_favKey(n.name));
-    const q = _babyNameQuery.trim().toLowerCase();
+    const isFav = n => favs.includes(n.origin + ':' + n.name);
+    const q = _normName(_babyNameQuery.trim());
     const group = _childGroup();
-    const suits = n => group && BG.suits(_babyNameOrigin === 'km' ? n.name : n.sound, group);
-    const searched = BG.names(_babyNameOrigin, _babyNameGender || 'B')
-      .filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && x.toLowerCase().includes(q)));
-    let list = searched.filter(n => !group || !_babyMatchDay || suits(n));
+    const suits = n => group && BG.suits(n.origin === 'km' ? n.name : n.sound, group);
+    const pool = (q ? BG.ORIGINS : [_babyNameOrigin]).flatMap(o =>
+      (q ? ['B', 'G'] : [gender]).flatMap(g => BG.names(o, g).map(n => Object.assign(n, { origin: o, g }))));
+    const searched = pool.filter(n => !q || [n.name, n.latin, n.sound, n.km, n.en].some(x => x && _normName(x).includes(q)));
+    // The birth-day filter applies to browsing (favourites always stay); a
+    // search shows every hit
+    let list = q ? searched : searched.filter(n => !group || !_babyMatchDay || suits(n) || isFav(n));
     // Never leave the list blank: with no name for this birth day, say so and
     // show every name of the origin instead
-    const fellBack = !list.length && searched.length > 0;
+    const fellBack = !q && !list.some(n => !isFav(n)) && searched.some(n => !isFav(n));
     if (fellBack) list = searched;
-    list.sort((a, b) => isFav(b) - isFav(a));
-    document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === (_babyNameGender || 'B')));
+    // Favourites first; in a search, names that start with the text, then
+    // the open origin and gender
+    const starts = n => [n.name, n.latin, n.sound].some(x => x && _normName(x).startsWith(q));
+    const rank = n => (isFav(n) ? 0 : 8) + (q && !starts(n) ? 4 : 0) + (n.origin === _babyNameOrigin ? 0 : 2) + (n.g === gender ? 0 : 1);
+    list.sort((a, b) => rank(a) - rank(b));
+    document.querySelectorAll('.baby-name-tab').forEach(t => t.classList.toggle('is-active', t.dataset.g === gender));
     document.querySelectorAll('.baby-origin').forEach(t => t.classList.toggle('is-active', t.dataset.origin === _babyNameOrigin));
-    el.innerHTML = (fellBack ? `<div class="baby-fallback">${escapeHtml(I18n.t('noMatchLetters'))}</div>` : '') + (list.length ? list.map(n => {
+    el.classList.toggle('is-searching', !!q);
+    const note = fellBack ? I18n.t('noMatchLetters')
+      : q && list.length ? I18n.t('babySearchAll').replace('{n}', _num(list.length)) : '';
+    el.innerHTML = (note ? `<div class="baby-fallback">${escapeHtml(note)}</div>` : '') + (list.length ? list.map(n => {
       const fav = isFav(n);
       // Second line: how to read it — Latin spelling, plus the Khmer
       // pronunciation in the Khmer UI
       const read = [n.latin, lang === 'km' ? n.sound : ''].filter(Boolean).join(' · ');
-      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}${suits(n) ? ' is-suited' : ''}" data-name="${escapeHtml(n.name)}" aria-pressed="${fav}">
+      const tag = q ? `<span class="baby-name-tag baby-name-tag--${n.g}">${escapeHtml(I18n.t(_ORIGIN_KEYS[n.origin]) + ' · ' + I18n.t(n.g === 'B' ? 'babyBoy' : 'babyGirl'))}</span>` : '';
+      return `<button type="button" class="baby-name${fav ? ' is-fav' : ''}${suits(n) ? ' is-suited' : ''}" data-name="${escapeHtml(n.name)}" data-origin="${n.origin}" aria-pressed="${fav}">
         <span class="baby-name-km">${escapeHtml(n.name)}</span>
         ${read ? `<span class="baby-name-latin">${escapeHtml(read)}</span>` : ''}
         <span class="baby-name-mean">${escapeHtml(lang === 'km' ? n.km : n.en)}</span>
+        ${tag}
         <span class="baby-name-star" aria-hidden="true">${fav ? '★' : '☆'}</span>
       </button>`;
     }).join('') : `<div class="baby-empty">${escapeHtml(I18n.t('babyNoMatch'))}</div>`);
@@ -2851,7 +2870,7 @@ const KhCal = (() => {
         const card = e.target.closest('.baby-name');
         if (card) {
           const favs = _getBabyFavs().map(f => (f.includes(':') ? f : 'km:' + f));
-          const key = _favKey(card.dataset.name);
+          const key = (card.dataset.origin || _babyNameOrigin) + ':' + card.dataset.name;
           const i = favs.indexOf(key);
           if (i >= 0) favs.splice(i, 1); else favs.push(key);
           _setBabyFavs(favs);
@@ -2862,7 +2881,29 @@ const KhCal = (() => {
         if (e.target.id !== 'baby-name-search') return;
         _babyNameQuery = e.target.value;
         _renderBabyNames();
+        _liftNameSearch();
       });
+      // Lift the search box to the top of the panel so the results show
+      // above the keyboard. The keyboard opens after focus and the browser
+      // then scrolls the box back to the bottom, so lift again on resize.
+      const _liftNameSearch = () => {
+        const i = document.getElementById('baby-name-search');
+        if (!i || document.activeElement !== i) return;
+        // Stop just below the sticky title and tabs, not under them. The
+        // margin also steers the browser's own scroll when the keyboard opens.
+        const panel = i.closest('.cal-health-panel');
+        const tabs = panel && panel.querySelector('.health-tabs');
+        if (panel && tabs) {
+          i.style.scrollMarginTop = Math.round(tabs.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 8) + 'px';
+        }
+        i.scrollIntoView({ block: 'start' });
+      };
+      babyEl.addEventListener('focusin', (e) => {
+        if (e.target.id !== 'baby-name-search') return;
+        _liftNameSearch();
+        setTimeout(_liftNameSearch, 350);
+      });
+      (window.visualViewport || window).addEventListener('resize', () => setTimeout(_liftNameSearch, 60));
       babyEl.addEventListener('change', (e) => {
         if (e.target.id === 'baby-wed-night') { _lsSet(CHILD_NIGHT_KEY, e.target.checked ? '1' : '0'); _renderBaby(); return; }
         if (e.target.id === 'baby-match-day') { _babyMatchDay = e.target.checked; _renderBabyNames(); return; }
