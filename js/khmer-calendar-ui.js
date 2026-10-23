@@ -1022,24 +1022,18 @@ const KhCal = (() => {
     _eventsFilter = _renderChipRow(document.getElementById('events-chips'), _eventsFilter);
   }
 
-  function _renderEventsList() {
-    if (!HL) return;
-    const lang = I18n.getLang();
-    const listEl = document.getElementById('events-list');
-    if (!listEl) return;
+  // The events page scrolls on through the years: it opens on one year and
+  // adds the next one below, or the previous one above, as the list nears
+  // either end. _evFirst/_evLast are the years on the page; _eventsYear is
+  // the one in view, shown in the header and stepped by its ‹ › buttons.
+  const EV_MIN_YEAR = 1900, EV_MAX_YEAR = 2100;   // the calendars' range
+  let _evFirst = null, _evLast = null;
 
-    const yearEl = document.getElementById('events-year');
-    if (yearEl) yearEl.textContent = _num(_eventsYear);
-    const todayNumEl = document.getElementById('events-today-num');
-    if (todayNumEl) todayNumEl.textContent = new Date().getDate();
-    _renderEventChips();
-
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const cycle = _cycleRows(new Date(_eventsYear, 0, 1), new Date(_eventsYear, 11, 31))
-      .filter(r => r.start.getFullYear() === _eventsYear);  // grouped by start month below
-    const rows = _collectEventRows(_eventsYear, lang).concat(cycle)
+  /** One year's month sections, headed by the year, as a block of the list. */
+  function _eventsYearHtml(year, lang, today) {
+    const cycle = _cycleRows(new Date(year, 0, 1), new Date(year, 11, 31))
+      .filter(r => r.start.getFullYear() === year);  // grouped by start month below
+    const rows = _collectEventRows(year, lang).concat(cycle)
       .sort((a, b) => a.start - b.start)
       .filter(r => _matchFilter(r, _eventsFilter));
 
@@ -1049,25 +1043,81 @@ const KhCal = (() => {
       if (!inMonth.length) continue;
 
       // Lunar month(s) the Gregorian month spans, as on the grid header
-      const lastDay = new Date(_eventsYear, m + 1, 0).getDate();
-      const km1 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, 1)).km;
-      const km2 = KC.getKhmerDayMonthFromGregorian(new Date(_eventsYear, m, lastDay)).km;
+      const lastDay = new Date(year, m + 1, 0).getDate();
+      const km1 = KC.getKhmerDayMonthFromGregorian(new Date(year, m, 1)).km;
+      const km2 = KC.getKhmerDayMonthFromGregorian(new Date(year, m, lastDay)).km;
       const lunarMonths = KC.khmerMonthNameFromKm(km1) + (km2 !== km1 ? ' · ' + KC.khmerMonthNameFromKm(km2) : '');
 
       const items = _eventRowsHtml(inMonth, today, lang, m);
 
       sections.push(`<section class="ev-month">
         <div class="ev-month-head">
-          <span class="ev-month-name">${escapeHtml(I18n.gregMonth(m))} ${_num(_eventsYear)}</span>
+          <span class="ev-month-name">${escapeHtml(I18n.gregMonth(m))} ${_num(year)}</span>
           <span class="ev-month-lunar">${escapeHtml(lunarMonths)}</span>
         </div>
         ${items}
       </section>`);
     }
+    return `<div class="ev-yblock" data-year="${year}">
+        <div class="ev-ybanner">${_num(year)}</div>
+        ${sections.length ? sections.join('') : `<div class="ev-empty">${escapeHtml(I18n.t('noEvents'))}</div>`}
+      </div>`;
+  }
 
-    listEl.innerHTML = sections.length
-      ? sections.join('')
-      : `<div class="ev-empty">${escapeHtml(I18n.t('noEvents'))}</div>`;
+  /** Starts the page over on _eventsYear alone. */
+  function _renderEventsList() {
+    if (!HL) return;
+    const lang = I18n.getLang();
+    const listEl = document.getElementById('events-list');
+    if (!listEl) return;
+
+    const todayNumEl = document.getElementById('events-today-num');
+    if (todayNumEl) todayNumEl.textContent = new Date().getDate();
+    _renderEventChips();
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    listEl.innerHTML = _eventsYearHtml(_eventsYear, lang, today);
+    _evFirst = _evLast = _eventsYear;
+    _showEventsYear(_eventsYear);
+  }
+
+  function _showEventsYear(year) {
+    _eventsYear = year;
+    const yearEl = document.getElementById('events-year');
+    if (yearEl) yearEl.textContent = _num(year);
+  }
+
+  /**
+   * On scroll: add a year at whichever end is near, keeping the rows in view
+   * where they are, and name the year at the top of the view in the header.
+   */
+  function _onEventsScroll() {
+    const listEl = document.getElementById('events-list');
+    if (!listEl || _evFirst === null) return;
+    const lang = I18n.getLang();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (!listEl.clientHeight) return;                 // page not open
+    const near = Math.max(400, listEl.clientHeight);
+    // A short year (a filter with few events) cannot be scrolled, so keep
+    // adding years until there is something below to scroll into
+    for (let added = 0; added < 6 && _evLast < EV_MAX_YEAR &&
+         listEl.scrollHeight - listEl.scrollTop - listEl.clientHeight < near; added++) {
+      _evLast++;
+      listEl.insertAdjacentHTML('beforeend', _eventsYearHtml(_evLast, lang, today));
+    }
+    if (listEl.scrollTop < near / 2 && _evFirst > EV_MIN_YEAR) {
+      const before = listEl.scrollHeight;
+      _evFirst--;
+      listEl.insertAdjacentHTML('afterbegin', _eventsYearHtml(_evFirst, lang, today));
+      listEl.scrollTop += listEl.scrollHeight - before;
+    }
+    let inView = _evFirst;
+    for (const b of listEl.querySelectorAll('.ev-yblock')) {
+      if (b.offsetTop <= listEl.scrollTop + 4) inView = +b.dataset.year; else break;
+    }
+    if (inView !== _eventsYear) _showEventsYear(inView);
   }
 
   /** Scroll the events page to today's row, or else the next upcoming one. */
@@ -2163,6 +2213,7 @@ const KhCal = (() => {
         _renderEventsList();
         eventsOverlay.classList.add('open');
         _scrollEventsToToday();
+        _onEventsScroll();
       });
     }
     const eventsToday = document.getElementById('events-today');
@@ -2171,6 +2222,7 @@ const KhCal = (() => {
         _eventsYear = new Date().getFullYear();
         _renderEventsList();
         _scrollEventsToToday();
+        _onEventsScroll();
       });
     }
     const eventsListEl = document.getElementById('events-list');
@@ -2179,6 +2231,7 @@ const KhCal = (() => {
     const _resetEventsScroll = () => {
       if (_eventsYear === new Date().getFullYear()) _scrollEventsToToday();
       else if (eventsListEl) eventsListEl.scrollTop = 0;
+      _onEventsScroll();
     };
     const monthChips = document.getElementById('month-events-chips');
     if (monthChips) {
@@ -2218,8 +2271,16 @@ const KhCal = (() => {
         if (e.target === eventsOverlay) eventsOverlay.classList.remove('open');
       });
     }
-    if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); _resetEventsScroll(); });
-    if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); _resetEventsScroll(); });
+    if (eventsPrev) eventsPrev.addEventListener('click', () => { if (_eventsYear > EV_MIN_YEAR) { _eventsYear--; _renderEventsList(); _resetEventsScroll(); } });
+    if (eventsNext) eventsNext.addEventListener('click', () => { if (_eventsYear < EV_MAX_YEAR) { _eventsYear++; _renderEventsList(); _resetEventsScroll(); } });
+    if (eventsListEl) {
+      let pending = false;
+      eventsListEl.addEventListener('scroll', () => {
+        if (pending) return;
+        pending = true;
+        requestAnimationFrame(() => { pending = false; _onEventsScroll(); });
+      }, { passive: true });
+    }
 
     // Weather overlay
     const weatherBtn     = document.getElementById('cal-weather-btn');
@@ -2881,8 +2942,9 @@ const KhCal = (() => {
           const which = field.dataset.date;
           const ranges = {
             birth: [new Date(1940, 0, 1), new Date(y - 10, 11, 31), new Date(y - 28, 0, 1)],
-            check: [new Date(y - 2, 0, 1), new Date(y + 3, 11, 31), now],
-            child: [new Date(y - 18, 0, 1), new Date(y + 2, 11, 31), now]
+            // Any year the calendars cover, past or future
+            check: [new Date(1900, 0, 1), new Date(2100, 11, 31), now],
+            child: [new Date(1900, 0, 1), new Date(2100, 11, 31), now]
           }[which];
           const current = which === 'birth' ? _getMotherBirth() : which === 'child' ? _lsGet(CHILD_BIRTH_KEY, '') : _babyCheck;
           _openDatePick({ value: current, min: ranges[0], max: ranges[1], initial: ranges[2], onPick: (v) => {
