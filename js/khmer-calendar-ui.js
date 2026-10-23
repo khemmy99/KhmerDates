@@ -7,6 +7,7 @@ const KhCal = (() => {
   const HL = (typeof KhmerHolidays !== 'undefined') ? KhmerHolidays : null;
   const DB = (typeof DailyBlock     !== 'undefined') ? DailyBlock     : null;
   const HT = (typeof HealthTracker  !== 'undefined') ? HealthTracker  : null;
+  const WX = (typeof Weather        !== 'undefined') ? Weather        : null;
   // Single source of truth for the user-facing version label.
   // Keep this in sync with manifest.json `version` and android/app/build.gradle `versionName`.
   const APP_VERSION = '1.5.7';
@@ -18,93 +19,139 @@ const KhCal = (() => {
   }
 
   // ===== Weather =====
-  // Android: the app's WeatherApp plugin opens the phone's weather app on
-  // top of the calendar, so Back returns to it. A phone without one gets
-  // Google's weather page in the app's language and colours instead.
-  // iOS: Apple Weather by its URL scheme (Capacitor hands non-web URLs to the
-  // system); iOS shows "◀ Khmer Calendar" at the top-left to come back.
+  // The app's own forecast (Open-Meteo), in a panel over the calendar that
+  // closes completely with ✕, Back or a tap outside. Opening the phone's
+  // weather app instead left it running in the background with no way for
+  // the calendar to close it. City list only, so no location permission.
 
-  // Over the phone's weather app floats a "← back to the calendar" button,
-  // once the user allows "Display over other apps". Asked once; after that
-  // the button simply appears whenever the permission is on.
-  const WX_BACK_ASKED = 'kh-cal-wx-back-asked';
-  let _wxAfterSettings = false;
-
-  async function _openPhoneWeather() {
-    const cap = window.Capacitor;
-    const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
-    if (platform === 'ios') { window.location.href = 'weather://'; return; }
-    const plugin = cap && cap.Plugins && cap.Plugins.WeatherApp;
-    if (!plugin) { window.open('https://www.google.com/search?q=weather', '_blank'); return; }
-    try {
-      const st = await plugin.backButtonStatus();
-      if (st.phoneApp && !st.allowed && _lsGet(WX_BACK_ASKED, '') !== '1') {
-        _askWeatherBackButton(plugin);
-        return;
-      }
-    } catch (e) { /* older native build: open without the button */ }
-    _launchWeather(plugin);
+  function _openWeather() {
+    if (!WX) return;
+    const overlay = document.getElementById('cal-weather-overlay');
+    if (!overlay) return;
+    _populateCitySelect();
+    overlay.classList.add('open');
+    // Always from the top, so the city picker is in view
+    const panel = overlay.querySelector('.cal-weather-panel');
+    if (panel) panel.scrollTop = 0;
+    _loadWeather();
   }
 
-  function _launchWeather(plugin) {
-    plugin.open({
-      title: I18n.t('weather'),
-      lang: I18n.getLang(),
-      dark: document.documentElement.dataset.theme !== 'light',
-      offline: I18n.t('weatherOffline'),
-      retry: I18n.t('retry'),
-      openApp: I18n.t('weatherPhoneApp'),
-      backLabel: I18n.t('wxBackToCalendar')
-    }).catch(() => _toast(I18n.t('weatherAppFailed')));
+  function _populateCitySelect() {
+    if (!WX) return;
+    const sel = document.getElementById('weather-city-select');
+    if (!sel) return;
+    const lang = I18n.getLang();
+    const saved = WX.getLocation();
+    const savedId = saved && saved.kind === 'city' ? saved.id : 'pnh';
+    sel.innerHTML = WX.CITIES.map(c =>
+      `<option value="${escapeHtml(c.id)}"${c.id === savedId ? ' selected' : ''}>${escapeHtml(WX.cityName(c, lang))}</option>`
+    ).join('');
   }
 
-  /** Once: why the permission, with Allow (to the system switch) or Not now. */
-  function _askWeatherBackButton(plugin) {
-    _lsSet(WX_BACK_ASKED, '1');
-    let overlay = document.getElementById('wx-back-overlay');
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'cal-modal-overlay';
-      overlay.id = 'wx-back-overlay';
-      document.body.appendChild(overlay);
+  function _loadWeather() {
+    if (!WX) return;
+    const lang = I18n.getLang();
+    let loc = WX.getLocation();
+    if (!loc) {
+      // Default to Phnom Penh on first open
+      const city = WX.findCity('pnh');
+      loc = { kind: 'city', id: city.id, name: WX.cityName(city, lang), lat: city.lat, lon: city.lon };
+      WX.setLocation(loc);
     }
-    overlay.innerHTML = `<div class="cal-modal-panel" role="dialog" aria-modal="true">
-        <div class="cal-modal-header"><span>${escapeHtml(I18n.t('wxBackTitle'))}</span>
-          <button type="button" class="cal-modal-close" data-wx="later">&times;</button></div>
-        <div class="cal-modal-body">
-          <div class="wx-back-demo">← ${escapeHtml(I18n.t('wxBackToCalendar'))}</div>
-          <p class="wx-back-text">${escapeHtml(I18n.t('wxBackText'))}</p>
-          <div class="cal-modal-actions">
-            <button type="button" class="cal-modal-btn" data-wx="later">${escapeHtml(I18n.t('wxBackLater'))}</button>
-            <button type="button" class="cal-modal-btn cal-modal-btn--primary" data-wx="allow">${escapeHtml(I18n.t('wxBackAllow'))}</button>
+    const cur = document.getElementById('weather-current');
+    const hourly = document.getElementById('weather-hourly');
+    const daily  = document.getElementById('weather-daily');
+    if (cur) cur.innerHTML = `<div class="weather-loading"><span class="weather-spinner"></span> <span>${escapeHtml(I18n.t('loading') || 'Loading…')}</span></div>`;
+    if (hourly) hourly.innerHTML = '';
+    if (daily)  daily.innerHTML  = '';
+
+    WX.fetchForecast(loc.lat, loc.lon).then(data => {
+      _renderWeather(data, loc, lang);
+    }).catch(() => {
+      if (cur) cur.innerHTML = `<div class="weather-error">${escapeHtml(I18n.t('weatherError') || 'Could not load weather. Check your connection.')}</div>`;
+    });
+  }
+
+  function _renderWeather(data, loc, lang) {
+    const cur = document.getElementById('weather-current');
+    const hourlyEl = document.getElementById('weather-hourly');
+    const dailyEl  = document.getElementById('weather-daily');
+
+    // --- Current conditions ---
+    const c = data.current || {};
+    const cdesc = WX.describeCode(c.weather_code, lang);
+    const locName = loc.kind === 'gps'
+      ? (I18n.t('myLocation') || 'My location')
+      : (loc.name || '');
+    const updated = c.time ? c.time.replace('T', ' ').slice(0, 16) : '';
+    if (cur) {
+      cur.innerHTML = `
+        <div class="weather-current-row">
+          <div class="weather-current-icon">${cdesc.icon}</div>
+          <div class="weather-current-info">
+            <div class="weather-current-temp">${Math.round(c.temperature_2m)}°</div>
+            <div class="weather-current-cond">${escapeHtml(cdesc.label)}</div>
+            <div class="weather-current-loc">${escapeHtml(locName)}</div>
+          </div>
+          <div class="weather-current-extra">
+            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxFeels') || 'Feels')}</span> ${Math.round(c.apparent_temperature)}°</div>
+            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxHumidity') || 'Humidity')}</span> ${Math.round(c.relative_humidity_2m)}%</div>
+            <div><span class="weather-extra-label">${escapeHtml(I18n.t('wxWind') || 'Wind')}</span> ${Math.round(c.wind_speed_10m)} km/h</div>
           </div>
         </div>
-      </div>`;
-    overlay.onclick = (e) => {
-      const btn = e.target.closest('[data-wx]');
-      if (!btn && e.target !== overlay) return;
-      overlay.classList.remove('open');
-      if (btn && btn.dataset.wx === 'allow') {
-        // Back from the system switch, the weather opens (with the button
-        // if it was turned on) through the resume listener below
-        _wxAfterSettings = true;
-        plugin.allowBackButton().catch(() => { _wxAfterSettings = false; _launchWeather(plugin); });
-      } else {
-        _launchWeather(plugin);
-      }
-    };
-    overlay.classList.add('open');
-  }
+      `;
+    }
 
-  function _onAppVisible() {
-    if (!_wxAfterSettings) return;
-    _wxAfterSettings = false;
-    const plugin = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WeatherApp;
-    if (plugin) setTimeout(() => _launchWeather(plugin), 300);
+    // --- Hourly (next 24 hours starting from "now") ---
+    if (hourlyEl && data.hourly && data.hourly.time) {
+      const now = new Date();
+      const nowHourMs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours()).getTime();
+      const times = data.hourly.time;
+      const temps = data.hourly.temperature_2m;
+      const codes = data.hourly.weather_code;
+      let startIdx = times.findIndex(t => new Date(t).getTime() >= nowHourMs);
+      if (startIdx < 0) startIdx = 0;
+      const rows = [];
+      for (let i = startIdx; i < Math.min(startIdx + 24, times.length); i++) {
+        const dt = new Date(times[i]);
+        const hh = String(dt.getHours()).padStart(2, '0') + ':00';
+        const desc = WX.describeCode(codes[i], lang);
+        const isFirst = i === startIdx;
+        rows.push(`<div class="weather-hour${isFirst ? ' is-now' : ''}">
+          <div class="weather-hour-time">${isFirst ? escapeHtml(I18n.t('wxNow') || 'Now') : hh}</div>
+          <div class="weather-hour-icon">${desc.icon}</div>
+          <div class="weather-hour-temp">${Math.round(temps[i])}°</div>
+        </div>`);
+      }
+      hourlyEl.innerHTML = rows.join('');
+    }
+
+    // --- Daily (7 days) ---
+    if (dailyEl && data.daily && data.daily.time) {
+      const T = I18n.translations || {};
+      const weekShort = (T[lang] && T[lang].weekdaysShort) || ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const rows = data.daily.time.map((t, i) => {
+        const dt = new Date(t);
+        const desc = WX.describeCode(data.daily.weather_code[i], lang);
+        const tmax = Math.round(data.daily.temperature_2m_max[i]);
+        const tmin = Math.round(data.daily.temperature_2m_min[i]);
+        const dayLabel = i === 0
+          ? (I18n.t('wxToday') || 'Today')
+          : weekShort[dt.getDay()];
+        return `<div class="weather-day">
+          <div class="weather-day-name">${escapeHtml(dayLabel)}</div>
+          <div class="weather-day-icon">${desc.icon}</div>
+          <div class="weather-day-cond">${escapeHtml(desc.label)}</div>
+          <div class="weather-day-range">
+            <span class="weather-day-max">${tmax}°</span>
+            <span class="weather-day-sep">/</span>
+            <span class="weather-day-min">${tmin}°</span>
+          </div>
+        </div>`;
+      }).join('');
+      dailyEl.innerHTML = rows;
+    }
   }
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') _onAppVisible();
-  });
 
   /**
    * Build a year-long list of unique holiday occurrences, grouped by month.
@@ -2137,15 +2184,32 @@ const KhCal = (() => {
     if (eventsPrev) eventsPrev.addEventListener('click', () => { _eventsYear--; _renderEventsList(); _resetEventsScroll(); });
     if (eventsNext) eventsNext.addEventListener('click', () => { _eventsYear++; _renderEventsList(); _resetEventsScroll(); });
 
-    // Weather: only in the phone apps, where it opens the phone's weather
-    // app. A website cannot open other apps, so the web build hides it.
-    const weatherBtn = document.getElementById('cal-weather-btn');
-    const cap = window.Capacitor;
-    const platform = cap && cap.getPlatform ? cap.getPlatform() : 'web';
-    if (weatherBtn && (platform === 'ios' || platform === 'android')) {
-      weatherBtn.hidden = false;
-      weatherBtn.addEventListener('click', _openPhoneWeather);
+    // Weather overlay
+    const weatherBtn     = document.getElementById('cal-weather-btn');
+    const weatherOverlay = document.getElementById('cal-weather-overlay');
+    const weatherClose   = document.getElementById('weather-overlay-close');
+    if (weatherBtn && weatherOverlay) {
+      weatherBtn.addEventListener('click', () => {
+        _openWeather();
+      });
     }
+    if (weatherClose && weatherOverlay) {
+      weatherClose.addEventListener('click', () => weatherOverlay.classList.remove('open'));
+    }
+    if (weatherOverlay) {
+      weatherOverlay.addEventListener('click', (e) => {
+        if (e.target === weatherOverlay) weatherOverlay.classList.remove('open');
+      });
+    }
+    const wxSelect = document.getElementById('weather-city-select');
+    if (wxSelect) wxSelect.addEventListener('change', () => {
+      if (!WX) return;
+      const city = WX.findCity(wxSelect.value);
+      if (city) {
+        WX.setLocation({ kind: 'city', id: city.id, name: WX.cityName(city, I18n.getLang()), lat: city.lat, lon: city.lon });
+        _loadWeather();
+      }
+    });
 
     // Theme toggle
     const themeGroup = document.getElementById('theme-toggle');
