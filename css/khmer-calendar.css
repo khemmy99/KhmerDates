@@ -4182,3 +4182,7 @@ html { background-color: #0a0c14; }
 [data-theme="light"] .baby-name-tag { color: #1D4ED8; }
 [data-theme="light"] .baby-name-tag--G { color: #BE185D; }
 
+
+/* Weather: "my location" in use; Open-Meteo's credit at the foot of About */
+.weather-gps-btn.is-active { background: var(--kh-primary); border-color: var(--kh-primary); color: #fff; }
+.about-credit { margin: 0 18px 18px; text-align: center; font-size: 11px; color: var(--kh-text-muted); }
