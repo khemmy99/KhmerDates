@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="km">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ប្រតិទិនខ្មែរ KCalendar — សម្រាប់ Excel & Word</title>
+<meta name="description" content="កម្មវិធីបន្ថែមប្រតិទិនខ្មែរសម្រាប់ Excel និង Word៖ បញ្ចូលកាលបរិច្ឆេទខ្មែរ ចន្ទគតិ/សុរិយគតិ ថ្ងៃឈប់សម្រាក និងអានទឹកប្រាក់ជាអក្សរ។ សាកល្បងឥតគិតថ្លៃ ១ ថ្ងៃ · $2.5/កម្មវិធី។">
+
+<!-- Link preview (Facebook / Telegram / etc.) -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ប្រតិទិនខ្មែរ KCalendar — Excel & Word">
+<meta property="og:description" content="បញ្ចូលកាលបរិច្ឆេទខ្មែរ ដោយចុចតែម្ដង · អានទឹកប្រាក់ជាអក្សរ · សាកល្បងឥតគិតថ្លៃ ១ ថ្ងៃ · $2.5/កម្មវិធី">
+<meta property="og:image" content="https://khemmy99.github.io/KhmerDates/kcalendar/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://khemmy99.github.io/KhmerDates/kcalendar/">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanuman:wght@400;700&family=Moul&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #081628; --card: #0f2740; --line: #1d3a57; --fg: #eaf2f6; --muted: #9fc0cf;
+    --teal: #14b8a6; --teal-bright: #7ff0e2; --gold: #f7b733;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Hanuman', system-ui, sans-serif; color: var(--fg); line-height: 1.7;
+    background: radial-gradient(120% 80% at 20% 0%, #12606a 0%, #0c2d45 42%, #081628 100%);
+    background-attachment: fixed; min-height: 100vh;
+  }
+  .muol { font-family: 'Moul', serif; font-weight: 400; line-height: 1.5; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 60px; }
+  header { text-align: center; padding: 20px 0 8px; }
+  .badge {
+    display: inline-block; background: linear-gradient(90deg, #f7c46c, #f59e0b); color: #2b1a00;
+    font-weight: 700; border-radius: 999px; padding: 6px 20px; font-size: 15px; margin-bottom: 14px;
+  }
+  h1.muol { font-size: clamp(30px, 7vw, 52px); color: #fff; text-shadow: 0 6px 30px rgba(0,0,0,.35); }
+  .for { color: var(--teal-bright); font-size: clamp(18px, 4vw, 26px); margin-top: 2px; }
+  .tag { color: var(--muted); margin-top: 10px; font-size: clamp(15px, 3.4vw, 19px); }
+  .hero { display: block; width: 100%; max-width: 560px; margin: 22px auto 6px; border-radius: 18px;
+          box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+  .price-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 22px 0 8px; }
+  .pill {
+    background: rgba(20,184,166,.14); border: 1px solid rgba(127,240,226,.5); color: var(--teal-bright);
+    border-radius: 999px; padding: 10px 20px; font-weight: 700; font-size: 16px;
+  }
+  .pill.gold { background: rgba(247,183,51,.16); border-color: rgba(247,183,51,.6); color: var(--gold); }
+  .cta { text-align: center; margin: 26px 0 10px; }
+  .btn {
+    display: inline-block; text-decoration: none; font-weight: 700; border-radius: 14px;
+    padding: 16px 34px; font-size: 19px; margin: 6px;
+  }
+  .btn-dl { background: var(--teal); color: #fff; box-shadow: 0 12px 30px rgba(20,184,166,.45); }
+  .btn-dl small { display: block; font-weight: 400; font-size: 13px; opacity: .9; }
+  .btn-tg { background: #229ed9; color: #fff; }
+  .note { text-align: center; color: var(--muted); font-size: 14px; margin-top: 4px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+            padding: 22px 22px; margin: 20px 0; }
+  h2 { font-size: 21px; color: #fff; margin-bottom: 12px; }
+  ul.feat { list-style: none; }
+  ul.feat li { display: flex; gap: 10px; align-items: flex-start; margin: 9px 0; }
+  ul.feat li::before { content: '✓'; flex: none; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--teal); color: #fff; font-weight: 700; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 13px; margin-top: 3px; }
+  ol.steps { margin: 0 0 0 20px; } ol.steps li { margin: 8px 0; }
+  code { background: #0b1f34; border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: 14px; }
+  .money { background:#0b1f34; border:1px solid var(--line); border-radius:12px; padding:12px 16px;
+           display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:10px; }
+  .money b { color: var(--gold); font-family: system-ui, sans-serif; }
+  .arrow { color: var(--teal-bright); }
+  footer { text-align: center; color: var(--muted); font-size: 14px; margin-top: 28px; }
+  footer a { color: var(--teal-bright); }
+  .contact { font-size: 17px; margin: 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="badge">ប្រូម៉ូសិនពិសេស</span>
+    <h1 class="muol">ប្រតិទិនខ្មែរ</h1>
+    <div class="muol for">សម្រាប់ Excel &amp; Word</div>
+    <div class="tag">ចន្ទគតិ • សុរិយគតិ • ថ្ងៃឈប់សម្រាក • អានទឹកប្រាក់ជាអក្សរ</div>
+  </header>
+
+  <img class="hero" src="hero.png" alt="ប្រតិទិនខ្មែរ KCalendar">
+
+  <div class="price-row">
+    <span class="pill gold">តម្លៃ $2.5 / កម្មវិធី</span>
+    <span class="pill">សាកល្បងឥតគិតថ្លៃ ១ ថ្ងៃ</span>
+  </div>
+
+  <div class="cta">
+    <a class="btn btn-dl" href="KCalendar-Install.zip" download>⬇️ ទាញយកឥឡូវនេះ<small>KCalendar-Install.zip · Excel &amp; Word</small></a>
+    <a class="btn btn-tg" href="https://t.me/kcalendar88bot">✈️ ទិញតាម Telegram</a>
+  </div>
+  <p class="note">ដំឡើងសម្រាប់អ្នកប្រើម្នាក់ · មិនត្រូវការសិទ្ធិ Administrator</p>
+
+  <section>
+    <h2>មុខងារ</h2>
+    <ul class="feat">
+      <li>បញ្ចូលកាលបរិច្ឆេទខ្មែរ (ចន្ទគតិ/សុរិយគតិ) ដោយចុចតែម្ដង</li>
+      <li>បង្ហាញថ្ងៃឈប់សម្រាក និងថ្ងៃបុណ្យ</li>
+      <li>អានទឹកប្រាក់ជាអក្សរ រៀល និងដុល្លារ</li>
+      <li>របៀបភ្លឺ / ងងឹត និងពណ៌ ៨ ប្រភេទ</li>
+      <li>ប្រើបានទាំង Excel និង Word</li>
+    </ul>
+    <div class="money"><b>2,500,000,000</b> <span class="arrow">→</span> <span>ពីរប៊ីលាន ប្រាំរយលានរៀលគត់</span></div>
+  </section>
+
+  <section>
+    <h2>របៀបដំឡើង</h2>
+    <ol class="steps">
+      <li>បិទ Excel និង Word</li>
+      <li>ទាញយក ហើយពន្លា (Extract) ឯកសារ zip</li>
+      <li>ចុចពីរដងលើ <code>Install.cmd</code></li>
+      <li>បើក Excel ឬ Word — ផ្ទាំង <b>Calendar</b> នៅលើ Ribbon</li>
+    </ol>
+    <p class="note" style="text-align:left;margin-top:12px">ប្រើបានឥតគិតថ្លៃ ១ ថ្ងៃ។ បន្ទាប់មក ចុច ? (ជំនួយ) → អាជ្ញាប័ណ្ណ → ទិញតាម Telegram → បង់ $2.5 តាម QR → ផ្ញើបង្កាន់ដៃ → សកម្មដោយស្វ័យប្រវត្តិ។</p>
+  </section>
+
+  <section>
+    <h2>តម្រូវការ</h2>
+    <ul class="feat">
+      <li>Windows ជាមួយ Microsoft Excel ឬ Word (កំណែ 2016 ឡើងទៅ)</li>
+      <li>ពុម្ពអក្សរ Khmer OS Siemreap ភ្ជាប់មកស្រាប់ (ដំឡើងដោយស្វ័យប្រវត្តិ)</li>
+    </ul>
+  </section>
+
+  <footer>
+    <div class="contact">✈️ Telegram: <a href="https://t.me/kcalendar88bot">@kcalendar88bot</a></div>
+    <div class="contact">☎ 066 931 319 · 099 931 319</div>
+    <div style="margin-top:10px">© 2019–2026 KMLOL · KCalendar</div>
+  </footer>
+</div>
+</body>
+</html>
