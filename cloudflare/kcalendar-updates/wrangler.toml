@@ -1,0 +1,21 @@
+# KCalendar download host: the installer zip, served from R2 by a Worker on workers.dev.
+# Same Cloudflare account as kcalendar-license and ims-updates (my-khem-ebm.workers.dev),
+# pinned so a deploy can't land in another account.
+#   Live:     https://kcalendar-updates.my-khem-ebm.workers.dev/KCalendar-Install.zip
+#   Publish:  powershell -ExecutionPolicy Bypass -File cloudflare\kcalendar-updates\publish.ps1 -Version <yyyy.m.d> -Zip <KCalendar-Install.zip>
+#             (creates the bucket and deploys this Worker if needed, uploads the zip, then latest.json)
+#   Login:    this account uses its own wrangler auth profile "kcalendar" (the default login on
+#             this PC is another account). publish.ps1 passes --profile kcalendar to every command;
+#             to log it in again:  npx wrangler auth create kcalendar   (private browser window,
+#             signed in to this account).
+name = "kcalendar-updates"
+account_id = "ce7056d0ea643a8acdea4f58f15cd486"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
+
+# The bucket stays private: only this Worker reads it, and only the files above.
+[[r2_buckets]]
+binding = "RELEASES"
+bucket_name = "kcalendar-releases"
